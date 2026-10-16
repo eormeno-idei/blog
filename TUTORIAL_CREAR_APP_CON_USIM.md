@@ -24,9 +24,20 @@ Construiremos una aplicación didáctica pensada para enseñar los conceptos ese
 
 ### 1.1 Crear el proyecto Laravel e instalar el paquete
 
+Puedes inicializar tu proyecto de dos formas:
+
+#### Opción A (Recomendada): Proyecto pre-configurado con USIM
+Si estás iniciando desde cero, puedes usar el esqueleto oficial de USIM que ya incluye todo el andamiaje preconfigurado:
 ```bash
-composer create-project laravel/laravel gestor-posts
-cd gestor-posts
+composer create-project idei/usim-project blog
+cd blog
+```
+
+#### Opción B: Proyecto Laravel tradicional
+Si partes de una instalación estándar de Laravel:
+```bash
+composer create-project laravel/laravel blog
+cd blog
 
 # Instalar el paquete USIM
 composer require idei/usim
@@ -41,10 +52,10 @@ php artisan usim:install --force --no-interaction
 > ```bash
 > ./scripts/rebuild_dev.sh
 > ```
-> Este script crea automáticamente el entorno `dev/`, inicializa Laravel Octane con Roadrunner y enlaza el paquete local `@dev` de USIM.
+> Este script crea automáticamente el entorno `dev/`, inicializa el servidor y enlaza el paquete local `@dev` de USIM.
 
 > [!NOTE]
-> Durante la ejecución de `php artisan usim:install`, USIM publica automáticamente varias migraciones necesarias para el sistema, incluyendo `add_profile_image_to_users_table`, que añade el campo `profile_image` a la tabla `users` para soportar la carga de avatares.
+> Al crear el proyecto con `idei/usim-project` o ejecutar `php artisan usim:install`, USIM publica automáticamente varias migraciones necesarias para el sistema, incluyendo `add_profile_image_to_users_table`, que añade el campo `profile_image` a la tabla `users` para soportar la carga de avatares.
 
 ### 1.2 Configurar el idioma Español en `.env`
 
@@ -597,7 +608,9 @@ class DatabasePostService implements PostServiceInterface
 }
 ```
 
-### 4.4 Registrar el Servicio en `app/Providers/AppServiceProvider.php`
+### 4.4 Registrar los Servicios en `app/Providers/AppServiceProvider.php`
+
+Registra la implementación del servicio de posts y el recolector de cambios de interfaz para asegurar la integridad de los componentes en diffs incrementales:
 
 ```php
 <?php
@@ -606,6 +619,8 @@ namespace App\Providers;
 
 use App\Contracts\PostServiceInterface;
 use App\Services\Post\DatabasePostService;
+use App\Support\UI\AppUIChangesCollector;
+use Idei\Usim\UIChangesCollector;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -613,11 +628,62 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PostServiceInterface::class, DatabasePostService::class);
+        $this->app->scoped(UIChangesCollector::class, AppUIChangesCollector::class);
     }
 
     public function boot(): void
     {
         //
+    }
+}
+```
+
+### 4.5 Crear el Recolector de Cambios UI (`app/Support/UI/AppUIChangesCollector.php`)
+
+> [!IMPORTANT]
+> **Preservación de Atributos Estructurales (`parent`) en Server-Driven UI**:
+> En USIM, cuando una pantalla es insertada por navegación (`showInto()`) y al mismo tiempo un evento reactivo de dominio (`onUserLoggedOut()`) calcula un diff incremental en la misma petición, los componentes no deben perder sus atributos estructurales.
+> La clase `AppUIChangesCollector` sobrescribe el método `add()` para combinar (`array_merge`) los atributos de cada componente en lugar de reemplazarlos por completo (`array_replace`), asegurando que las imágenes (`UI::image`) y etiquetas (`UI::label`) siempre conserven su relación con el contenedor padre (`parent`) y se rendericen correctamente en el navegador sin perder contenido en las tarjetas al cerrar sesión.
+
+Crea el archivo `app/Support/UI/AppUIChangesCollector.php`:
+
+```php
+<?php
+
+namespace App\Support\UI;
+
+use Idei\Usim\UIChangesCollector;
+
+class AppUIChangesCollector extends UIChangesCollector
+{
+    /**
+     * @param  array<array-key, mixed>  $change
+     */
+    public function add(array $change = []): void
+    {
+        $specialKeys = [
+            'navigate',
+            'clear_container',
+            'clear_uploaders',
+            'redirect',
+            'toast',
+            'modal',
+            'update_modal',
+            'action',
+            'storage',
+            'agent_context',
+            'abort',
+        ];
+
+        foreach ($change as $key => $value) {
+            $isComponent = is_numeric($key) || !in_array($key, $specialKeys, true);
+
+            if ($isComponent && is_array($value) && isset($this->changes[$key]) && is_array($this->changes[$key])) {
+                $this->changes[$key] = array_merge($this->changes[$key], $value);
+            } else {
+                $this->changes[$key] = $value;
+            }
+        }
     }
 }
 ```
@@ -1009,13 +1075,13 @@ class PublishPost extends Screen
 
 ### 5.3 Pantalla Principal de Últimos Posts (`app/UI/Screens/Home.php`)
 
-La pantalla `Home` es pública (`Visibility::PUBLIC`) y adapta su interfaz según quién la visite:
-- Si el usuario autenticado sólo tiene el rol `registered`, embebe únicamente `Registered::class`.
-- Si es `guest`, muestra los últimos posts y botones para abrir `Login` o `Register` en modal.
-- Si es `publisher` o `admin`, muestra el botón **Publicar Post** (`showInto(PublishPost::class)`).
-- Si es `admin`, muestra además el botón **Gestionar Usuarios** (`showInto(UsersManager::class)`) y el botón **🗑️ Eliminar** con diálogo modal de confirmación (`ConfirmDialog::open(...)`) en cada post.
-- Cada post con imagen utiliza `UI::image()` para renderizar su portada.
-- Implementa `postLoadUI()` para refrescar siempre el contenedor y volver a consultar los últimos posts desde la base de datos aunque el snapshot de `Home` se recupere de la caché de USIM.
+La pantalla `Home` es pública (`Visibility::PUBLIC`) y presenta los posts más recientes:
+- Si el usuario autenticado sólo tiene el rol `registered`, embebe automáticamente la pantalla `Registered::class`.
+- Las funcionalidades de navegación (iniciar sesión, registrarse, publicar post o gestionar usuarios) residen de forma limpia en el menú superior (`Menu`), por lo que `Home` se enfoca en el contenido editorial de las publicaciones.
+- Los posts se despliegan en un contenedor horizontal responsivo con `flexWrap('wrap')` y tarjetas de ancho mínimo reducido a `175px` (`minWidth(Size::px(175))->flexGrow(1)`), permitiendo una disposición visual dinámica tipo rejilla.
+- Cada post con imagen utiliza `UI::image()` apuntando a la ruta relativa `/files/uploads/images/{$image}`.
+- Si el usuario es `admin`, cada post muestra el botón **🗑️ Eliminar** con diálogo modal de confirmación (`ConfirmDialog::open(...)`).
+- Implementa `postLoadUI()` para refrescar siempre el contenedor al recuperar la pantalla de caché, y los manejadores de eventos reactivos `onLoggedUser()` y `onUserLoggedOut()` para actualizar instantáneamente los botones de administración sin recargar la página.
 
 Edita `app/UI/Screens/Home.php`:
 
@@ -1026,9 +1092,6 @@ namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
 use App\Models\User;
-use App\UI\Screens\Admin\UsersManager;
-use App\UI\Screens\Auth\Login;
-use App\UI\Screens\Auth\Register;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\DialogType;
@@ -1038,7 +1101,6 @@ use Idei\Usim\Enums\Visibility;
 use Idei\Usim\Modals\ConfirmDialog;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
-use Idei\Usim\Upload\UploadService;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
@@ -1090,89 +1152,16 @@ class Home extends Screen
         }
 
         $container
-            ->maxWidth(Size::px(900))
+            ->maxWidth(Size::px(960))
             ->centerHorizontal()
             ->padding(Spacing::px(24))
             ->gap(Spacing::px(20))
             ->plain();
 
-        $header = UI::container('home_header')
-            ->card()
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->alignItems(AlignItems::CENTER)
-            ->padding(Spacing::px(20))
-            ->gap(Spacing::px(16));
-
-        $titleBox = UI::container('home_title_box')
-            ->layout(LayoutType::VERTICAL)
-            ->gap(Spacing::px(4))
-            ->plain()
-            ->shadow(false)
-            ->padding(Spacing::zero());
-
-        $titleBox->add(
-            UI::label('lbl_home_title')
-                ->text('📰 Últimos Posts')
-                ->style('h2')
-                ->color('primary')
-        );
-
-        $subtitleText = $this->resolveRoleSubtitle($user instanceof User ? $user : null);
-        $titleBox->add(
-            UI::label('lbl_home_subtitle')
-                ->text($subtitleText)
-                ->style('p')
-                ->color('#7a8499')
-        );
-
-        $actionsBox = UI::container('home_actions_box')
-            ->layout(LayoutType::HORIZONTAL)
-            ->alignItems(AlignItems::CENTER)
-            ->gap(Spacing::px(10))
-            ->plain()
-            ->shadow(false)
-            ->padding(Spacing::zero());
-
-        if (!$user instanceof User) {
-            $actionsBox->add(
-                UI::button('btn_home_login')
-                    ->label('🔑 Iniciar Sesión')
-                    ->action('open_login')
-                    ->style('primary')
-            );
-            $actionsBox->add(
-                UI::button('btn_home_register')
-                    ->label('📝 Registrarse')
-                    ->action('open_register')
-                    ->style('secondary')
-            );
-        } else {
-            if ($this->currentUserHasRole(['publisher', 'admin'])) {
-                $actionsBox->add(
-                    UI::button('btn_go_publish')
-                        ->label('✍️ Publicar Post')
-                        ->action('go_to_publish')
-                        ->style('primary')
-                );
-            }
-
-            if ($this->currentUserHasRole('admin')) {
-                $actionsBox->add(
-                    UI::button('btn_go_users')
-                        ->label('👥 Gestionar Usuarios')
-                        ->action('go_to_users')
-                        ->style('secondary')
-                );
-            }
-        }
-
-        $header->add($titleBox);
-        $header->add($actionsBox);
-        $container->add($header);
-
         $this->posts_list_container = UI::container('posts_list_container')
+            ->width(Size::full())
             ->layout(LayoutType::HORIZONTAL)
+            ->flexWrap('wrap')
             ->gap(Spacing::px(20))
             ->plain()
             ->shadow(false)
@@ -1202,23 +1191,6 @@ class Home extends Screen
         $roleList = is_array($roles) ? $roles : [$roles];
 
         return $user->globalRoles()->whereIn('name', $roleList)->exists();
-    }
-
-    private function resolveRoleSubtitle(?User $user): string
-    {
-        if ($user === null) {
-            return 'Modo invitado (guest): visualiza las publicaciones recientes o inicia sesión para participar.';
-        }
-
-        if ($this->currentUserHasRole('admin')) {
-            return "Conectado como {$user->name} (Administrador): puedes publicar posts, eliminarlos y asignar roles a usuarios registrados.";
-        }
-
-        if ($this->currentUserHasRole('publisher')) {
-            return "Conectado como {$user->name} (Publicador): puedes compartir nuevos posts con la comunidad.";
-        }
-
-        return "Conectado como {$user->name}.";
     }
 
     private function renderPostsList(): void
@@ -1251,7 +1223,8 @@ class Home extends Screen
             $postCard = UI::container("post_card_{$post->id}")
                 ->card()
                 ->layout(LayoutType::VERTICAL)
-                ->minWidth(Size::px(350))
+                ->minWidth(Size::px(175))
+                ->flexGrow(1)
                 ->padding(Spacing::px(20))
                 ->gap(Spacing::px(12));
 
@@ -1321,27 +1294,7 @@ class Home extends Screen
             return $image;
         }
 
-        return UploadService::fileUrl("uploads/images/{$image}");
-    }
-
-    public function onOpenLogin(array $params): void
-    {
-        $this->openModal(Login::class);
-    }
-
-    public function onOpenRegister(array $params): void
-    {
-        $this->openModal(Register::class);
-    }
-
-    public function onGoToPublish(array $params): void
-    {
-        $this->showInto(PublishPost::class, updateBrowserUrl: true);
-    }
-
-    public function onGoToUsers(array $params): void
-    {
-        $this->showInto(UsersManager::class, updateBrowserUrl: true);
+        return "/files/uploads/images/{$image}";
     }
 
     /**
@@ -2009,14 +1962,22 @@ php artisan storage:link
 
 ### 7.1 Iniciar el Servidor de Desarrollo
 
-Puedes iniciar el servidor tradicional con Artisan:
+USIM es totalmente agnóstico al servidor web y funciona tanto en entornos tradicionales PHP-FPM como en servidores persistentes en memoria:
 
+#### Opción A: Entornos con PHP-FPM / Nginx (como Lerd)
+Si utilizas herramientas de desarrollo local basadas en contenedores o servicios PHP-FPM como **[Lerd](https://lerd.sh)**, Laravel Herd, Valet o Nginx:
+- No requieres ejecutar ningún proceso en segundo plano adicional.
+- Tu proyecto estará disponible de inmediato en su dominio local (por ejemplo, `http://blog.test` o el virtual host asignado en `lerd.sh`).
+
+#### Opción B: Servidor Integrado de Artisan
+Para desarrollo rápido sin configurar servidores web:
 ```bash
 php artisan serve
 ```
+La aplicación quedará disponible en `http://localhost:8000`.
 
-O bien, si estás utilizando **Laravel Octane con Roadrunner** (la arquitectura de alto rendimiento recomendada para USIM):
-
+#### Opción C: Laravel Octane con Roadrunner (Alto Rendimiento)
+USIM fue diseñado para aprovechar la persistencia en memoria y la reactividad de alta concurrencia mediante Roadrunner:
 ```bash
 # Iniciar Octane con Roadrunner:
 ./start.sh
@@ -2027,25 +1988,234 @@ O bien, si estás utilizando **Laravel Octane con Roadrunner** (la arquitectura 
 
 > [!TIP]
 > **Ciclo de Vida y Persistencia en Memoria (Laravel Octane / Roadrunner)**:
-> En servidores persistentes como Roadrunner, los procesos de PHP se mantienen en memoria entre peticiones sucesivas. USIM fue diseñado desde sus bases para este entorno:
+> En servidores persistentes como Roadrunner, los procesos de PHP se mantienen en memoria entre peticiones sucesivas. USIM maneja esto de forma nativa:
 > - El método `postLoadUI()` de las Screens siempre se ejecuta tras recuperar un snapshot de caché, lo que permite re-evaluar datos frescos (como la lista de posts más recientes o el avatar actualizado) sin penalizaciones.
 > - Métodos como `Screen::make(Home::class)->clearCachedScreenSnapshot()` invalidan la caché previa de la vista para que las mutaciones de datos se sincronicen de inmediato con los clientes SPA.
 
+---
+
 ### 7.2 Probar los Flujos y Roles de Usuario
 
-Abre `http://localhost:8000` (o el puerto configurado) en tu navegador y prueba cada flujo sin que la página se recargue en ningún momento:
+Abre la aplicación en tu navegador (`http://blog.test`, `http://localhost:8000` o la URL de tu entorno) y prueba cada flujo sin que la página se recargue en ningún momento:
 
 1. **Como `guest` (Invitado)**:
-   - Al entrar a `/`, ves la pantalla `Home` con los últimos posts publicados y sus imágenes (`UI::image()`).
-   - No ves botones para publicar ni para eliminar posts.
+   - Al entrar a `/`, ves la pantalla `Home` con los últimos posts publicados y sus imágenes (`UI::image()`) desplegados en cuadrícula horizontal responsiva.
+   - La barra superior muestra el menú principal `main_menu` (`☰`) con opciones públicas y el menú de usuario `user_menu` (`⚙️`) con *Iniciar Sesión* y *Registrarse*.
+   - No ves botones de gestión ni de eliminación de posts.
 2. **Como `registered` (`registered@example.com` / `11111111` o registrando una cuenta nueva)**:
    - Al iniciar sesión o registrarte, USIM te lleva automáticamente en modo SPA a la pantalla `Registered`.
    - Verás el mensaje: *"Se ha registrado en el sistema, en breve se le asignará un rol."*
-   - Haz clic en **👤 Editar Mi Perfil / Avatar**: se abrirá el modal `Profile` donde puedes subir una imagen con `UI::uploader()`. Al guardar, tanto el avatar circular en la pantalla `Registered` (`UI::image()`) como el icono del menú superior se actualizan reactivamente.
+   - Haz clic en **👤 Editar Mi Perfil / Avatar**: se abrirá el modal `Profile` donde puedes subir una imagen con `UI::uploader()`. Al guardar, tanto el avatar circular en la pantalla `Registered` (`UI::image()`) como el icono del menú superior se actualizan reactivamente sin recargar.
 3. **Como `admin` (`admin@example.com` / `11111111`)**:
-   - En `Home`, cada post muestra el botón **🗑️ Eliminar**. Al pulsarlo, se despliega un diálogo nativo de confirmación (`ConfirmDialog::open(...)`). Al confirmar, el post se elimina y la lista se refresca instantáneamente en pantalla.
-   - Haz clic en **👥 Gestionar Usuarios** (`UsersManager`): verás a los usuarios en estado `En espera (Registrado)`. Al hacer clic en **Editar**, podrás aprobar al usuario y asignarle el rol **Publicador (`publisher`)** o **Administrador (`admin`)**.
+   - En `Home`, cada tarjeta de post muestra el botón **🗑️ Eliminar**. Al pulsarlo, se despliega un diálogo nativo de confirmación (`ConfirmDialog::open(...)`). Al confirmar, el post se elimina y la lista se refresca instantáneamente en pantalla.
+   - En el menú principal (`☰`), haz clic en **👥 Gestionar Usuarios** (`UsersManager`): verás a los usuarios en estado `En espera (Registrado)`. Al hacer clic en **Editar**, podrás aprobar al usuario y asignarle el rol **Publicador (`publisher`)** o **Administrador (`admin`)**.
 4. **Como `publisher` (`publisher@example.com` / `11111111` o el usuario recién promovido)**:
-   - En `Home` (o desde el menú principal `☰`), haz clic en **✍️ Publicar Post**.
+   - En el menú principal (`☰`), haz clic en **✍️ Publicar Post**.
    - Completa el título, el contenido y sube una imagen de portada con `UI::uploader()`.
    - Al pulsar **Publicar Post**, la imagen temporal se confirma (`$this->post_image->confirm($params, 'images')`) y vuelves mediante SPA a `Home`, donde el nuevo post aparece en primer lugar.
+
+---
+
+## 🧪 Paso 8: Verificación con Tests Automatizados (`PostManagerTutorialTest`)
+
+Para certificar que toda la arquitectura, la persistencia, los permisos y la reactividad Server-Driven UI funcionan de manera robusta, implementamos una suite de pruebas de integración con PHPUnit/Pest.
+
+Crea el archivo `tests/Feature/PostManagerTutorialTest.php`:
+
+```php
+<?php
+
+namespace Tests\Feature;
+
+use App\Contracts\PostServiceInterface;
+use App\Models\User;
+use App\UI\Screens\Home;
+use App\UI\Screens\PublishPost;
+use App\UI\Screens\Registered;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+
+class PostManagerTutorialTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->artisan('usim:sync');
+        $this->seed();
+    }
+
+    public function test_guest_can_see_home_screen_and_posts(): void
+    {
+        $postService = app(PostServiceInterface::class);
+        $posts = $postService->getLatestPosts();
+        $this->assertNotEmpty($posts);
+
+        $response = $this->get('/home');
+        $response->assertOk();
+    }
+
+    public function test_registered_user_lands_on_registered_screen(): void
+    {
+        $user = User::where('email', 'registered@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertTrue($user->isRegisteredInLobby());
+
+        $this->actingAs($user);
+        $response = $this->get('/registered');
+        $response->assertOk();
+    }
+
+    public function test_publisher_can_publish_post(): void
+    {
+        $publisher = User::where('email', 'publisher@example.com')->first();
+        $this->assertNotNull($publisher);
+
+        $this->actingAs($publisher);
+        
+        $postService = app(PostServiceInterface::class);
+        $newPostId = $postService->createPost([
+            'user_id' => $publisher->id,
+            'title' => 'Test Post Publisher',
+            'content' => 'Contenido de prueba',
+            'image' => null,
+        ]);
+
+        $this->assertGreaterThan(0, $newPostId);
+
+        $post = $postService->findById($newPostId);
+        $this->assertNotNull($post);
+        $this->assertEquals('Test Post Publisher', $post->title);
+    }
+
+    public function test_admin_can_delete_post(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $this->assertNotNull($admin);
+
+        $postService = app(PostServiceInterface::class);
+        $postId = $postService->createPost([
+            'user_id' => $admin->id,
+            'title' => 'Post to delete',
+            'content' => 'Will be deleted',
+            'image' => null,
+        ]);
+
+        $deleted = $postService->deletePost($postId);
+        $this->assertTrue($deleted);
+        $this->assertNull($postService->findById($postId));
+    }
+
+    public function test_admin_logout_preserves_post_cards_content_and_removes_delete_buttons(): void
+    {
+        $admin = User::where('email', 'admin@example.com')->first();
+        $this->assertNotNull($admin);
+
+        $authSession = app(\App\Services\Auth\AuthSessionService::class);
+        $authSession->establishSession($admin, 'lobby');
+
+        // Carga inicial de home como administrador
+        $initialRes = $this->getJson('/api/ui/home');
+        $initialRes->assertOk();
+        $initialData = $initialRes->json();
+
+        // Verificar que el botón de eliminar existe para el administrador
+        $hasDeleteBefore = false;
+        foreach ($initialData as $comp) {
+            if (is_array($comp) && str_contains($comp['name'] ?? '', 'btn_delete_post_')) {
+                $hasDeleteBefore = true;
+                break;
+            }
+        }
+        $this->assertTrue($hasDeleteBefore);
+
+        // Identificar el ID del componente user_menu
+        $menuCompId = null;
+        foreach ($initialData as $id => $comp) {
+            if (is_array($comp) && ($comp['name'] ?? '') === 'user_menu') {
+                $menuCompId = $id;
+                break;
+            }
+        }
+        $this->assertNotNull($menuCompId);
+
+        // Ejecutar acción de logout vía /api/ui-event (Server-Driven UI)
+        $eventRes = $this->postJson('/api/ui-event', [
+            'component_id' => $menuCompId,
+            'event' => 'action',
+            'action' => 'confirm_logout',
+            'parameters' => [],
+        ]);
+
+        $eventRes->assertOk();
+        $payload = $eventRes->json();
+
+        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+        $this->assertEquals('success', $payload['toast']['type'] ?? null);
+
+        // Verificar que todas las tarjetas de post y elementos hijos conservan su atributo parent
+        $homeComponentCount = 0;
+        foreach ($payload as $key => $comp) {
+            if (is_numeric($key) && is_array($comp) && isset($comp['type']) && !empty($comp['name'])) {
+                if (str_starts_with($comp['name'], 'post_')) {
+                    $homeComponentCount++;
+                    $this->assertNotNull($comp['parent'] ?? null, "Component {$comp['name']} must retain its parent");
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $homeComponentCount);
+
+        // Verificar que la vista final como guest conserva los títulos y elimina los botones de borrado
+        $guestRes = $this->getJson('/api/ui/home');
+        $guestRes->assertOk();
+        $guestData = $guestRes->json();
+
+        $postTitles = [];
+        $hasDeleteAfter = false;
+        foreach ($guestData as $comp) {
+            if (is_array($comp)) {
+                if (str_contains($comp['name'] ?? '', 'post_title_')) {
+                    $postTitles[] = $comp['text'] ?? '';
+                }
+                if (str_contains($comp['name'] ?? '', 'btn_delete_post_')) {
+                    $hasDeleteAfter = true;
+                }
+            }
+        }
+
+        $this->assertFalse($hasDeleteAfter);
+        $this->assertGreaterThanOrEqual(2, count($postTitles));
+    }
+}
+```
+
+### Ejecutar las Pruebas
+
+Ejecuta el comando en tu terminal para correr los tests:
+
+```bash
+php artisan test tests/Feature/PostManagerTutorialTest.php
+```
+
+Salida esperada:
+
+```text
+   PASS  Tests\Feature\PostManagerTutorialTest
+  ✓ guest can see home screen and posts
+  ✓ registered user lands on registered screen
+  ✓ publisher can publish post
+  ✓ admin can delete post
+  ✓ admin logout preserves post cards content and removes delete buttons
+
+  Tests:    5 passed (36 assertions)
+```
+
+---
+
+## 🎯 Conclusión y Puntos Clave
+
+1. **Arquitectura 100% SPA**: Toda la navegación entre pantallas y apertura de diálogos ocurre mediante llamadas `screenShow(...)` o `$this->showInto(...)` con `clearCachedScreenSnapshot()`, preservando la sesión reactiva sin recargar el navegador.
+2. **Server-Driven UI con Recolección Atómica**: La extensión `AppUIChangesCollector` garantiza que durante eventos simultáneos (como el logout que desencadena una navegación a `Home` y un evento de reactividad), los componentes conserven sus jerarquías de padres (`parent`), evitando inconsistencias en el renderizado del DOM en el frontend.
+3. **Control de Acceso Basado en Roles (Spatie Permission + USIM Teams)**: Al utilizar una única unidad (`lobby`), cada rol (`root`, `admin`, `publisher`, `registered`) tiene un alcance y una pantalla de destino claramente diferenciados mediante `resolveHomeScreen()`.
+4. **Componentes Nativos Ricos**: `UI::uploader()` permite subidas asíncronas con previsualización inmediata y confirmación atómica en el backend; `UI::image()` gestiona el despliegue responsivo de archivos locales y públicos.
+
