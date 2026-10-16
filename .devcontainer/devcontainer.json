@@ -1,0 +1,74 @@
+{
+    "name": "USIM Framework Dev Container",
+    "dockerFile": "Dockerfile",
+    "forwardPorts": [
+        8000,
+        8025
+    ],
+    "portsAttributes": {
+        "8000": {
+            "label": "Laravel Octane",
+            "onAutoForward": "notify"
+        },
+        "8025": {
+            "label": "Mailpit UI",
+            "onAutoForward": "ignore"
+        },
+        "6001": {
+            "label": "RoadRunner RPC (Internal)",
+            "onAutoForward": "ignore"
+        },
+        "1025": {
+            "label": "Mailpit SMTP (Internal)",
+            "onAutoForward": "ignore"
+        }
+    },
+    "postCreateCommand": "bash -c 'composer install && (if [ ! -f .env ]; then cp .env.example .env || true; fi) && php artisan key:generate --force && php artisan migrate --seed --force && (if [ ! -L public/storage ]; then php artisan storage:link; fi) && chmod -R 775 storage bootstrap/cache'",
+    "postStartCommand": "bash ${containerWorkspaceFolder}/.devcontainer/init.sh && cd ${containerWorkspaceFolder} && npm install chokidar --save-dev --no-update-notifier",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash"
+            },
+            "extensions": [
+                "bmewburn.vscode-intelephense-client",
+                "codingyu.laravel-goto-view",
+                "cweijan.dbclient-jdbc",
+                "cweijan.vscode-mysql-client2",
+                "foxundermoon.shell-format",
+                "george-alisson.html-preview-vscode",
+                "github.codespaces",
+                "github.copilot",
+                "github.copilot-chat",
+                "github.github-vscode-theme",
+                "github.vscode-pull-request-github",
+                "glitchbl.laravel-create-view",
+                "google.google-antigravity",
+                "hediet.vscode-drawio",
+                "ihunte.laravel-blade-wrapper",
+                "marcuselg.markdowntoolbar",
+                "mehedidracula.php-namespace-resolver",
+                "mikestead.dotenv",
+                "ms-ceintl.vscode-language-pack-es",
+                "naoray.laravel-goto-components",
+                "onecentlin.laravel-blade",
+                "onecentlin.laravel-extension-pack",
+                "onecentlin.laravel5-snippets",
+                "pgl.laravel-jump-controller",
+                "pkief.material-icon-theme",
+                "qwtel.sqlite-viewer",
+                "ryannaddy.laravel-artisan",
+                "shd101wyy.markdown-preview-enhanced",
+                "shufo.vscode-blade-formatter",
+                "simonsiefke.svg-preview",
+                "vscode-icons-team.vscode-icons",
+                "xdebug.php-debug",
+                "zaaack.markdown-editor",
+                "devsense.composer-php-vscode",
+                "devsense.intelli-php-vscode",
+                "devsense.phptools-vscode",
+                "devsense.profiler-php-vscode"
+            ]
+        }
+    }
+}

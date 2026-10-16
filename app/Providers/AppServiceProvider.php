@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Providers;
+
+use App\Contracts\PostServiceInterface;
+use App\Services\Post\DatabasePostService;
+use Illuminate\Support\ServiceProvider;
+
+class AppServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        $this->app->singleton(PostServiceInterface::class, DatabasePostService::class);
+        $this->app->scoped(\Idei\Usim\UIChangesCollector::class, \App\Support\UI\AppUIChangesCollector::class);
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        //
+    }
+}

@@ -1,0 +1,271 @@
+.ui-split {
+    --splitter-size: 8px;
+    --splitter-bg: var(--ui-border);
+    --splitter-bg-hover: var(--ui-border-strong);
+    --splitter-handle: var(--ui-text-muted);
+    --split-collapse-bg: var(--ui-surface);
+    --split-collapse-border: var(--ui-border);
+    --split-radius: 12px;
+
+    display: flex;
+    width: 100%;
+    height: 100%;
+    flex: 1 1 auto;
+    min-height: 220px;
+    gap: 0;
+    padding: 0;
+    overflow: hidden !important;
+    box-sizing: border-box;
+    border-radius: var(--split-radius, 12px) !important;
+    contain: paint;
+    isolation: isolate;
+}
+
+.ui-split.ui-split--horizontal {
+    flex-direction: row;
+}
+
+.ui-split.ui-split--vertical {
+    flex-direction: column;
+}
+
+.ui-split > .title {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    right: 12px;
+    z-index: 2;
+    pointer-events: none;
+    background: transparent;
+    margin: 0;
+    padding-bottom: 8px;
+}
+
+.ui-split-pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+    contain: paint;
+}
+
+.ui-split--horizontal > .ui-split-pane {
+    height: 100%;
+}
+
+.ui-split--horizontal > .ui-split-pane--first {
+    border-top-left-radius: calc(var(--split-radius) - 1px);
+    border-bottom-left-radius: calc(var(--split-radius) - 1px);
+}
+
+.ui-split--horizontal > .ui-split-pane--second {
+    border-top-right-radius: calc(var(--split-radius) - 1px);
+    border-bottom-right-radius: calc(var(--split-radius) - 1px);
+}
+
+.ui-split--vertical > .ui-split-pane {
+    width: 100%;
+}
+
+.ui-split--vertical > .ui-split-pane--first {
+    border-top-left-radius: calc(var(--split-radius) - 1px);
+    border-top-right-radius: calc(var(--split-radius) - 1px);
+}
+
+.ui-split--vertical > .ui-split-pane--second {
+    border-bottom-left-radius: calc(var(--split-radius) - 1px);
+    border-bottom-right-radius: calc(var(--split-radius) - 1px);
+}
+
+/* Intermediate containers inside split panes */
+.ui-split-pane .ui-container {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border: none !important;
+    border-radius: inherit !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: hidden !important;
+}
+
+/* Seamless tables inside split panes */
+.ui-split-pane .ui-table-wrapper {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    border-radius: inherit !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    background: transparent !important;
+    overflow: hidden !important;
+}
+
+/* Header corner radius on table elements - Horizontal Split */
+.ui-split--horizontal > .ui-split-pane--first .ui-table,
+.ui-split--horizontal > .ui-split-pane--first .ui-table-head,
+.ui-split--horizontal > .ui-split-pane--first .ui-table-header-row,
+.ui-split--horizontal > .ui-split-pane--first .ui-table-header-cell:first-child,
+.ui-split--horizontal > .ui-split-pane--first th:first-child {
+    border-top-left-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+.ui-split--horizontal > .ui-split-pane--second .ui-table,
+.ui-split--horizontal > .ui-split-pane--second .ui-table-head,
+.ui-split--horizontal > .ui-split-pane--second .ui-table-header-row,
+.ui-split--horizontal > .ui-split-pane--second .ui-table-header-cell:last-child,
+.ui-split--horizontal > .ui-split-pane--second th:last-child {
+    border-top-right-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+/* Footer / bottom row corner radius on table elements - Horizontal Split */
+.ui-split--horizontal > .ui-split-pane--first .ui-table-foot,
+.ui-split--horizontal > .ui-split-pane--first .ui-table-foot tr:last-child td:first-child,
+.ui-split--horizontal > .ui-split-pane--first .ui-table-pagination,
+.ui-split--horizontal > .ui-split-pane--first .ui-table-body,
+.ui-split--horizontal > .ui-split-pane--first .ui-table-body tr:last-child td:first-child {
+    border-bottom-left-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+.ui-split--horizontal > .ui-split-pane--second .ui-table-foot,
+.ui-split--horizontal > .ui-split-pane--second .ui-table-foot tr:last-child td:last-child,
+.ui-split--horizontal > .ui-split-pane--second .ui-table-pagination,
+.ui-split--horizontal > .ui-split-pane--second .ui-table-body,
+.ui-split--horizontal > .ui-split-pane--second .ui-table-body tr:last-child td:last-child {
+    border-bottom-right-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+/* Header & footer corner radius on table elements - Vertical Split */
+.ui-split--vertical > .ui-split-pane--first .ui-table,
+.ui-split--vertical > .ui-split-pane--first .ui-table-head,
+.ui-split--vertical > .ui-split-pane--first .ui-table-header-row,
+.ui-split--vertical > .ui-split-pane--first .ui-table-header-cell:first-child,
+.ui-split--vertical > .ui-split-pane--first th:first-child {
+    border-top-left-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+.ui-split--vertical > .ui-split-pane--first .ui-table-header-cell:last-child,
+.ui-split--vertical > .ui-split-pane--first th:last-child {
+    border-top-right-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+.ui-split--vertical > .ui-split-pane--second .ui-table-foot,
+.ui-split--vertical > .ui-split-pane--second .ui-table-pagination,
+.ui-split--vertical > .ui-split-pane--second .ui-table-body,
+.ui-split--vertical > .ui-split-pane--second .ui-table-body tr:last-child td:first-child {
+    border-bottom-left-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+.ui-split--vertical > .ui-split-pane--second .ui-table-foot tr:last-child td:last-child,
+.ui-split--vertical > .ui-split-pane--second .ui-table-body tr:last-child td:last-child {
+    border-bottom-right-radius: calc(var(--split-radius, 12px) - 1px) !important;
+}
+
+/* Scrollbar styling for tables inside split panes */
+.ui-split-pane .ui-table-body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-border-strong, rgba(255, 255, 255, 0.2)) transparent;
+}
+
+.ui-split-pane .ui-table-body::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.ui-split-pane .ui-table-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ui-split--horizontal > .ui-split-pane--second .ui-table-body::-webkit-scrollbar-track {
+    border-bottom-right-radius: calc(var(--split-radius, 12px) - 1px);
+}
+
+.ui-split-pane .ui-table-body::-webkit-scrollbar-thumb {
+    background: var(--ui-border-strong, rgba(255, 255, 255, 0.2));
+    border-radius: 3px;
+}
+
+.ui-split-pane .ui-table-body::-webkit-scrollbar-thumb:hover {
+    background: var(--ui-text-muted, rgba(255, 255, 255, 0.35));
+}
+
+.ui-split-divider {
+    position: relative;
+    flex: 0 0 var(--splitter-size);
+    background: var(--splitter-bg);
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+}
+
+.ui-split--horizontal .ui-split-divider {
+    cursor: col-resize;
+}
+
+.ui-split--vertical .ui-split-divider {
+    cursor: row-resize;
+}
+
+.ui-split-divider.is-static {
+    cursor: default;
+}
+
+.ui-split-divider:hover,
+.ui-split-divider.is-dragging {
+    background: var(--splitter-bg-hover);
+}
+
+.ui-split-divider-handle {
+    display: inline-block;
+    width: 4px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--splitter-handle);
+    opacity: 0.65;
+}
+
+.ui-split--vertical .ui-split-divider-handle {
+    width: 40px;
+    height: 4px;
+}
+
+.ui-split-collapse-button {
+    position: absolute;
+    border: 1px solid var(--split-collapse-border);
+    background: var(--split-collapse-bg);
+    color: var(--ui-text);
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.ui-split--horizontal .ui-split-collapse-button {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.ui-split--vertical .ui-split-collapse-button {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.ui-split-pane.is-collapsed {
+    overflow: hidden;
+}
