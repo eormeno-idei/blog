@@ -1,18 +1,20 @@
 <?php
-// @usim: feature="admin", type="screen"
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
 use App\Models\User;
+use App\UI\Screens\Admin\UsersManager;
+use App\UI\Screens\Auth\Login;
+use App\UI\Screens\Auth\Register;
 use Idei\Usim\Components\Container;
+use Idei\Usim\Components\Label;
 use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\DialogType;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\Visibility;
-use Idei\Usim\Modals\ConfirmDialog;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
+use Idei\Usim\Upload\UploadService;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
@@ -22,66 +24,120 @@ class Home extends Screen
     public static Visibility $visibility = Visibility::PUBLIC;
 
     protected ?Container $posts_list_container = null;
+    protected Label $lbl_registered_message;
 
     public function __construct(
         protected PostServiceInterface $postService
     ) {
     }
 
-    public static function getMenuLabel(): string
+    public function buildBaseUI(Container $container, ...$params): void
     {
-        return 'Inicio';
-    }
-
-    public static function getMenuIcon(): ?string
-    {
-        return '🏠';
-    }
-
-    protected function buildBaseUI(Container $container, ...$params): void
-    {
-        $this->renderHomeContent($container);
-    }
-
-    protected function postLoadUI(): void
-    {
-        $this->container->clear();
-        $this->renderHomeContent($this->container);
-    }
-
-    private function renderHomeContent(Container $container): void
-    {
+        /** @var User $user */
         $user = Auth::user();
 
-        // Si el usuario tiene únicamente el rol "registered", sólo debe ver la pantalla Registered
-        if ($user instanceof User && $user->isRegisteredInLobby()) {
-            $container
-                ->plain()
-                ->padding(Spacing::zero());
-            Screen::make(Registered::class)->clearCachedScreenSnapshot();
-            Screen::embedInto(Registered::class, $container);
-            return;
-        }
-
-        $container
-            ->maxWidth(Size::px(960))
+        $wrapper = UI::container('home_wrapper')
             ->centerHorizontal()
-            ->padding(Spacing::px(24))
-            ->gap(Spacing::px(20))
+            ->padding(Spacing::px(12))
+            ->gap(Spacing::px(10))
             ->plain();
 
-        $this->posts_list_container = UI::container('posts_list_container')
-            ->width(Size::full())
+        // Encabezado con título y acciones según el rol activo
+        $header = UI::container('home_header')
+            ->card()
             ->layout(LayoutType::HORIZONTAL)
-            ->flexWrap('wrap')
-            ->gap(Spacing::px(20))
+            ->justifyContent(JustifyContent::SPACE_BETWEEN)
+            ->alignItems(AlignItems::CENTER)
+            ->padding(Spacing::px(20))
+            ->gap(Spacing::px(16));
+
+        $titleBox = UI::container('home_title_box')
+            ->layout(LayoutType::VERTICAL)
+            ->gap(Spacing::px(4))
             ->plain()
             ->shadow(false)
             ->padding(Spacing::zero());
 
+        $titleBox->add(
+            $this->lbl_registered_message
+                ->text('')
+                ->style('h4')
+        );
+
+        // Si el usuario tiene únicamente el rol "registered"
+        if ($user instanceof User && $user->isRegisteredInLobby()) {
+            $this->lbl_registered_message
+                ->text("{$user->name}, aún estás en sala de espera.");
+        }
+
+        $titleBox->add(
+            UI::label('lbl_home_title')
+                ->text('📰 Últimos Posts')
+                ->style('h2')
+        );
+
+        $subtitleText = $this->resolveRoleSubtitle($user);
+        $titleBox->add(
+            UI::label('lbl_home_subtitle')
+                ->text($subtitleText)
+                ->style('p')
+        );
+
+        $actionsBox = UI::container('home_actions_box')
+            ->layout(LayoutType::HORIZONTAL)
+            ->alignItems(AlignItems::CENTER)
+            ->gap(Spacing::px(10))
+            ->plain()
+            ->shadow(false)
+            ->padding(Spacing::zero());
+
+        if (!$user instanceof User) {
+            $actionsBox->add(
+                UI::button('btn_home_login')
+                    ->label('🔑 Iniciar Sesión')
+                    ->action('open_login')
+                    ->style('primary')
+            );
+            $actionsBox->add(
+                UI::button('btn_home_register')
+                    ->label('📝 Registrarse')
+                    ->action('open_register')
+                    ->style('secondary')
+            );
+        } else {
+            if ($this->currentUserHasRole(['publisher', 'admin'])) {
+                $actionsBox->add(
+                    UI::button('btn_go_publish')
+                        ->label('✍️ Publicar Post')
+                        ->action('go_to_publish')
+                        ->style('primary')
+                );
+            }
+
+            if ($this->currentUserHasRole('admin')) {
+                $actionsBox->add(
+                    UI::button('btn_go_users')
+                        ->label('👥 Gestionar Usuarios')
+                        ->action('go_to_users')
+                        ->style('secondary')
+                );
+            }
+        }
+
+        $header->add($titleBox);
+        $header->add($actionsBox);
+        $wrapper->add($header);
+
+        // Contenedor reactivo para el listado de posts
+        $this->posts_list_container = UI::container('posts_list_container')
+            ->layout(LayoutType::HORIZONTAL)
+            ->gap(Spacing::px(16));
+
         $this->renderPostsList();
 
-        $container->add($this->posts_list_container);
+        $wrapper->add($this->posts_list_container);
+
+        $container->add($wrapper);
     }
 
     /**
@@ -105,16 +161,32 @@ class Home extends Screen
         return $user->globalRoles()->whereIn('name', $roleList)->exists();
     }
 
+    private function resolveRoleSubtitle(?User $user): string
+    {
+        if ($user === null) {
+            return 'Modo invitado (guest): visualiza las publicaciones recientes o inicia sesión para participar.';
+        }
+
+        if ($this->currentUserHasRole('admin')) {
+            return "Conectado como {$user->name} (Administrador): puedes publicar posts, eliminarlos y asignar roles a usuarios registrados.";
+        }
+
+        if ($this->currentUserHasRole('publisher')) {
+            return "Conectado como {$user->name} (Publicador): puedes compartir nuevos posts con la comunidad.";
+        }
+
+        return "Conectado como {$user->name}.";
+    }
+
     private function renderPostsList(): void
     {
-        $this->posts_list_container->clear();
+        // $this->posts_list_container->clear();
 
         $posts = $this->postService->getLatestPosts();
 
         if ($posts->isEmpty()) {
             $emptyCard = UI::container('posts_empty_card')
                 ->card()
-                ->width(Size::full())
                 ->padding(Spacing::px(32))
                 ->alignItems(AlignItems::CENTER);
 
@@ -135,25 +207,22 @@ class Home extends Screen
             $postCard = UI::container("post_card_{$post->id}")
                 ->card()
                 ->layout(LayoutType::VERTICAL)
-                ->minWidth(Size::px(175))
-                ->flexGrow(1)
-                ->padding(Spacing::px(20))
-                ->gap(Spacing::px(12));
+                ->minWidth(Size::px(300))->maxWidth(Size::px(300))
+                ->minHeight(Size::px(300))->maxHeight(Size::px(300))
+                ->padding(Spacing::px(8))
+                ->gap(Spacing::px(4));
 
-            if (!empty($post->image) && is_string($post->image)) {
-                $imageUrl = $this->resolvePostImageUrl($post->image);
+            $imageUrl = $this->resolvePostImageUrl($post->image, $post->id);
 
-                // Componente UI::image() para mostrar la portada del post
-                $postCard->add(
-                    UI::image("post_img_{$post->id}")
-                        ->src($imageUrl)
-                        ->alt((string) $post->title)
-                        ->width(Size::full())
-                        ->height(Size::px(220))
-                        ->objectFit('cover')
-                        ->rounded(8)
-                );
-            }
+            $postCard->add(
+                UI::image("post_img_{$post->id}")
+                    ->src($imageUrl)
+                    ->alt((string) $post->title)
+                    ->width(Size::full())
+                    ->height(Size::px(270))
+                    ->objectFit('scale-down')
+                    ->rounded(8)
+            );
 
             $postHeader = UI::container("post_header_{$post->id}")
                 ->layout(LayoutType::HORIZONTAL)
@@ -169,15 +238,6 @@ class Home extends Screen
                     ->style('h3')
             );
 
-            if ($isAdmin) {
-                $postHeader->add(
-                    UI::button("btn_delete_post_{$post->id}")
-                        ->label('🗑️ Eliminar')
-                        ->action('confirm_delete_post', ['post_id' => (int) $post->id])
-                        ->style('danger')
-                );
-            }
-
             $postCard->add($postHeader);
 
             $authorName = (string) ($post->author_name ?? 'Autor');
@@ -185,9 +245,7 @@ class Home extends Screen
 
             $postCard->add(
                 UI::label("post_meta_{$post->id}")
-                    ->text("Publicado por {$authorName}" . ($createdAt !== '' ? " • {$createdAt}" : ''))
-                    ->style('caption')
-                    ->color('#7a8499')
+                    ->text("{$authorName} • {$createdAt}")
             );
 
             $postCard->add(
@@ -196,59 +254,82 @@ class Home extends Screen
                     ->style('p')
             );
 
+            $postActionBox = UI::container("post_action_box_{$post->id}")
+                ->layout(LayoutType::HORIZONTAL)
+                ->justifyContent(JustifyContent::END)
+                ->plain()
+                ->shadow(false)
+                ->padding(Spacing::zero());
+
+            if ($isAdmin) {
+                $postActionBox->add(
+                    UI::button("btn_delete_post_{$post->id}")
+                        ->label('🗑️')
+                        ->action('delete_post', ['post_id' => (int) $post->id])
+                        ->style('danger')
+                );
+            }
+
+            $postCard->add($postActionBox);
+
             $this->posts_list_container->add($postCard);
         }
     }
 
-    private function resolvePostImageUrl(string $image): string
+    private function resolvePostImageUrl(string|null $image, int $id = 0, int $width = 640, int $height = 360): string
     {
+        if (empty($image)) {
+            if ($id == 0) {
+                $id = random_int(1, 1000);
+            }
+            $seed = "123{$id}";
+            return "https://picsum.photos/seed/{$seed}/{$width}/{$height}";
+        }
+
         if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://') || str_starts_with($image, '/')) {
             return $image;
         }
 
-        return "/files/uploads/images/{$image}";
+        return UploadService::fileUrl("uploads/images/{$image}");
     }
 
     /**
-     * Muestra un diálogo modal de confirmación antes de borrar el post.
+     * @param array<string, mixed> $params
      */
-    public function onConfirmDeletePost(array $params): void
+    public function onOpenLogin(array $params): void
     {
-        if (!$this->currentUserHasRole('admin')) {
-            $this->toast('No tienes permisos para eliminar posts.', 'error');
-            return;
-        }
-
-        $postId = isset($params['post_id']) && is_numeric($params['post_id'])
-            ? (int) $params['post_id']
-            : 0;
-
-        if ($postId <= 0) {
-            return;
-        }
-
-        ConfirmDialog::open(
-            caller: $this,
-            type: DialogType::CONFIRM,
-            title: '¿Eliminar publicación?',
-            message: '¿Estás seguro de que deseas eliminar este post? Esta acción no se puede deshacer.',
-            confirmAction: 'delete_post',
-            confirmParams: ['post_id' => $postId],
-            cancelAction: 'cancel_delete_post',
-            confirmLabel: 'Sí, eliminar',
-            cancelLabel: 'Cancelar',
-        );
+        $this->openModal(Login::class);
     }
 
-    public function onCancelDeletePost(array $params): void
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function onOpenRegister(array $params): void
     {
-        $this->closeModal();
+        $this->openModal(Register::class);
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function onGoToPublish(array $params): void
+    {
+        $this->showInto(PublishPost::class, updateBrowserUrl: true);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function onGoToUsers(array $params): void
+    {
+        $this->showInto(UsersManager::class, updateBrowserUrl: true);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onDeletePost(array $params): void
     {
-        $this->closeModal();
-
         if (!$this->currentUserHasRole('admin')) {
             $this->toast('No tienes permisos para eliminar posts.', 'error');
             return;
@@ -272,27 +353,9 @@ class Home extends Screen
         }
     }
 
-    /**
-     * Maneja el evento reactivo de dominio cuando un usuario inicia sesión.
-     * Actualiza el contenido de la pantalla Home con los permisos y roles del usuario autenticado.
-     *
-     * @param array<string, mixed> $params
-     */
-    public function onLoggedUser(array $params): void
+    public function onUpdatedProfile(array $params): void
     {
-        $this->container->clear();
-        $this->renderHomeContent($this->container);
-    }
-
-    /**
-     * Maneja el evento reactivo de dominio cuando un usuario cierra sesión.
-     * Restablece el contenido de la pantalla Home al modo invitado (guest).
-     *
-     * @param array<string, mixed> $params
-     */
-    public function onUserLoggedOut(array $params): void
-    {
-        $this->container->clear();
-        $this->renderHomeContent($this->container);
+        $user = $params['user'] ?? null;
+        $this->lbl_registered_message->text("{$user->name}, aún estás en sala de espera.");
     }
 }

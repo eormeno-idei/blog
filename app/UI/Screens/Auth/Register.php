@@ -371,5 +371,7 @@ class Register extends Screen
 
             return;
         }
+
+        $this->showInto(\App\UI\Screens\Home::class, force: true, updateBrowserUrl: true);
     }
 }

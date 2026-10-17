@@ -72,7 +72,7 @@ class RegisterService implements RegisterActionInterface
             if (config('permission.teams')) {
                 /** @var string $defaultRegisteringRole */
                 $defaultRegisteringRole = config('usim.default_registering_role', 'registered');
-                // Users registering with only the pending/default role must land in 'lobby', not 'main'
+                // Users registering with only the pending/default role must land in 'lobby'
                 $isPendingRegistration = $roles === [$defaultRegisteringRole];
                 $defaultSystemUnit = UsimUnit::where('slug', 'main')->exists() ? 'main' : 'lobby';
                 $unitSlug = $unit ?? ($isPendingRegistration ? 'lobby' : $defaultSystemUnit);

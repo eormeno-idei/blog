@@ -99,6 +99,11 @@ class Menu extends Screen
         $this->theme_toggle->tooltip(t('screens.menu.theme_switch_to', ['theme' => $this->store_theme === 'light' ? 'dark' : 'light']));
     }
 
+    /**
+     * Alterna entre modo claro y oscuro sin recargar la página.
+     *
+     * @param array<string, mixed> $params
+     */
     public function onToggleTheme(array $params): void
     {
         $this->store_theme = $this->store_theme === 'light' ? 'dark' : 'light';
@@ -177,11 +182,6 @@ class Menu extends Screen
         $user = Auth::user();
         $isRegisteredOnly = $user instanceof User && $user->isRegisteredInLobby();
 
-        // Navegación 100% SPA mediante screenShow() (sin recarga de página)
-        $builder->screenShow(
-            Registered::class,
-            when: $isRegisteredOnly
-        );
 
         $builder->screenShow(
             Home::class,
@@ -249,6 +249,9 @@ class Menu extends Screen
         return $builder;
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onShowScreen(array $params): void
     {
         /** @var class-string<Screen>|string|null $screen */
@@ -269,11 +272,15 @@ class Menu extends Screen
         }
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onLoggedUser(array $params): void
     {
         /** @var User|null $user */
         $user = $params['user'] ?? null;
         $unitValue = $params['unit'] ?? '';
+        $homeScreen = $params['home_screen'] ?? null;
         $token = $params['token'] ?? null;
 
         if (\is_string($token) && $token !== '') {
@@ -290,8 +297,18 @@ class Menu extends Screen
 
         $this->populateUserMenu($this->user_menu);
         $this->populateMainMenu($this->main_menu);
+
+        Screen::make(Home::class)->clearCachedScreenSnapshot();
+
+        if (\is_string($homeScreen) && $homeScreen !== '' && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
+            Screen::make($homeScreen)->clearCachedScreenSnapshot();
+            $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
+        }
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onUpdatedProfile(array $params): void
     {
         $user = $params['user'] ?? null;
@@ -300,6 +317,9 @@ class Menu extends Screen
         }
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onConfirmLogout(array $params): void
     {
         if (UIStateManager::getClientActiveModal() !== null) {
@@ -312,6 +332,9 @@ class Menu extends Screen
         $this->resetToGuestState($homeScreen);
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onUserLoggedOut(array $params): void
     {
         if ($this->store_token === '' && !Auth::check()) {
@@ -336,7 +359,6 @@ class Menu extends Screen
         $this->populateMainMenu($this->main_menu);
 
         Screen::make(Home::class)->clearCachedScreenSnapshot();
-        Screen::make(Registered::class)->clearCachedScreenSnapshot();
         if (class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
             Screen::make($homeScreen)->clearCachedScreenSnapshot();
         }
@@ -344,6 +366,9 @@ class Menu extends Screen
         $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onShowAboutInfo(array $params): void
     {
         $version = "0.7.0";
@@ -359,11 +384,17 @@ class Menu extends Screen
         );
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onCloseProfileDialog(array $params): void
     {
         $this->closeModal();
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onLogoutUser(array $params): void
     {
         ConfirmDialog::open(
@@ -376,6 +407,9 @@ class Menu extends Screen
         );
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onCancelLogout(array $params): void
     {
         $this->closeModal();

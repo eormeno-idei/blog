@@ -14,7 +14,6 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PostServiceInterface::class, DatabasePostService::class);
-        $this->app->scoped(\Idei\Usim\UIChangesCollector::class, \App\Support\UI\AppUIChangesCollector::class);
     }
 
     /**

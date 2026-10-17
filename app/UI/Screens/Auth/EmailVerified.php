@@ -243,7 +243,7 @@ class EmailVerified extends Screen
     /** @param array<string, mixed> $params */
     public function onGoToLogin(array $params): void
     {
-        $this->redirect('/auth/login');
+        $this->showInto(Login::class, updateBrowserUrl: true);
     }
 
     /**
@@ -252,7 +252,7 @@ class EmailVerified extends Screen
     /** @param array<string, mixed> $params */
     public function onGoToHome(array $params): void
     {
-        $this->redirect('/');
+        $this->showInto(\App\UI\Screens\Home::class, updateBrowserUrl: true);
     }
 
     /**
@@ -262,6 +262,6 @@ class EmailVerified extends Screen
     public function onResendVerification(array $params): void
     {
         $this->toast(t('screens.auth.email_verified.toast.redirect_to_login'), 'info');
-        $this->redirect('/auth/login');
+        $this->showInto(Login::class, updateBrowserUrl: true);
     }
 }

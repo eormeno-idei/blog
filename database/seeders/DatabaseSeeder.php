@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Storage;
 
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * Seed the application's database with sample posts for the USIM Post Manager tutorial.
+     */
     public function run(): void
     {
         if (DB::table('posts')->count() > 0) {

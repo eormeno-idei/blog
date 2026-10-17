@@ -200,8 +200,8 @@ class ResetPassword extends Screen
 
                 $this->toast(t('screens.auth.reset_password.toast.success'), 'success');
 
-                // Redirect to login after short delay (handled by frontend if possible, or immediate)
-                $this->redirect('/auth/login');
+                // Navigate to login via SPA
+                $this->showInto(Login::class, updateBrowserUrl: true);
             } else {
                 // Extract validation errors if any
                 $errors = $result->errors;

@@ -138,7 +138,7 @@ class ForgotPassword extends Screen
     /** @param array<string, mixed> $params */
     public function onNavigateToLogin(array $params): void
     {
-        $this->redirect('/auth/login');
+        $this->showInto(Login::class, updateBrowserUrl: true);
     }
 
     /** @param array<string, mixed> $params */

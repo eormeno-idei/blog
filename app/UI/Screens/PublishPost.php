@@ -97,7 +97,6 @@ class PublishPost extends Screen
             ->required(true)
             ->width(Size::full());
 
-        // Componente Uploader para subir la imagen de portada
         $this->post_image = UI::uploader('post_image')
             ->images()
             ->maxFiles(1)
@@ -137,6 +136,9 @@ class PublishPost extends Screen
         $container->add($formCard);
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onSavePost(array $params): void
     {
         $user = Auth::user();
@@ -170,7 +172,7 @@ class PublishPost extends Screen
             return;
         }
 
-        // Confirmar y mover la imagen temporal a storage/app/public/uploads/images/
+        // Confirmar y persistir la imagen subida usando Uploader::confirm()
         $confirmedImage = $this->post_image->confirm($params, 'images');
         $imageFilename = null;
         if (is_string($confirmedImage) && $confirmedImage !== '') {
@@ -193,10 +195,12 @@ class PublishPost extends Screen
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onCancelPost(array $params): void
     {
         Screen::make(Home::class)->clearCachedScreenSnapshot();
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 }
-

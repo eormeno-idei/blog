@@ -5,7 +5,6 @@
 namespace App\UI\Screens\Auth;
 
 use App\Http\Requests\Auth\LoginRequest;
-use App\Models\User;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Contracts\LoginActionInterface;
@@ -60,9 +59,9 @@ class Login extends Screen
         if (config('app.env') === 'local') {
             // Pre-fill credentials in local environment for easier testing
             $email = empty($this->state_email)
-                ? config('usim.users.root.email')
+                ? config('usim.users.admin.email', 'admin@example.com')
                 : $this->state_email;
-            $password = config('usim.users.root.password');
+            $password = config('usim.users.admin.password', 'password');
         }
 
         $wrapper = UI::container('login_wrapper')
@@ -149,7 +148,10 @@ class Login extends Screen
     /** @param array<string, mixed> $params */
     public function onNavigateForgotPassword(array $params): void
     {
-        $this->redirect('/auth/forgot-password');
+        if ($this->isOpenedAsModal()) {
+            $this->closeModal();
+        }
+        $this->showInto(ForgotPassword::class, updateBrowserUrl: true);
     }
 
     /** @param array<string, mixed> $params */
@@ -206,13 +208,12 @@ class Login extends Screen
 
         if ($this->isOpenedAsModal()) {
             $this->closeModal();
-
-            return;
         }
 
         /** @var class-string<Screen>|string|null $homeScreen */
         $homeScreen = $params['home_screen'] ?? null;
         if (\is_string($homeScreen) && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
+            Screen::make($homeScreen)->clearCachedScreenSnapshot();
             $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
         }
     }

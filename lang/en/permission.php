@@ -83,12 +83,6 @@ return [
             'description' => 'Allows approving or rejecting publications submitted by users.',
         ],
     ],
-    'registered' => [
-        'access' => [
-            'name' => 'Access Registered',
-            'description' => 'Permission to access Registered.',
-        ],
-    ],
     'device' => [
         'kiosk' => [
             'access' => [

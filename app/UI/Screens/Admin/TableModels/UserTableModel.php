@@ -140,7 +140,7 @@ class UserTableModel extends AbstractListingTableModel
             ->values()
             ->toArray();
 
-        // In Simple Mode (only system units main and lobby exist), users in lobby show Waiting (Registered)
+        // In Simple Mode (only system units exist), users pending in lobby show Waiting (registered)
         if (! $hasOperationalUnits) {
             if ($user->isRegisteredInLobby()) {
                 return t('role.registered.waiting');

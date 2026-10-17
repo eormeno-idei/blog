@@ -49,8 +49,10 @@ if [[ "$*" == *"-r"* ]]; then
     fi
 
     php artisan migrate --force
-    php artisan usim:install --no-interaction || exit 1
+    # php artisan usim:install --no-interaction || exit 1
+
     php artisan db:seed --no-interaction
+    php artisan usim:sync
 fi
 
 # Check if port 8000 is already in use (server already running)
@@ -81,10 +83,6 @@ php artisan config:clear
 php artisan route:clear
 php artisan view:clear
 
-# Register UI Screens/Components
-echo "Discovering UI Screens..."
-php artisan usim:discover
-
 # Start queue worker in background
 echo "Starting queue worker in background..."
 php artisan queue:work --queue=default,emails --tries=3 --timeout=90 --sleep=3 > storage/logs/queue-worker.log 2>&1 &
@@ -103,4 +101,4 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "Starting Octane server..."
-php artisan octane:start --host=0.0.0.0 --port=$SERVER_PORT
+php artisan octane:start --watch --host=0.0.0.0 --port=$SERVER_PORT

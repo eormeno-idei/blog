@@ -1,7 +1,6 @@
 <?php
 
 use App\UI\Screens\Home;
-use App\UI\Screens\Registered;
 
 return [
 
@@ -9,6 +8,7 @@ return [
     |--------------------------------------------------------------------------
     | Front Store Key
     |--------------------------------------------------------------------------
+    | Clave de almacenamiento del cliente en el header y payload.
     */
     'front_store_key' => env('FRONT_STORE_KEY', 'usim-posts-store-key'),
 
@@ -55,8 +55,9 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Unidades Organizacionales (Sólo "lobby")
+    | Organizational Units (Units)
     |--------------------------------------------------------------------------
+    | Definimos una única unidad ('lobby') para toda la aplicación.
     */
     'units' => [
         'structure' => [
@@ -75,8 +76,9 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Usuarios Iniciales (Seed Users)
+    | Default Users Configuration
     |--------------------------------------------------------------------------
+    | Usuarios iniciales asignados a la unidad 'lobby'.
     */
     'users' => [
         'root' => [
@@ -120,12 +122,22 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default Devices Configuration
+    |--------------------------------------------------------------------------
+    */
     'devices' => [],
 
     /*
     |--------------------------------------------------------------------------
-    | Roles del Sistema
+    | Roles Configuration
     |--------------------------------------------------------------------------
+    | Roles del sistema:
+    | - guest: usuario no autenticado (por defecto cuando no ha iniciado sesión)
+    | - registered: usuario recién registrado en espera de asignación de rol
+    | - publisher: usuario que puede crear y publicar posts
+    | - admin: usuario que puede eliminar posts y asignar roles (publisher/admin)
     */
     'roles' => [
         'root' => [
@@ -191,16 +203,16 @@ return [
                 ],
             ],
             'priority' => 5,
-            'home_screen' => Registered::class,
+            'home_screen' => Home::class,
             'permissions' => [
-                'registered.access',
+                'home.access',
             ],
         ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Permisos
+    | Permissions Configuration
     |--------------------------------------------------------------------------
     */
     'permissions' => [
@@ -246,11 +258,16 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default Registering Role
+    |--------------------------------------------------------------------------
+    */
     'default_registering_role' => 'registered',
 
     /*
     |--------------------------------------------------------------------------
-    | Internacionalización (Sólo Español Activo)
+    | Internationalization (i18n) - Solo Español
     |--------------------------------------------------------------------------
     */
     'i18n' => [
@@ -271,5 +288,10 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Headless Mode
+    |--------------------------------------------------------------------------
+    */
     'headless_mode' => env('USIM_HEADLESS_MODE', false),
 ];

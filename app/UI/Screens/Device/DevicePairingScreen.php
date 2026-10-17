@@ -116,7 +116,7 @@ class DevicePairingScreen extends Screen
             $this->state_pin = '';
             $this->tmr_pairing_poll?->stop();
             $this->toast('El PIN expiró. Generando uno nuevo...', 'warning');
-            $this->redirect(self::getRoutePath());
+            $this->showInto(self::class, force: true, updateBrowserUrl: true);
 
             return;
         }
@@ -138,7 +138,7 @@ class DevicePairingScreen extends Screen
             }
 
             $this->toast('¡Dispositivo vinculado exitosamente!', 'success');
-            $this->redirect(KioskScreen::getRoutePath());
+            $this->showInto(KioskScreen::class, force: true, updateBrowserUrl: true);
 
             return;
         }

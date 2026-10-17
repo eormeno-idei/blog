@@ -1,8 +1,14 @@
 <?php
 
-// @usim: feature="admin", type="model"
 namespace App\Models;
 
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Idei\Usim\Contracts\AuthorizableActorInterface;
 use Idei\Usim\Contracts\UsimUserInterface;
 use Idei\Usim\Models\UsimUnit;
@@ -10,19 +16,23 @@ use Idei\Usim\Notifications\CustomVerifyEmailNotification;
 use Idei\Usim\Notifications\ResetPasswordNotification;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
+#[Fillable(['name', 'email', 'password'])]
+#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, CanResetPassword, UsimUserInterface, AuthorizableActorInterface
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, HasApiTokens;
-    protected $fillable = ['name', 'email', 'password', 'terms_accepted_at', 'profile_image'];
-    protected $hidden = ['password', 'remember_token'];
+    use HasApiTokens;
+    use HasRoles;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable;
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'terms_accepted_at' => 'datetime'];
