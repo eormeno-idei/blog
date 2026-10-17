@@ -24,7 +24,7 @@
         }
     },
     "postCreateCommand": "bash -c 'composer install && (if [ ! -f .env ]; then cp .env.example .env || true; fi) && php artisan key:generate --force && php artisan migrate --seed --force && (if [ ! -L public/storage ]; then php artisan storage:link; fi) && chmod -R 775 storage bootstrap/cache'",
-    "postStartCommand": "bash ${containerWorkspaceFolder}/.devcontainer/init.sh && cd ${containerWorkspaceFolder} && npm install chokidar --save-dev --no-update-notifier",
+    "postStartCommand": "bash ${containerWorkspaceFolder}/.devcontainer/init.sh && cd ${containerWorkspaceFolder} && npm install chokidar --save-dev --legacy-peer-deps --no-update-notifier",
     "customizations": {
         "vscode": {
             "settings": {
