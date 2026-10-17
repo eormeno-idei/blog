@@ -314,6 +314,7 @@ class Home extends Screen
      */
     public function onGoToPublish(array $params): void
     {
+        Screen::make(PublishPost::class)->clearCachedScreenSnapshot();
         $this->showInto(PublishPost::class, updateBrowserUrl: true);
     }
 
