@@ -4,13 +4,13 @@
 
 namespace App\UI\Screens\Auth;
 
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
-use App\Services\Auth\AuthSessionService;
 use App\Services\Role\RoleService;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Contracts\RegisterActionInterface;
-use Idei\Usim\DTOs\RegisterData;
+use Idei\Usim\DTOs\RegistrationResult;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
@@ -26,10 +26,8 @@ use Idei\Usim\ValueObjects\Spacing;
 class Register extends Screen
 {
     public function __construct(
-        protected RegisterActionInterface $registerAction,
-        protected AuthSessionService $authSessionService
-    ) {
-    }
+        protected RegisterActionInterface $registerAction
+    ) {}
 
     public static Visibility $visibility = Visibility::GUEST;
 
@@ -267,73 +265,33 @@ class Register extends Screen
      */
     public function onSubmitRegister(array $params): void
     {
-        $askForRole = (bool) ($params['ask_for_role'] ?? $params['askForRole'] ?? $this->state_ask_for_role);
+        $isAdminFlow = (bool) ($params['ask_for_role'] ?? $params['askForRole'] ?? $this->state_ask_for_role)
+            || self::requireAuth();
 
-        if (!$askForRole) {
-            $acceptTerms = $params['accept_terms'] ?? false;
-
-            if (!$acceptTerms) {
-                $message = t('screens.auth.register.terms_required');
-                $this->toast($message, type: 'error');
-
-                // $this->lbl_register_result->text($message)->style('error');
-                return;
-            }
-        }
-
-        $name = \is_string($params['name'] ?? null) ? $params['name'] : '';
-        $email = \is_string($params['email'] ?? null) ? $params['email'] : '';
-        $password = \is_string($params['password'] ?? null) ? $params['password'] : '';
-        $passwordConfirmation = \is_string($params['password_confirmation'] ?? null) ? $params['password_confirmation'] : '';
-
-        /** @var string $defaultRole */
-        $defaultRole = config('usim.default_registering_role', 'registered');
-        $rawRoles = $params['roles'] ?? [$defaultRole];
-        /** @var list<string> $roles */
-        $roles = is_array($rawRoles)
-            ? array_values(array_filter($rawRoles, 'is_string'))
-            : [$defaultRole];
-
-        if (empty($roles)) {
-            $roles = [$defaultRole];
-        }
-
-        $sendEmail = !isset($params['send_verification_email']) || (bool) $params['send_verification_email'];
-
-        $registerData = new RegisterData(
-            name: $name,
-            email: $email,
-            password: $password,
-            passwordConfirmation: $passwordConfirmation,
-            roles: $roles,
-            sendVerificationEmail: $sendEmail,
-        );
-
+        $registerData = RegisterRequest::toRegisterData($params, askForRole: $isAdminFlow);
         $result = $this->registerAction->execute($registerData);
 
-        if (!$result->isSuccess()) {
-            $message = $result->message;
-            $errors = $result->errors;
-            if (!empty($errors)) {
-                $errorMessages = [];
-                foreach ($errors as $fieldErrors) {
-                    foreach ($fieldErrors as $err) {
-                        $errorMessages[] = $err;
-                    }
-                }
-                if (!empty($errorMessages)) {
-                    $message = implode(' ', $errorMessages);
-                }
-            }
-
-            $this->toast($message, type: 'error');
-            if (isset($this->lbl_register_result)) {
-                $this->lbl_register_result->text($message)->style('error');
-            }
+        if (! $result->isSuccess()) {
+            $this->handleRegistrationFailure($result, showLabelError: $registerData->acceptTerms);
 
             return;
         }
 
+        $this->handleRegistrationSuccess($result, $isAdminFlow);
+    }
+
+    protected function handleRegistrationFailure(RegistrationResult $result, bool $showLabelError = true): void
+    {
+        $message = RegisterRequest::formatErrorMessage($result);
+
+        $this->toast($message, type: 'error');
+        if ($showLabelError && isset($this->lbl_register_result)) {
+            $this->lbl_register_result->text($message)->style('error');
+        }
+    }
+
+    protected function handleRegistrationSuccess(RegistrationResult $result, bool $isAdminFlow): void
+    {
         $message = $result->message;
         $this->toast($message, type: 'success');
         if (isset($this->lbl_register_result)) {
@@ -341,33 +299,29 @@ class Register extends Screen
         }
 
         $user = $result->user;
-        if ($user instanceof User) {
-            if ($this->isOpenedAsModal()) {
-                $this->closeModal();
-            }
+        if (! ($user instanceof User)) {
+            return;
+        }
 
-            if ($askForRole || self::requireAuth()) {
-                event(new UsimEvent(
-                    'user_created',
-                    [
-                        'user_id' => $user->id,
-                    ]
-                ));
+        if ($this->isOpenedAsModal()) {
+            $this->closeModal();
+        }
 
-                return;
-            }
+        if ($isAdminFlow) {
+            event(new UsimEvent('user_created', ['user_id' => $user->id]));
 
-            if ($result->token !== null) {
-                $this->store_token = $result->token;
-            }
+            return;
+        }
 
-            $this->authSessionService->establishSession($user, null, $result->token);
+        if ($result->token !== null) {
+            $this->store_token = $result->token;
+        }
 
-            $homeScreen = $this->authSessionService->resolveHomeScreen($user);
-            if (class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
-                Screen::make($homeScreen)->clearCachedScreenSnapshot();
-                $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
-            }
+        /** @var class-string<Screen>|string|null $homeScreen */
+        $homeScreen = $result->data['home_screen'] ?? null;
+        if (\is_string($homeScreen) && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
+            Screen::make($homeScreen)->clearCachedScreenSnapshot();
+            $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
         }
     }
 

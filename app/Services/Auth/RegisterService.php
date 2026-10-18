@@ -10,6 +10,7 @@ use Idei\Usim\DTOs\RegisterData;
 use Idei\Usim\DTOs\RegistrationResult;
 use Idei\Usim\Models\UsimUnit;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -112,8 +113,14 @@ class RegisterService implements RegisterActionInterface
         ];
     }
 
-    public function execute(RegisterData $data): RegistrationResult
+    public function execute(RegisterData $data, ?bool $startSession = null): RegistrationResult
     {
+        if (! $data->acceptTerms) {
+            return RegistrationResult::failed(
+                message: t('screens.auth.register.terms_required'),
+            );
+        }
+
         $response = $this->register(
             name: $data->name,
             email: $data->email,
@@ -135,12 +142,25 @@ class RegisterService implements RegisterActionInterface
         }
 
         $rawToken = data_get($response, 'data.token');
+        $token = is_string($rawToken) ? $rawToken : null;
+        $user = $response['user'] ?? null;
+        $payloadData = $response['data'] ?? [];
+
+        if ($user instanceof User) {
+            $homeScreen = $this->authSessionService->resolveHomeScreen($user, $data->unit);
+            $payloadData['home_screen'] = $homeScreen;
+
+            $shouldStartSession = $startSession ?? ! Auth::check();
+            if ($shouldStartSession) {
+                $this->authSessionService->establishSession($user, $data->unit, $token, $homeScreen);
+            }
+        }
 
         return RegistrationResult::success(
             message: $response['message'],
-            user: $response['user'] ?? null,
-            token: is_string($rawToken) ? $rawToken : null,
-            data: $response['data'] ?? [],
+            user: $user,
+            token: $token,
+            data: $payloadData,
         );
     }
 }

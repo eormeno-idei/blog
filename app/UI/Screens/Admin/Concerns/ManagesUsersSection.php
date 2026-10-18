@@ -12,9 +12,7 @@ use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Table;
-use Idei\Usim\Contracts\RegisterActionInterface;
 use Idei\Usim\Contracts\UserMutationServiceInterface;
-use Idei\Usim\DTOs\RegisterData;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\SelectionMode;
 use Idei\Usim\Screen;
@@ -27,7 +25,6 @@ use Idei\Usim\ValueObjects\Spacing;
  *
  * @mixin Screen
  *
- * @property RegisterActionInterface $registerService
  * @property UserMutationServiceInterface $userService
  * @property ?UserEditDialogPresenter $userEditDialogPresenter
  */
@@ -126,33 +123,6 @@ trait ManagesUsersSection
     /**
      * @param  array<string, mixed>  $params
      */
-    public function onSubmitRegister(array $params): void
-    {
-        $registerData = new RegisterData(
-            name: $this->stringParamOrDefault($params, 'name', ''),
-            email: $this->stringParamOrDefault($params, 'email', ''),
-            password: $this->stringParamOrDefault($params, 'password', ''),
-            passwordConfirmation: $this->stringParamOrDefault($params, 'password_confirmation', ''),
-            roles: $this->normalizeRoles($params['roles'] ?? null),
-            sendVerificationEmail: $this->boolParamOrDefault($params, 'send_verification_email', true),
-        );
-
-        $result = $this->registerService->execute($registerData);
-
-        if ($result->isSuccess()) {
-            $this->toast($result->message, 'success');
-            if (isset($this->users_table)) {
-                $this->users_table->refresh();
-            }
-            $this->closeModal();
-        } else {
-            $this->updateModalWithErrors($result->errors);
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
     public function onUsersTableRowClicked(array $params): void
     {
         $userId = $this->optionalIntParam($params, 'model_id');
@@ -217,29 +187,6 @@ trait ManagesUsersSection
     public function onUserDeleted(array $params): void
     {
         $this->users_table->refresh();
-    }
-
-    /**
-     * @return list<string>
-     */
-    protected function normalizeRoles(mixed $roles): array
-    {
-        if (is_string($roles)) {
-            return [$roles];
-        }
-
-        if (! is_array($roles)) {
-            return ['user'];
-        }
-
-        $normalized = [];
-        foreach ($roles as $role) {
-            if (is_string($role)) {
-                $normalized[] = $role;
-            }
-        }
-
-        return $normalized !== [] ? $normalized : ['user'];
     }
 
     /**

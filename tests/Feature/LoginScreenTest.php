@@ -1,9 +1,8 @@
 <?php
 // @usim: feature="admin", type="test"
 use App\Models\User;
-use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\Login;
-use App\UI\Screens\Registered;
+use App\UI\Screens\Home;
 
 beforeEach(function () {
     app(\Idei\Usim\Support\RoleAndPermissionSyncService::class)->sync();
@@ -37,8 +36,11 @@ it('authenticates configured root user and returns redirect contract', function 
     $adminUser = $result['user'];
     $response = $result['response'];
 
+    /** @var class-string<\Idei\Usim\Screen> $expectedScreen */
+    $expectedScreen = config('usim.roles.root.home_screen', Home::class);
+
     $response->assertOk();
-    expect($response->json('navigate.url') ?? $response->json('redirect'))->toBe(UsersManager::getRoutePath());
+    expect($response->json('navigate.url') ?? $response->json('redirect'))->toBe($expectedScreen::getRoutePath());
     expect($response->json('toast.type'))->toBe('success');
     $this->assertAuthenticatedAs($adminUser);
 });
@@ -104,7 +106,7 @@ it('authenticates configured test user with multiple units and returns redirect 
     $this->assertAuthenticatedAs($user);
 });
 
-it('authenticates registered user and redirects directly to Registered screen contract', function () {
+it('authenticates registered user and redirects directly to configured home screen contract', function () {
     /** @var \Tests\TestCase $this */
     $lobbyUnit = \Idei\Usim\Models\UsimUnit::firstOrCreate(['slug' => 'lobby']);
     $roleRegistered = \Spatie\Permission\Models\Role::findOrCreate('registered', 'web');
@@ -136,9 +138,12 @@ it('authenticates registered user and redirects directly to Registered screen co
         ],
     ]);
 
+    /** @var class-string<\Idei\Usim\Screen> $expectedScreen */
+    $expectedScreen = config('usim.roles.registered.home_screen', Home::class);
+
     $response->assertOk();
     expect($response->json('toast.type'))->toBe('success');
-    expect($response->json('navigate.url') ?? $response->json('redirect'))->toBe(Registered::getRoutePath());
+    expect($response->json('navigate.url') ?? $response->json('redirect'))->toBe($expectedScreen::getRoutePath());
     $this->assertAuthenticatedAs($user);
 });
 
@@ -176,9 +181,12 @@ it('redirects to the role screen with highest priority when user has multiple ro
         ],
     ]);
 
+    /** @var class-string<\Idei\Usim\Screen> $expectedScreen */
+    $expectedScreen = config('usim.roles.admin.home_screen', Home::class);
+
     $response->assertOk();
     expect($response->json('toast.type'))->toBe('success');
-    // Admin (priority 2) has higher precedence than Registered (priority 5)
-    expect($response->json('navigate.url') ?? $response->json('redirect'))->toBe(UsersManager::getRoutePath());
+    // Admin has higher precedence than Registered
+    expect($response->json('navigate.url') ?? $response->json('redirect'))->toBe($expectedScreen::getRoutePath());
     $this->assertAuthenticatedAs($user);
 });

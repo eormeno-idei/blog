@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\URL;
 it('sends reset-password email from forgot-password screen', function () {
     $originalLocale = app()->getLocale();
 
+    /** @var \Tests\TestCase $this */
+
     foreach (['en', 'es'] as $locale) {
         app()->setLocale($locale);
         Notification::fake();
@@ -38,7 +40,7 @@ it('sends reset-password email from forgot-password screen', function () {
 
 it('resets password from the link received by email after validations pass', function () {
     $originalLocale = app()->getLocale();
-
+    /** @var \Tests\TestCase $this */
     foreach (['en', 'es'] as $locale) {
         app()->setLocale($locale);
         Notification::fake();
@@ -102,7 +104,7 @@ it('resets password from the link received by email after validations pass', fun
         $validResponse->assertOk();
         expect($validResponse->json('toast.type'))->toBe('success');
         expect($validResponse->json('toast.message'))->toBe(t('screens.auth.reset_password.toast.success'));
-        expect($validResponse->json('redirect'))->toBe('/auth/login');
+        expect($validResponse->json('navigate.url') ?? $validResponse->json('redirect'))->toBe('/auth/login');
 
         $user->refresh();
         expect(Hash::check('new-password-123', (string) $user->password))->toBeTrue();
@@ -115,6 +117,7 @@ it('resets password from the link received by email after validations pass', fun
 });
 
 it('rejects expired reset links in reset-password screen', function () {
+    /** @var \Tests\TestCase $this */
     $originalLocale = app()->getLocale();
 
     foreach (['en', 'es'] as $locale) {

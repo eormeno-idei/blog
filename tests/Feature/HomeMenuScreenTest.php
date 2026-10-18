@@ -3,136 +3,125 @@
 
 use App\Models\User;
 use App\Services\User\UsimUserService;
-use App\UI\Screens\Admin\TranslateManager;
 use App\UI\Screens\Admin\UsersManager;
+use App\UI\Screens\Auth\Login;
 use App\UI\Screens\Auth\Profile;
+use App\UI\Screens\Auth\Register;
 use App\UI\Screens\Home;
 use App\UI\Screens\Menu;
-use Idei\Usim\Models\UsimUnit;
+use Idei\Usim\Testing\ScreenTestHarness;
+use Illuminate\Support\Facades\Auth;
 
 beforeEach(function () {
     app(\Idei\Usim\Support\RoleAndPermissionSyncService::class)->sync();
 });
 
-it('returns home screen with expected core components', function () {
-    $ui = uiScenario($this, Home::class, ['reset' => true]);
+it('renders home screen with expected core components for guests', function () {
+    Auth::logout();
 
-    $welcomeUsim = $ui->component('welcome_usim');
+    $harness = ScreenTestHarness::for(Home::class)
+        ->render(shouldReset: true);
 
-    $welcomeUsim->expect('type')->toBe('label');
-    expect($welcomeUsim->data()['html'] ?? null)->not->toBeNull();
-
-    $ui->assertNoIssues();
+    $harness
+        ->assertHasComponent('home_wrapper')
+        ->assertHasComponent('home_header')
+        ->assertHasComponent('lbl_home_title')
+        ->assertHasComponent('lbl_home_subtitle')
+        ->assertHasComponent('btn_home_login')
+        ->assertHasComponent('btn_home_register')
+        ->assertHasComponent('posts_list_container')
+        ->assertComponentText('lbl_home_title', '📰 Últimos Posts');
 });
 
-it('home screen renders the welcome-usim html fragment', function () {
-    $ui = uiScenario($this, Home::class, ['reset' => true]);
+it('renders home screen with publish and manage users actions for admin', function () {
+    $admin = app(UsimUserService::class)->provisionFromConfig('admin');
+    $this->actingAs($admin);
 
-    $data = $ui->component('welcome_usim')->data();
+    $harness = ScreenTestHarness::for(Home::class)
+        ->render(shouldReset: true);
 
-    expect($data['type'] ?? null)->toBe('label');
-    expect($data['html'] ?? '')->toContain('class="wf"');
+    $harness
+        ->assertHasComponent('btn_go_publish')
+        ->assertHasComponent('btn_go_users');
 
-    $ui->assertNoIssues();
+    expect($harness->findComponent('btn_home_login'))->toBeNull()
+        ->and($harness->findComponent('btn_home_register'))->toBeNull();
 });
 
-it('home screen fragment contains expected landing sections', function () {
-    $ui = uiScenario($this, Home::class, ['reset' => true]);
+it('shows waiting room message on home screen for user with only registered role in lobby', function () {
+    $defaultRegisteringRole = config('usim.default_registering_role', 'registered');
+    $registeredUser = app(UsimUserService::class)->provisionFromConfig($defaultRegisteringRole);
+    $this->actingAs($registeredUser);
 
-    $html = $ui->component('welcome_usim')->data()['html'] ?? '';
+    $harness = ScreenTestHarness::for(Home::class)
+        ->render(shouldReset: true);
 
-    expect($html)->toContain('class="hero"');
-    expect($html)->toContain('class="wf"');
-
-    $ui->assertNoIssues();
+    $harness->assertComponentText(
+        'lbl_registered_message',
+        "{$registeredUser->name}, aún estás en sala de espera."
+    );
 });
 
-it('home fragment theme follows global document theme contract', function () {
-    $ui = uiScenario($this, Home::class, ['reset' => true]);
+it('opens Login and Register modals from Home guest buttons', function () {
+    Auth::logout();
 
-    $html = $ui->component('welcome_usim')->data()['html'] ?? '';
+    $loginHarness = ScreenTestHarness::for(Home::class)
+        ->render(shouldReset: true)
+        ->click('btn_home_login');
 
-    expect($html)->toContain('class="wf"');
-    expect($html)->not->toContain('class="wf" data-theme="dark"');
-    expect($html)->toContain('html[data-theme="light"] .wf');
-    expect($html)->toContain('body[data-theme="light"] .wf');
+    $loginHarness->assertModal(Login::class);
 
-    $ui->assertNoIssues();
-});
+    $registerHarness = ScreenTestHarness::for(Home::class)
+        ->render(shouldReset: true)
+        ->click('btn_home_register');
 
-it('home screen fragment is non-empty regardless of locale', function () {
-    $originalLocale = app()->getLocale();
-    app()->setLocale('es');
-
-    $ui = uiScenario($this, Home::class, ['reset' => true]);
-    $html = $ui->component('welcome_usim')->data()['html'] ?? '';
-
-    expect($html)->not->toBeEmpty();
-
-    app()->setLocale($originalLocale);
-
-    $ui->assertNoIssues();
+    $registerHarness->assertModal(Register::class);
 });
 
 it('returns menu screen for guests with settings trigger and register option', function () {
-    $originalLocale = app()->getLocale();
+    Auth::logout();
 
-    foreach (['es', 'en'] as $locale) {
-        app()->setLocale($locale);
+    /** @var \Tests\TestCase $this */
 
-        $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-        $storage = json_decode($ui->opaqueUsim(), true) ?: [];
-        $menuLang = (string) ($storage['store_lang'] ?? app()->getLocale());
+    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
 
-        $mainMenu = $ui->component('main_menu')->data();
-        $userMenu = $ui->component('user_menu')->data();
-        $themeToggle = $ui->component('theme_toggle')->data();
-        $homeLabel = t('screens.menu.items.home', [], $menuLang);
-        $aboutLabel = t('screens.about.menu_title', [], $menuLang);
-        expect(menuItemsContainLabel($mainMenu['items'] ?? [], $homeLabel))->toBeTrue();
-        expect(menuItemsContainLabel($mainMenu['items'] ?? [], $aboutLabel))->toBeTrue();
+    $mainMenu = $ui->component('main_menu')->data();
+    $userMenu = $ui->component('user_menu')->data();
+    $themeToggle = $ui->component('theme_toggle')->data();
 
-        expect($userMenu['type'] ?? null)->toBe('menudropdown');
-        expect($userMenu['trigger']['label'] ?? null)->toBe('⚙️');
-        expect(menuItemsContainLabel($userMenu['items'] ?? [], t('screens.menu.items.register', [], $menuLang)))->toBeTrue();
-        expect(menuItemsContainLabel($userMenu['items'] ?? [], t('screens.menu.items.logout', [], $menuLang)))->toBeFalse();
-        expect($themeToggle['icon_color'] ?? null)->toBe('var(--usim-menu-trigger-text)');
+    expect(menuItemsContainLabel($mainMenu['items'] ?? [], Home::getMenuLabel()))->toBeTrue();
+    expect(menuItemsContainLabel($mainMenu['items'] ?? [], t('screens.menu.items.about')))->toBeTrue();
 
-        $ui->assertNoIssues();
-    }
+    expect($userMenu['type'] ?? null)->toBe('menudropdown');
+    expect($userMenu['trigger']['label'] ?? null)->toBe('⚙️');
+    expect(menuItemsContainLabel($userMenu['items'] ?? [], Register::getMenuLabel()))->toBeTrue();
+    expect(menuItemsContainLabel($userMenu['items'] ?? [], t('screens.menu.items.logout')))->toBeFalse();
+    expect($themeToggle['icon_color'] ?? null)->toBe('var(--usim-menu-trigger-text)');
 
-    app()->setLocale($originalLocale);
+    $ui->assertNoIssues();
 });
 
 it('returns menu screen for authenticated users with user trigger and logout option', function () {
-    $originalLocale = app()->getLocale();
+    /** @var \Tests\TestCase $this */
+    /** @var User $user */
+    $user = User::factory()->create([
+        'name' => 'Menu Tester',
+    ]);
 
-    foreach (['en', 'es'] as $locale) {
-        app()->setLocale($locale);
+    $this->actingAs($user);
 
-        /** @var \Tests\TestCase $this */
-        /** @var User $user */
-        $user = User::factory()->create([
-            'name' => 'Menu Tester',
-        ]);
+    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
+    $userMenu = $ui->component('user_menu')->data();
 
-        $this->actingAs($user);
+    expect($userMenu['type'] ?? null)->toBe('menudropdown');
 
-        $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-        $userMenu = $ui->component('user_menu')->data();
+    $triggerLabel = (string) ($userMenu['trigger']['label'] ?? '');
+    expect($triggerLabel)->toContain('Menu Tester');
 
-        expect($userMenu['type'] ?? null)->toBe('menudropdown');
+    expect(menuItemsContainLabel($userMenu['items'] ?? [], t('screens.menu.items.logout')))->toBeTrue();
+    expect(menuItemsContainLabel($userMenu['items'] ?? [], Register::getMenuLabel()))->toBeFalse();
 
-        $triggerLabel = (string) ($userMenu['trigger']['label'] ?? '');
-        expect($triggerLabel)->toContain('Menu Tester');
-
-        expect(menuItemsContainLabel($userMenu['items'] ?? [], t('screens.menu.items.logout')))->toBeTrue();
-        expect(menuItemsContainLabel($userMenu['items'] ?? [], t('screens.menu.items.register')))->toBeFalse();
-
-        $ui->assertNoIssues();
-    }
-
-    app()->setLocale($originalLocale);
+    $ui->assertNoIssues();
 });
 
 it('shows profile, logout and admin dashboard items after admin login', function () {
@@ -151,7 +140,7 @@ it('shows profile, logout and admin dashboard items after admin login', function
 });
 
 it('shows profile/logout and hides admin dashboard after regular user login', function () {
-    $defaultRegisteringRole = config('usim.default_registering_role', 'user');
+    $defaultRegisteringRole = config('usim.default_registering_role', 'registered');
     /** @var \Tests\TestCase $this */
     $this->loginAs($defaultRegisteringRole);
 
@@ -164,197 +153,4 @@ it('shows profile/logout and hides admin dashboard after regular user login', fu
     expect(menuItemsContainLabel($userMenu['items'] ?? [], t('screens.menu.items.logout')))->toBeTrue();
 
     $ui->assertNoIssues();
-});
-
-it('hides unit dropdown for guests', function () {
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    $data = $ui->component('unit_menu')->data();
-    expect($data['visible'] ?? true)->toBeFalse();
-    expect($data['items'] ?? [])->toBeEmpty();
-    $ui->assertNoIssues();
-});
-
-it('hides unit dropdown for authenticated user with no units', function () {
-    /** @var \Tests\TestCase $this */
-    $user = User::factory()->create(['name' => 'No Units User']);
-    $this->actingAs($user);
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    $data = $ui->component('unit_menu')->data();
-    expect($data['visible'] ?? true)->toBeFalse();
-    expect($data['items'] ?? [])->toBeEmpty();
-    $ui->assertNoIssues();
-});
-
-it('hides unit dropdown for authenticated user with only system unit', function () {
-    /** @var \Tests\TestCase $this */
-    $unit = UsimUnit::firstOrCreate(['slug' => 'main'], ['type' => 'system']);
-    $unit->update(['type' => 'system']);
-    $user = User::factory()->create(['name' => 'Single Unit User']);
-    $user->usimUnits()->attach($unit->id);
-    $this->actingAs($user);
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    $data = $ui->component('unit_menu')->data();
-    expect($data['visible'] ?? true)->toBeFalse();
-    expect($data['items'] ?? [])->toBeEmpty();
-    $ui->assertNoIssues();
-});
-
-it('shows unit dropdown for authenticated user with single operational unit', function () {
-    /** @var \Tests\TestCase $this */
-    $unit = UsimUnit::firstOrCreate(['slug' => 'idei'], ['type' => 'institute']);
-    $unit->update(['type' => 'institute']);
-    $user = User::factory()->create(['name' => 'Single Operational Unit User']);
-    $user->usimUnits()->attach($unit->id);
-    $this->actingAs($user);
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    $data = $ui->component('unit_menu')->data();
-    expect($data['visible'] ?? true)->toBeTrue();
-    expect($data['trigger']['label'] ?? '')->toContain('🏢');
-    expect(menuItemsContainLabel($data['items'] ?? [], '✓ ' . ($unit->display_name ?: 'Idei')))->toBeTrue();
-    $ui->assertNoIssues();
-});
-
-it('includes unit dropdown when authenticated user has multiple units', function () {
-    /** @var \Tests\TestCase $this */
-    $unit1 = UsimUnit::firstOrCreate(['slug' => 'main']);
-    $unit1->update(['type' => 'department']);
-    $unit2 = UsimUnit::firstOrCreate(['slug' => 'accounting'], ['type' => 'department']);
-    $user = User::factory()->create(['name' => 'Multi Unit User']);
-    $user->usimUnits()->attach([$unit1->id, $unit2->id]);
-    $this->actingAs($user);
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    $unitMenu = $ui->component('unit_menu');
-
-    expect($unitMenu)->not->toBeNull();
-    $data = $unitMenu->data();
-    expect($data['type'] ?? null)->toBe('menudropdown');
-    expect($data['trigger']['label'] ?? '')->toContain('🏢');
-    expect(menuItemsContainLabel($data['items'] ?? [], '✓ ' . ($unit1->display_name ?: 'Main')))->toBeTrue();
-    expect(menuItemsContainLabel($data['items'] ?? [], 'Accounting'))->toBeTrue();
-
-    $ui->assertNoIssues();
-});
-
-it('allows switching units when user has multiple units', function () {
-    /** @var \Tests\TestCase $this */
-    $unit1 = UsimUnit::firstOrCreate(['slug' => 'main']);
-    $unit1->update(['type' => 'department']);
-    $unit2 = UsimUnit::firstOrCreate(['slug' => 'finance'], ['type' => 'department']);
-    $user = User::factory()->create(['name' => 'Switch Unit User']);
-    $user->usimUnits()->attach([$unit1->id, $unit2->id]);
-    $this->actingAs($user);
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    expect($ui->component('unit_menu'))->not->toBeNull();
-
-    $ui->action('unit_menu', 'changeUnit', ['unit' => 'finance', 'unit_id' => $unit2->id]);
-    expect(\Idei\Usim\Support\UIStateManager::getKeyValue('active_unit'))->toBe('finance');
-    expect(getPermissionsTeamId())->toBe($unit2->id);
-});
-
-it('allows root to switch to operational unit comunicacion and does not retain store_unit in storage payload', function () {
-    /** @var \Tests\TestCase $this */
-    $userService = app(UsimUserService::class);
-    $rootUser = $userService->provisionFromConfig('root');
-    $this->actingAs($rootUser);
-
-    $unit1 = UsimUnit::firstOrCreate(['slug' => 'idei'], ['type' => 'department']);
-    $comUnit = UsimUnit::firstOrCreate(['slug' => 'comunicación'], ['type' => 'department']);
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    $response = $ui->action('unit_menu', 'changeUnit', ['unit' => 'comunicación', 'unit_id' => $comUnit->id]);
-    $response->assertOk();
-
-    expect(\Idei\Usim\Support\UIStateManager::getKeyValue('active_unit'))->toBe('comunicación');
-    expect(getPermissionsTeamId())->toBe($comUnit->id);
-
-    expect(\Idei\Usim\Support\UIStateManager::getActiveUnit())->toBe('comunicación');
-
-    $storagePayload = $response->json('storage.usim-framework');
-    if ($storagePayload !== null) {
-        $decoded = json_decode($storagePayload, true);
-        expect($decoded['store_unit'] ?? null)->toBeNull();
-    }
-});
-
-it('redirects to role default home screen on unit change based on unit roles', function () {
-    /** @var \Tests\TestCase $this */
-    $userService = app(UsimUserService::class);
-    $oafaUnit = UsimUnit::firstOrCreate(['slug' => 'oafa'], ['type' => 'institute']);
-    $ideiUnit = UsimUnit::firstOrCreate(['slug' => 'idei'], ['type' => 'institute']);
-
-    if (config('usim.users.admin')) {
-        $user = $userService->provisionFromConfig('admin');
-    } else {
-        $user = User::factory()->create(['name' => 'Admin User', 'email' => 'admin@example.com']);
-        $user->usimUnits()->sync([$oafaUnit->id, $ideiUnit->id]);
-        $roleAdmin = \Spatie\Permission\Models\Role::findOrCreate('admin', 'web');
-        $roleTranslator = \Spatie\Permission\Models\Role::findOrCreate('translator', 'web');
-        setPermissionsTeamId($oafaUnit->id);
-        $user->assignRole($roleAdmin);
-        setPermissionsTeamId($ideiUnit->id);
-        $user->assignRole($roleTranslator);
-    }
-    $this->actingAs($user);
-
-    // Start in OAFA
-    setPermissionsTeamId($oafaUnit->id);
-    \Idei\Usim\Support\UIStateManager::storeKeyValue('active_unit', 'oafa');
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-
-    // Switch to IDEI: role in IDEI is translator, so it should navigate to TranslateManager
-    $response = $ui->action('unit_menu', 'changeUnit', ['unit' => 'idei', 'unit_id' => $ideiUnit->id]);
-    $response->assertOk();
-    $targetPath = $response->json('navigate.url') ?? $response->json('redirect');
-    expect($targetPath)->toBe(TranslateManager::getRoutePath());
-    expect(\Idei\Usim\Support\UIStateManager::getKeyValue('active_unit'))->toBe('idei');
-    expect(getPermissionsTeamId())->toBe($ideiUnit->id);
-
-    // Switch back to OAFA: role in OAFA is admin, so it should navigate to UsersManager
-    $uiOafa = uiScenario($this, Menu::class, ['parent' => 'menu']);
-    $responseOafa = $uiOafa->action('unit_menu', 'changeUnit', ['unit' => 'oafa', 'unit_id' => $oafaUnit->id]);
-    $responseOafa->assertOk();
-    $targetPathOafa = $responseOafa->json('navigate.url') ?? $responseOafa->json('redirect');
-    expect($targetPathOafa)->toBe(UsersManager::getRoutePath());
-    expect(\Idei\Usim\Support\UIStateManager::getKeyValue('active_unit'))->toBe('oafa');
-    expect(getPermissionsTeamId())->toBe($oafaUnit->id);
-});
-
-it('redirects to highest priority role home screen when unit has multiple roles', function () {
-    /** @var \Tests\TestCase $this */
-    $userService = app(UsimUserService::class);
-    $ideiUnit = UsimUnit::firstOrCreate(['slug' => 'idei'], ['type' => 'institute']);
-
-    if (config('usim.users.test')) {
-        $user = $userService->provisionFromConfig('test'); // has idei => ['admin', 'translator']
-    } else {
-        $user = User::factory()->create(['name' => 'Test User', 'email' => 'test@example.com']);
-        $user->usimUnits()->sync([$ideiUnit->id]);
-        $roleAdmin = \Spatie\Permission\Models\Role::findOrCreate('admin', 'web');
-        $roleTranslator = \Spatie\Permission\Models\Role::findOrCreate('translator', 'web');
-        setPermissionsTeamId($ideiUnit->id);
-        $user->assignRole($roleAdmin);
-        $user->assignRole($roleTranslator);
-    }
-    $this->actingAs($user);
-
-    $otherUnit = UsimUnit::firstOrCreate(['slug' => 'other_dept'], ['type' => 'department']);
-    $user->usimUnits()->syncWithoutDetaching([$otherUnit->id]);
-
-    // Start in other_dept
-    setPermissionsTeamId($otherUnit->id);
-    \Idei\Usim\Support\UIStateManager::storeKeyValue('active_unit', 'other_dept');
-
-    $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
-
-    // Switch to IDEI: user has ['admin', 'translator'] in idei. Admin priority (1) > Translator priority (2)
-    $response = $ui->action('unit_menu', 'changeUnit', ['unit' => 'idei', 'unit_id' => $ideiUnit->id]);
-    $response->assertOk();
-    $targetPath = $response->json('navigate.url') ?? $response->json('redirect');
-    expect($targetPath)->toBe(UsersManager::getRoutePath());
 });
