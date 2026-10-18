@@ -15,6 +15,7 @@ use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\Visibility;
+use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Models\UsimRole;
 use Idei\Usim\Screen;
 use Idei\Usim\Support\FakeDataHelper;
@@ -27,17 +28,19 @@ class Register extends Screen
     public function __construct(
         protected RegisterActionInterface $registerAction,
         protected AuthSessionService $authSessionService
-    ) {}
+    ) {
+    }
 
     public static Visibility $visibility = Visibility::GUEST;
 
     protected Label $lbl_register_result;
     protected string $store_token = '';
+    protected bool $state_ask_for_role = false;
 
     public static function authorize(): bool
     {
-        // Accessible to guests (users not authenticated)
-        return ! self::requireAuth();
+        // Accessible to guests (users not authenticated) or admins managing users
+        return !self::requireAuth() || self::requirePermission('admin.users_manager.access');
     }
 
     public static function getMenuLabel(): string
@@ -61,11 +64,12 @@ class Register extends Screen
 
         $fakeData = (bool) ($params['fakeData'] ?? (config('app.env') === 'local'));
         $askForRole = (bool) ($params['askForRole'] ?? false);
+        $this->state_ask_for_role = $askForRole;
 
         if ($fakeData) {
             $roleService = app(RoleService::class);
             $availableRoles = array_map(
-                static fn (UsimRole $role): string => $role->name,
+                static fn(UsimRole $role): string => $role->name,
                 $roleService->getAllowedRoles()
             );
             if (empty($availableRoles)) {
@@ -173,7 +177,7 @@ class Register extends Screen
             $roles = $roleService->getAllowedRoles();
 
             /** @var list<array{value: string, label: string}> $roleOptions */
-            $roleOptions = array_map(static fn (UsimRole $role): array => [
+            $roleOptions = array_map(static fn(UsimRole $role): array => [
                 'value' => $role->name,
                 'label' => t("role.{$role->name}.name"),
             ], $roles);
@@ -263,12 +267,12 @@ class Register extends Screen
      */
     public function onSubmitRegister(array $params): void
     {
-        $askForRole = (bool) ($params['ask_for_role'] ?? false);
+        $askForRole = (bool) ($params['ask_for_role'] ?? $params['askForRole'] ?? $this->state_ask_for_role);
 
-        if (! $askForRole) {
+        if (!$askForRole) {
             $acceptTerms = $params['accept_terms'] ?? false;
 
-            if (! $acceptTerms) {
+            if (!$acceptTerms) {
                 $message = t('screens.auth.register.terms_required');
                 $this->toast($message, type: 'error');
 
@@ -294,7 +298,7 @@ class Register extends Screen
             $roles = [$defaultRole];
         }
 
-        $sendEmail = ! isset($params['send_verification_email']) || (bool) $params['send_verification_email'];
+        $sendEmail = !isset($params['send_verification_email']) || (bool) $params['send_verification_email'];
 
         $registerData = new RegisterData(
             name: $name,
@@ -307,17 +311,17 @@ class Register extends Screen
 
         $result = $this->registerAction->execute($registerData);
 
-        if (! $result->isSuccess()) {
+        if (!$result->isSuccess()) {
             $message = $result->message;
             $errors = $result->errors;
-            if (! empty($errors)) {
+            if (!empty($errors)) {
                 $errorMessages = [];
                 foreach ($errors as $fieldErrors) {
                     foreach ($fieldErrors as $err) {
                         $errorMessages[] = $err;
                     }
                 }
-                if (! empty($errorMessages)) {
+                if (!empty($errorMessages)) {
                     $message = implode(' ', $errorMessages);
                 }
             }
@@ -338,12 +342,23 @@ class Register extends Screen
 
         $user = $result->user;
         if ($user instanceof User) {
-            if ($result->token !== null) {
-                $this->store_token = $result->token;
-            }
-
             if ($this->isOpenedAsModal()) {
                 $this->closeModal();
+            }
+
+            if ($askForRole || self::requireAuth()) {
+                event(new UsimEvent(
+                    'user_created',
+                    [
+                        'user_id' => $user->id,
+                    ]
+                ));
+
+                return;
+            }
+
+            if ($result->token !== null) {
+                $this->store_token = $result->token;
             }
 
             $this->authSessionService->establishSession($user, null, $result->token);
@@ -366,12 +381,6 @@ class Register extends Screen
 
     public function onCloseRegisterDialog(): void
     {
-        if ($this->isOpenedAsModal()) {
-            $this->closeModal();
-
-            return;
-        }
-
-        $this->showInto(\App\UI\Screens\Home::class, force: true, updateBrowserUrl: true);
+        $this->closeModal();
     }
 }

@@ -190,6 +190,16 @@ trait ManagesUsersSection
     }
 
     /**
+     * Handles the 'user_created' event, fired by: Register::class.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    public function onUserCreated(array $params): void
+    {
+        $this->users_table->refresh();
+    }
+
+    /**
      * Handles the 'user_updated' event, fired by: EditUser:class.
      *
      * @param  array<string, mixed>  $params
