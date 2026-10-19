@@ -267,7 +267,7 @@ class Menu extends Screen
                 return;
             }
 
-            Screen::make($screen)->clearCachedScreenSnapshot();
+            // Screen::make($screen)->clearCachedScreenSnapshot();
             $this->showInto($screen, slot: $slot, updateBrowserUrl: true, force: true);
         }
     }
@@ -298,10 +298,10 @@ class Menu extends Screen
         $this->populateUserMenu($this->user_menu);
         $this->populateMainMenu($this->main_menu);
 
-        Screen::make(Home::class)->clearCachedScreenSnapshot();
+        // Screen::make(Home::class)->clearCachedScreenSnapshot();
 
         if (\is_string($homeScreen) && $homeScreen !== '' && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
-            Screen::make($homeScreen)->clearCachedScreenSnapshot();
+            // Screen::make($homeScreen)->clearCachedScreenSnapshot();
             $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
         }
     }
@@ -357,11 +357,6 @@ class Menu extends Screen
         $this->user_menu->trigger("⚙️");
         $this->populateUserMenu($this->user_menu);
         $this->populateMainMenu($this->main_menu);
-
-        Screen::make(Home::class)->clearCachedScreenSnapshot();
-        if (class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
-            Screen::make($homeScreen)->clearCachedScreenSnapshot();
-        }
 
         $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
     }

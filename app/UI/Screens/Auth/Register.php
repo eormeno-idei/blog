@@ -320,7 +320,6 @@ class Register extends Screen
         /** @var class-string<Screen>|string|null $homeScreen */
         $homeScreen = $result->data['home_screen'] ?? null;
         if (\is_string($homeScreen) && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
-            Screen::make($homeScreen)->clearCachedScreenSnapshot();
             $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
         }
     }

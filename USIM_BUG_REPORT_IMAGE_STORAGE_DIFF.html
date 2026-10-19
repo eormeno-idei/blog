@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>USIM Bug Report - Image Storage Diff</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown.min.css">
+  <style>
+    body {
+      box-sizing: border-box;
+      min-width: 200px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 45px;
+      background: #f6f8fa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    .markdown-body {
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .actions {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .btn {
+      background: #2da44e;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .btn:hover { background: #2c974b; }
+    @media print {
+      body { background: white; padding: 0; }
+      .actions { display: none; }
+      .markdown-body { box-shadow: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="actions">
+    <button class="btn" onclick="window.print()">🖨️ Imprimir / Guardar en PDF</button>
+  </div>
+  <article class="markdown-body" id="content"></article>
+  <script>
+    const md = "# Bug Report: Inconsistencia en resolución de URLs de imágenes relativas con `storage()` durante eventos reactivos en USIM Framework\n\n**Para:** Equipo de Arquitectura y Desarrollo de USIM Framework  \n**Fecha:** 19 de octubre de 2026  \n**Severidad:** Media / Alta (Afecta la carga de recursos estáticos en cualquier actualización reactiva que involucre imágenes)  \n**Módulos afectados:** `Idei\\Usim\\Components\\Image`, `Idei\\Usim\\Support\\ScreenLifecycleOrchestrator`\n\n---\n\n## 1. Resumen Ejecutivo\n\nCuando un componente `Idei\\Usim\\Components\\Image` se configura con una ruta de almacenamiento relativo mediante `->storage('path')`, el renderizado inicial (`GET /api/ui/...`) resuelve adecuadamente el nombre del archivo a su URL canónica y accesible (vía `Idei\\Usim\\Upload\\UploadService::fileUrl(...)`).\n\nSin embargo, cuando una pantalla procesa una acción reactiva (`POST /api/ui-event`), el cálculo diferencial de cambios en `ScreenLifecycleOrchestrator::buildDiffResponse()` extrae los valores crudos directamente desde las propiedades marcadas como *sucias* (`$dirtyKeys`) del componente. Esto provoca que la URL absoluta resuelta por `Image::toJson()` sea **sobreescrita en el payload JSON de diff** por el nombre de archivo relativo crudo (ej. `\"116ad8cd-...png\"` en vez de `\"https://dominio/files/uploads/images/116ad8cd-...png\"`).\n\nComo consecuencia, el frontend asigna esta ruta relativa al atributo `src` de la etiqueta `<img>`, provocando una solicitud HTTP errónea contra la raíz del dominio (`404 Not Found`) y rompiendo visualmente la imagen.\n\n---\n\n## 2. Comportamiento Esperado vs. Comportamiento Actual\n\n### Comportamiento Esperado\nCualquier componente `Image` que utilice `->storage('uploads/images')` debe emitir siempre en su propiedad `src` (tanto en la carga inicial como en los diffs emitidos por eventos) la URL procesada y accesible:\n```json\n{\n  \"24815051\": {\n    \"type\": \"image\",\n    \"src\": \"https://dominio.test/files/uploads/images/116ad8cd-6001-4b3c-8323-cf5f76a99341.png\"\n  }\n}\n```\n\n### Comportamiento Actual\nDurante el cálculo de deltas tras un evento (`onDeletePost`, cambios dinámicos de imagen, etc.), el payload del diff sobrescribe `src` con el valor crudo no resuelto:\n```json\n{\n  \"24815051\": {\n    \"type\": \"image\",\n    \"src\": \"116ad8cd-6001-4b3c-8323-cf5f76a99341.png\"\n  }\n}\n```\n\nEl navegador intenta resolver la imagen como `https://dominio.test/116ad8cd-6001-4b3c-8323-cf5f76a99341.png`, fallando con `404 Not Found`.\n\n---\n\n## 3. Análisis de Causa Raíz (Root Cause Analysis)\n\n### A. Transformación en `Image::toJson()`\nEn `vendor/idei/usim/src/Components/Image.php` (Líneas 190–222):\n```php\npublic function toJson(?int $order = null): array\n{\n    $json = parent::toJson($order);\n    $component = reset($json);\n\n    if (! is_array($component)) {\n        return $json;\n    }\n\n    $src = $this->config['src'] ?? null;\n    if (is_string($src) && trim($src) !== '') {\n        $component['src'] = $this->resolveStoredSource($src); // <--- Transforma a URL absoluta\n    } elseif ($this->shouldGeneratePlaceholder()) {\n        $component['src'] = $this->generatePlaceholderSource();\n    }\n\n    ...\n    $json[$this->id] = $component;\n\n    return $json;\n}\n```\nAquí la resolución funciona correctamente: `$newUI` contiene el array con el `src` procesado hacia `/files/uploads/...`.\n\n### B. Sobreescritura en `ScreenLifecycleOrchestrator::buildDiffResponse()`\nEn `vendor/idei/usim/src/Support/ScreenLifecycleOrchestrator.php` (Líneas 458–470):\n```php\n$container = $screen->getContainer();\nif (! $reload && $container !== null) {\n    foreach ($this->collectDirtyComponentChanges($container) as $componentId => $dirtyProps) {\n        if (! isset($newUI[$componentId])) {\n            continue;\n        }\n        if (($newUI[$componentId]['parent'] ?? null) === null) {\n            continue;\n        }\n        foreach ($dirtyProps as $propKey => $propValue) {\n            $diff[$componentId][$propKey] = $propValue; // <--- ERROR\n        }\n    }\n}\n```\n\n#### El conflicto:\n1. Al instanciar o modificar una imagen con `->src('archivo.png')`, `UIComponent::setConfig()` registra internamente:\n   ```php\n   $this->dirtyKeys['src'] = 'archivo.png';\n   ```\n2. `collectDirtyComponentChanges()` devuelve el valor original crudo de `$dirtyKeys['src']` (`'archivo.png'`), el cual **nunca pasó por `resolveStoredSource()`**.\n3. En la línea `$diff[$componentId][$propKey] = $propValue;`, el orquestador pisa el valor ya transformado que existía en `$newUI[$componentId]['src']` con el valor crudo de `$dirtyProps`.\n\n---\n\n## 4. Pasos para Reproducir (MRE)\n\n1. Crear un Screen con una imagen almacenada en storage:\n   ```php\n   $container->add(\n       UI::image('user_avatar')\n           ->src('avatar_123.png')\n           ->storage('uploads/images')\n   );\n   ```\n2. Realizar un renderizado inicial (`GET /api/ui/...`): la imagen carga adecuadamente con `src = \"http://.../files/uploads/images/avatar_123.png\"`.\n3. Disparar cualquier acción POST (`POST /api/ui-event`) que cause que el componente o su contenedor sea re-evaluado o mutado (por ejemplo, `$this->user_avatar->src('avatar_456.png');` o una reconstrucción de colección).\n4. **Verificar el JSON de respuesta:** el diff retornado contendrá `\"src\": \"avatar_456.png\"` en vez de la URL completa.\n\n---\n\n## 5. Solución Sugerida\n\nExisten dos enfoques complementarios para corregir esta anomalía en el framework:\n\n### Opción 1: Extraer el valor del componente ya transformado en `$newUI` (Recomendada)\nEn `ScreenLifecycleOrchestrator::buildDiffResponse()`, al transferir los cambios de componentes sucios al `$diff`, se debe priorizar el valor ya transformado y serializado por `toJson()` presente en `$newUI`, en lugar de inyectar a ciegas el valor crudo de `$propValue`:\n\n```php\n// vendor/idei/usim/src/Support/ScreenLifecycleOrchestrator.php\nforeach ($dirtyProps as $propKey => $propValue) {\n    // Si newUI ya transformó este atributo (como hace Image con src), usar el valor transformado\n    if (array_key_exists($propKey, $newUI[$componentId])) {\n        $diff[$componentId][$propKey] = $newUI[$componentId][$propKey];\n    } else {\n        $diff[$componentId][$propKey] = $propValue;\n    }\n}\n```\n\n### Opción 2: Resolver el valor en el hook de mutación de `Image`\nSobrescribir `setConfig` en `Image` o implementar un resolvedor de propiedades sucias para que `$this->dirtyKeys['src']` almacene el valor procesado cuando `$this->storagePath` esté configurado.\n\n---\n\n## 6. Conclusión\n\nEste issue genera fallos silenciosos y roturas de UI en cualquier pantalla con componentes de imagen dinámicos que dependan del método `->storage()`. Aplicar la corrección en `ScreenLifecycleOrchestrator` garantizará que las transformaciones implementadas en `toJson()` por componentes especializados se respeten estrictamente en el ciclo de vida reactivo.\n";
+    document.getElementById("content").innerHTML = marked.parse(md);
+  </script>
+</body>
+</html>

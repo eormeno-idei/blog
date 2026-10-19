@@ -191,8 +191,6 @@ class PublishPost extends Screen
 
         $this->toast('¡Post publicado correctamente!', 'success');
 
-        // Limpiar snapshot en caché de Home y navegar vía SPA forzando recarga de los últimos posts
-        Screen::make(Home::class)->clearCachedScreenSnapshot();
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 
@@ -201,7 +199,6 @@ class PublishPost extends Screen
      */
     public function onCancelPost(array $params): void
     {
-        Screen::make(Home::class)->clearCachedScreenSnapshot();
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 }

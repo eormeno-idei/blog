@@ -39,8 +39,6 @@ class Home extends Screen
 
         $wrapper = UI::container('home_wrapper')
             ->centerHorizontal()
-            ->padding(Spacing::px(12))
-            ->gap(Spacing::px(10))
             ->plain();
 
         // Encabezado con título y acciones según el rol activo
@@ -216,9 +214,6 @@ class Home extends Screen
                 ->padding(Spacing::px(4))
                 ->gap(Spacing::px(4));
 
-            // $imageUrl = $this->resolvePostImageUrl($post->image, $post->id);
-
-
             $postCard->add(
                 UI::image("post_img_{$post->id}")
                     ->src($post->image ?? '')
@@ -305,8 +300,7 @@ class Home extends Screen
      */
     public function onGoToPublish(array $params): void
     {
-        Screen::make(PublishPost::class)->clearCachedScreenSnapshot();
-        $this->showInto(PublishPost::class, updateBrowserUrl: true);
+        $this->showInto(PublishPost::class, updateBrowserUrl: true, force: true);
     }
 
     /**
@@ -317,6 +311,9 @@ class Home extends Screen
         $this->showInto(UsersManager::class, updateBrowserUrl: true);
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     /**
      * @param array<string, mixed> $params
      */
@@ -339,7 +336,31 @@ class Home extends Screen
 
         if ($deleted) {
             $this->toast('Post eliminado correctamente.', 'success');
-            $this->renderPostsList();
+
+            // 1. Buscar y remover puntualmente la tarjeta del post eliminado
+            if ($this->posts_list_container !== null) {
+                $postCard = $this->posts_list_container->findByName("post_card_{$postId}");
+                if ($postCard !== null) {
+                    $this->posts_list_container->tryRemove($postCard->getId());
+                }
+
+                // 2. Si no quedan posts, mostrar la tarjeta de lista vacía
+                if ($this->posts_list_container->count() === 0) {
+                    $emptyCard = UI::container('posts_empty_card')
+                        ->card()
+                        ->padding(Spacing::px(32))
+                        ->alignItems(AlignItems::CENTER);
+
+                    $emptyCard->add(
+                        UI::label('lbl_no_posts')
+                            ->text('Aún no hay posts publicados.')
+                            ->style('h3')
+                            ->center()
+                    );
+
+                    $this->posts_list_container->add($emptyCard);
+                }
+            }
         } else {
             $this->toast('No se encontró el post a eliminar.', 'warning');
         }
