@@ -1,7 +1,4 @@
 <?php
-
-// @usim: feature="admin", type="screen"
-
 namespace App\UI\Screens\Auth;
 
 use App\Http\Requests\Auth\RegisterRequest;
@@ -18,7 +15,6 @@ use Idei\Usim\Enums\Visibility;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Models\UsimRole;
 use Idei\Usim\Screen;
-use Idei\Usim\Support\FakeDataHelper;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
@@ -60,27 +56,8 @@ class Register extends Screen
         /** @var list<string> $selectedRoles */
         $selectedRoles = [config('usim.default_registering_role', 'registered')];
 
-        $fakeData = (bool) ($params['fakeData'] ?? (config('app.env') === 'local'));
         $askForRole = (bool) ($params['askForRole'] ?? false);
         $this->state_ask_for_role = $askForRole;
-
-        if ($fakeData) {
-            $roleService = app(RoleService::class);
-            $availableRoles = array_map(
-                static fn(UsimRole $role): string => $role->name,
-                $roleService->getAllowedRoles()
-            );
-            if (empty($availableRoles)) {
-                $availableRoles = ['user', 'admin'];
-            }
-
-            $userData = FakeDataHelper::userData($availableRoles);
-            $name = $userData['name'];
-            $email = $userData['email'];
-            $password = $userData['password'];
-            $password_confirmation = $userData['password_confirmation'];
-            $selectedRoles = [$userData['role']];
-        }
 
         $wrapper = UI::container('register_wrapper')
             ->card()
