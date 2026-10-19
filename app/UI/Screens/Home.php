@@ -1,4 +1,5 @@
 <?php
+
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
@@ -9,6 +10,7 @@ use App\UI\Screens\Auth\Register;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\AspectRatio;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\Visibility;
@@ -28,8 +30,7 @@ class Home extends Screen
 
     public function __construct(
         protected PostServiceInterface $postService
-    ) {
-    }
+    ) {}
 
     public function buildBaseUI(Container $container, ...$params): void
     {
@@ -180,7 +181,7 @@ class Home extends Screen
 
     private function renderPostsList(): void
     {
-        // $this->posts_list_container->clear();
+        $this->posts_list_container->clear();
 
         $posts = $this->postService->getLatestPosts();
 
@@ -203,25 +204,32 @@ class Home extends Screen
 
         $isAdmin = $this->currentUserHasRole('admin');
 
+        $dim = AspectRatio::_16_9->dimensionsFor(width: 480);
+        $height = Size::px($dim[1] + 40);
+
         foreach ($posts as $post) {
             $postCard = UI::container("post_card_{$post->id}")
                 ->card()
                 ->layout(LayoutType::VERTICAL)
                 ->minWidth(Size::px(300))->maxWidth(Size::px(300))
-                ->minHeight(Size::px(300))->maxHeight(Size::px(300))
-                ->padding(Spacing::px(8))
+                ->minHeight(Size::px(350))->maxHeight(Size::px(350))
+                ->padding(Spacing::px(4))
                 ->gap(Spacing::px(4));
 
-            $imageUrl = $this->resolvePostImageUrl($post->image, $post->id);
+            // $imageUrl = $this->resolvePostImageUrl($post->image, $post->id);
+
 
             $postCard->add(
                 UI::image("post_img_{$post->id}")
-                    ->src($imageUrl)
-                    ->alt((string) $post->title)
+                    ->src($post->image ?? '')
+                    ->storage('uploads/images')
+                    ->caption((string) $post->title)
                     ->width(Size::full())
-                    ->height(Size::px(270))
+                    ->height($height)
                     ->objectFit('scale-down')
-                    ->rounded(8)
+                    ->rounded(4)
+                    ->placeholderAspect(AspectRatio::_16_9)
+                    ->placeholderId($post->id)
             );
 
             $postHeader = UI::container("post_header_{$post->id}")
@@ -274,23 +282,6 @@ class Home extends Screen
 
             $this->posts_list_container->add($postCard);
         }
-    }
-
-    private function resolvePostImageUrl(string|null $image, int $id = 0, int $width = 640, int $height = 360): string
-    {
-        if (empty($image)) {
-            if ($id == 0) {
-                $id = random_int(1, 1000);
-            }
-            $seed = "123{$id}";
-            return "https://picsum.photos/seed/{$seed}/{$width}/{$height}";
-        }
-
-        if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://') || str_starts_with($image, '/')) {
-            return $image;
-        }
-
-        return UploadService::fileUrl("uploads/images/{$image}");
     }
 
     /**

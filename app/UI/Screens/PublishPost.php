@@ -8,6 +8,7 @@ use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Uploader;
 use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\AspectRatio;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Screen;
@@ -101,7 +102,7 @@ class PublishPost extends Screen
             ->images()
             ->maxFiles(1)
             ->maxSize(5)
-            ->aspect('16:9')
+            ->aspect(AspectRatio::_16_9)
             ->size(2)
             ->label('Imagen de Portada (opcional)');
 
