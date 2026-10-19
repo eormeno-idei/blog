@@ -12,6 +12,7 @@ use Idei\Usim\Upload\UploadService;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\AspectRatio;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Illuminate\Support\Facades\Auth;
@@ -169,7 +170,7 @@ class Profile extends Screen
             ->label(t('screens.auth.profile.photo.label'))
             ->maxFiles(1)
             ->maxSize(2)
-            ->aspect('1:1')
+            ->aspect(AspectRatio::_1_1)
             ->size(1);
 
         $wrapper->add($this->uploader_profile);
