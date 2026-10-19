@@ -185,30 +185,12 @@ class EditUser extends Screen
      */
     public function onSubmitUpdateUser(array $params): void
     {
-        $rawId = $params['user_id'] ?? null;
-        $userId = (is_int($rawId) || is_string($rawId)) ? (int) $rawId : 0;
-
-        if ($userId <= 0) {
-            $message = self::trans('user_id_required');
-            $this->toast($message, 'error');
-            if (isset($this->lbl_edit_user_result)) {
-                $this->lbl_edit_user_result->text($message)->style('error');
-            }
-
-            return;
-        }
-
-        $user = $this->userService->findUser($userId);
+        $user = $this->resolveTargetUserForAction($params, updateResultLabel: true);
         if (! $user) {
-            $message = self::trans('user_not_found');
-            $this->toast($message, 'error');
-            if (isset($this->lbl_edit_user_result)) {
-                $this->lbl_edit_user_result->text($message)->style('error');
-            }
-
             return;
         }
 
+        $userId = (int) $user->getKey();
         $updateData = $params;
         if (isset($updateData['roles'])) {
             $updateData['roles'] = (array) $updateData['roles'];
@@ -232,10 +214,7 @@ class EditUser extends Screen
                 ]
             ));
 
-            $this->toast($message, 'success');
-            if (isset($this->lbl_edit_user_result)) {
-                $this->lbl_edit_user_result->text($message)->style('success');
-            }
+            $this->setResultFeedback($message, 'success');
 
             if ($this->isOpenedAsModal()) {
                 $this->closeModal();
@@ -244,10 +223,7 @@ class EditUser extends Screen
             return;
         }
 
-        $this->toast($message, 'error');
-        if (isset($this->lbl_edit_user_result)) {
-            $this->lbl_edit_user_result->text($message)->style('error');
-        }
+        $this->setResultFeedback($message, 'error');
     }
 
     /**
@@ -255,24 +231,12 @@ class EditUser extends Screen
      */
     public function onDeleteUser(array $params): void
     {
-        $rawId = $params['user_id'] ?? null;
-        $userId = (is_int($rawId) || is_string($rawId)) ? (int) $rawId : 0;
-
-        if ($userId <= 0) {
-            $message = self::trans('user_id_required');
-            $this->toast($message, 'error');
-
-            return;
-        }
-
-        $user = $this->userService->findUser($userId);
+        $user = $this->resolveTargetUserForAction($params);
         if (! $user) {
-            $message = self::trans('user_not_found');
-            $this->toast($message, 'error');
-
             return;
         }
 
+        $userId = (int) $user->getKey();
         $rawName = $user instanceof UsimUserInterface
             ? $user->getDisplayName()
             : $user->getAttribute('name');
@@ -293,24 +257,12 @@ class EditUser extends Screen
      */
     public function onConfirmDeleteUser(array $params): void
     {
-        $rawId = $params['user_id'] ?? null;
-        $userId = (is_int($rawId) || is_string($rawId)) ? (int) $rawId : 0;
-
-        if ($userId <= 0) {
-            $message = self::trans('user_id_required');
-            $this->toast($message, 'error');
-
-            return;
-        }
-
-        $user = $this->userService->findUser($userId);
+        $user = $this->resolveTargetUserForAction($params);
         if (! $user) {
-            $message = self::trans('user_not_found');
-            $this->toast($message, 'error');
-
             return;
         }
 
+        $userId = (int) $user->getKey();
         $response = $this->userService->deleteUser($user);
         $status = $response['status'];
         $message = $response['message'];
@@ -325,6 +277,43 @@ class EditUser extends Screen
         ));
 
         $this->closeModal();
+    }
+
+    /**
+     * Resolve and validate the target user for mutation actions.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    private function resolveTargetUserForAction(array $params, bool $updateResultLabel = false): ?\Illuminate\Database\Eloquent\Model
+    {
+        $rawId = $params['user_id'] ?? null;
+        $userId = (is_int($rawId) || is_string($rawId)) ? (int) $rawId : 0;
+
+        if ($userId <= 0) {
+            $this->setResultFeedback(self::trans('user_id_required'), 'error', $updateResultLabel);
+
+            return null;
+        }
+
+        $user = $this->userService->findUser($userId);
+        if (! $user) {
+            $this->setResultFeedback(self::trans('user_not_found'), 'error', $updateResultLabel);
+
+            return null;
+        }
+
+        return $user;
+    }
+
+    /**
+     * Display toast and optionally update the result label.
+     */
+    private function setResultFeedback(string $message, string $style, bool $updateLabel = true): void
+    {
+        $this->toast($message, $style);
+        if ($updateLabel && isset($this->lbl_edit_user_result)) {
+            $this->lbl_edit_user_result->text($message)->style($style);
+        }
     }
 
     /**

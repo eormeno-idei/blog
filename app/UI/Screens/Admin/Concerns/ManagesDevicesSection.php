@@ -4,9 +4,9 @@ namespace App\UI\Screens\Admin\Concerns;
 
 use App\Services\Device\DeviceListingService;
 use App\Services\Device\DeviceService;
+use App\UI\Screens\Admin\AdminDevicePairingScreen;
 use App\UI\Screens\Admin\TableModels\DeviceTableModel;
 use App\UI\Screens\Device\EditDevice;
-use App\UI\Screens\Device\Link;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
@@ -146,7 +146,7 @@ trait ManagesDevicesSection
         }
 
         $caller = $this->screen ?? ($this instanceof \Idei\Usim\Screen ? $this : null);
-        $caller?->openModal(Link::class, [
+        $caller?->openModal(AdminDevicePairingScreen::class, [
             'device' => $device,
             'devicesOptions' => $devicesOptions,
         ]);

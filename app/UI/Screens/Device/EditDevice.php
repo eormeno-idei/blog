@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Services\Device\DeviceService;
 use App\Services\Role\RoleService;
 use App\Services\Units\UsimUnitsService;
+use App\UI\Screens\Admin\AdminDevicePairingScreen;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
@@ -317,49 +318,20 @@ class EditDevice extends Screen
     {
         $rawId = $params['device_id'] ?? $params['id'] ?? null;
         $deviceId = is_numeric($rawId) ? (int) $rawId : null;
-
-        $name = trim(is_string($params['device_name'] ?? null)
-            ? $params['device_name']
-            : (is_string($params['name'] ?? null) ? $params['name'] : ''));
+        $name = $this->extractDeviceName($params);
 
         if ($name === '') {
             $message = t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX . 'device_name_label')]);
-            $this->toast($message, 'error');
-            if (isset($this->lbl_edit_device_result)) {
-                $this->lbl_edit_device_result->text($message)->style('error');
-            }
+            $this->showValidationError($message);
             return;
         }
 
-        $rawUnits = $params['device_units'] ?? $params['unit_ids'] ?? null;
-        $rawUnitId = $params['device_unit_id'] ?? $params['unit_id'] ?? null;
-
-        /** @var list<int>|null $unitIds */
-        $unitIds = null;
-        if (is_array($rawUnits)) {
-            $unitIds = array_values(array_filter(
-                array_map(static fn(mixed $u): ?int => is_numeric($u) ? (int) $u : null, $rawUnits),
-                static fn(?int $id): bool => $id !== null && $id > 0
-            ));
-        } elseif (is_int($rawUnitId) || (is_string($rawUnitId) && $rawUnitId !== '' && $rawUnitId !== '0')) {
-            $unitIds = is_numeric($rawUnitId) ? [(int) $rawUnitId] : null;
-        }
-
-        $rawRoles = $params['device_roles'] ?? $params['roles'] ?? [];
-        if (is_string($rawRoles)) {
-            $roles = [$rawRoles];
-        } elseif (is_array($rawRoles)) {
-            $roles = array_values(array_filter($rawRoles, static fn(mixed $r): bool => is_string($r) && $r !== ''));
-        } else {
-            $roles = [];
-        }
+        $unitIds = $this->extractDeviceUnitIds($params);
+        $roles = $this->extractDeviceRoles($params);
 
         if (empty($roles)) {
             $message = t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX . 'device_roles_label')]);
-            $this->toast($message, 'error');
-            if (isset($this->lbl_edit_device_result)) {
-                $this->lbl_edit_device_result->text($message)->style('error');
-            }
+            $this->showValidationError($message);
             return;
         }
 
@@ -383,6 +355,64 @@ class EditDevice extends Screen
         }
 
         $this->closeModal();
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function extractDeviceName(array $params): string
+    {
+        $rawName = $params['device_name'] ?? $params['name'] ?? '';
+
+        return is_string($rawName) ? trim($rawName) : '';
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return list<int>|null
+     */
+    private function extractDeviceUnitIds(array $params): ?array
+    {
+        $rawUnits = $params['device_units'] ?? $params['unit_ids'] ?? null;
+        if (is_array($rawUnits)) {
+            return array_values(array_filter(
+                array_map(static fn(mixed $u): ?int => is_numeric($u) ? (int) $u : null, $rawUnits),
+                static fn(?int $id): bool => $id !== null && $id > 0
+            ));
+        }
+
+        $rawUnitId = $params['device_unit_id'] ?? $params['unit_id'] ?? null;
+        if (is_numeric($rawUnitId) && (int) $rawUnitId > 0) {
+            return [(int) $rawUnitId];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return list<string>
+     */
+    private function extractDeviceRoles(array $params): array
+    {
+        $rawRoles = $params['device_roles'] ?? $params['roles'] ?? [];
+        if (is_string($rawRoles) && $rawRoles !== '') {
+            return [$rawRoles];
+        }
+
+        if (is_array($rawRoles)) {
+            return array_values(array_filter($rawRoles, static fn(mixed $r): bool => is_string($r) && $r !== ''));
+        }
+
+        return [];
+    }
+
+    private function showValidationError(string $message): void
+    {
+        $this->toast($message, 'error');
+        if (isset($this->lbl_edit_device_result)) {
+            $this->lbl_edit_device_result->text($message)->style('error');
+        }
     }
 
     /**
@@ -481,7 +511,7 @@ class EditDevice extends Screen
         $deviceId = is_numeric($rawId) ? (int) $rawId : null;
         $device = $deviceId !== null ? $this->deviceService->getDevice($deviceId) : null;
 
-        $this->openModal(Link::class, [
+        $this->openModal(AdminDevicePairingScreen::class, [
             'device' => $device,
             'device_id' => $deviceId,
         ]);
@@ -535,11 +565,10 @@ class EditDevice extends Screen
             ? '✅ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_paired')
             : '⚠️ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_unpaired');
 
-
-        $label = $isPaired ?
-            t(self::DEVICES_I18N_PREFIX . 'device_unpair_button') :
-            t(self::DEVICES_I18N_PREFIX . 'pair_device');
-        $style = $isPaired ? "success" : "warning";
+        $label = $isPaired
+            ? t(self::DEVICES_I18N_PREFIX . 'device_unpair_button')
+            : t(self::DEVICES_I18N_PREFIX . 'pair_device');
+        $style = $isPaired ? 'success' : 'warning';
 
         $this->device_status_banner
             ?->text($statusText)
@@ -562,31 +591,6 @@ class EditDevice extends Screen
      */
     public function onDeviceUnpaired(array $params): void
     {
-        $message = $params['message'] ?? '';
-        $device = $this->resolveDevice($params['device'] ?? null, $params['device_id'] ?? null);
-        $isPaired = $device !== null && $device->isPaired();
-        $statusText = $isPaired
-            ? '✅ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_paired')
-            : '⚠️ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_unpaired');
-
-        $label = $isPaired ?
-            t(self::DEVICES_I18N_PREFIX . 'device_unpair_button') :
-            t(self::DEVICES_I18N_PREFIX . 'pair_device');
-        $style = $isPaired ? "success" : "warning";
-
-        $this->device_status_banner
-            ?->text($statusText)
-            ?->style($style);
-
-        $this->btn_pair_unpair_device
-            ?->label($label)
-            ?->style($style);
-
-        $this->btn_delete_device
-            ?->enabled(!$isPaired);
-
-        if (\is_string($message)) {
-            $this->toast($message, $style);
-        }
+        $this->onDevicePaired($params);
     }
 }

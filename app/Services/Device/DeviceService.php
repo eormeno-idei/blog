@@ -33,35 +33,14 @@ class DeviceService
             'specs' => $data['specs'] ?? null,
         ]);
 
-        /** @var list<int> $unitIds */
-        $unitIds = [];
-        if (!empty($data['unit_ids'])) {
-            $unitIds = array_map(static fn(int|string $unitId): int => (int) $unitId, $data['unit_ids']);
-        } elseif (!empty($data['unit_id'])) {
-            $unitIds = [(int) $data['unit_id']];
-        }
-
+        $unitIds = $this->resolveUnitIdsFromPayload($data) ?? [];
         if (!empty($unitIds)) {
             $device->usimUnits()->sync($unitIds);
         }
 
         if (!empty($data['roles'])) {
             $roles = is_array($data['roles']) ? $data['roles'] : [$data['roles']];
-            $targetUnits = !empty($unitIds) ? $unitIds : [null];
-
-            foreach ($targetUnits as $targetUnitId) {
-                if ($targetUnitId !== null && function_exists('setPermissionsTeamId') && function_exists('getPermissionsTeamId')) {
-                    $prevTeamId = getPermissionsTeamId();
-                    try {
-                        setPermissionsTeamId($targetUnitId);
-                        $device->syncRoles($roles);
-                    } finally {
-                        setPermissionsTeamId($prevTeamId);
-                    }
-                } else {
-                    $device->syncRoles($roles);
-                }
-            }
+            $this->syncDeviceRolesAcrossUnits($device, $roles, $unitIds);
         }
 
         return $device;
@@ -94,14 +73,7 @@ class DeviceService
 
         $device->save();
 
-        /** @var list<int>|null $unitIds */
-        $unitIds = null;
-        if (array_key_exists('unit_ids', $data)) {
-            $unitIds = array_map(static fn(int|string $unitId): int => (int) $unitId, $data['unit_ids']);
-        } elseif (array_key_exists('unit_id', $data)) {
-            $unitIds = $data['unit_id'] !== null ? [(int) $data['unit_id']] : [];
-        }
-
+        $unitIds = $this->resolveUnitIdsFromPayload($data);
         if ($unitIds !== null) {
             $device->usimUnits()->sync($unitIds);
         }
@@ -113,24 +85,59 @@ class DeviceService
                 static fn(mixed $unitId): int => is_int($unitId) || is_string($unitId) ? (int) $unitId : 0,
                 $device->usimUnits->pluck('id')->all()
             );
-            $targetUnits = !empty($effectiveUnits) ? $effectiveUnits : [null];
-
-            foreach ($targetUnits as $targetUnitId) {
-                if ($targetUnitId !== null && function_exists('setPermissionsTeamId') && function_exists('getPermissionsTeamId')) {
-                    $prevTeamId = getPermissionsTeamId();
-                    try {
-                        setPermissionsTeamId($targetUnitId);
-                        $device->syncRoles($roles);
-                    } finally {
-                        setPermissionsTeamId($prevTeamId);
-                    }
-                } else {
-                    $device->syncRoles($roles);
-                }
-            }
+            $this->syncDeviceRolesAcrossUnits($device, $roles, $effectiveUnits);
         }
 
         return $device;
+    }
+
+    /**
+     * Extract normalized unit IDs from payload when provided.
+     *
+     * @param array<string, mixed> $data
+     * @return list<int>|null
+     */
+    private function resolveUnitIdsFromPayload(array $data): ?array
+    {
+        if (array_key_exists('unit_ids', $data) && is_array($data['unit_ids'])) {
+            return array_values(array_map(
+                static fn(mixed $unitId): int => is_int($unitId) || is_string($unitId) ? (int) $unitId : 0,
+                $data['unit_ids']
+            ));
+        }
+
+        if (array_key_exists('unit_id', $data)) {
+            return !empty($data['unit_id']) && (is_int($data['unit_id']) || is_string($data['unit_id']))
+                ? [(int) $data['unit_id']]
+                : [];
+        }
+
+        return null;
+    }
+
+    /**
+     * Synchronize device roles across the given unit IDs (or globally when empty).
+     *
+     * @param list<string> $roles
+     * @param list<int> $unitIds
+     */
+    private function syncDeviceRolesAcrossUnits(Device $device, array $roles, array $unitIds): void
+    {
+        $targetUnits = !empty($unitIds) ? $unitIds : [null];
+
+        foreach ($targetUnits as $targetUnitId) {
+            if ($targetUnitId !== null && function_exists('setPermissionsTeamId') && function_exists('getPermissionsTeamId')) {
+                $prevTeamId = getPermissionsTeamId();
+                try {
+                    setPermissionsTeamId($targetUnitId);
+                    $device->syncRoles($roles);
+                } finally {
+                    setPermissionsTeamId($prevTeamId);
+                }
+            } else {
+                $device->syncRoles($roles);
+            }
+        }
     }
 
     /**
@@ -151,10 +158,15 @@ class DeviceService
             ? array_map(static fn(int|string $unitId): int => (int) $unitId, $unitIds)
             : [(int) $unitIds];
         $device->usimUnits()->syncWithoutDetaching($units);
+        $device->load('usimUnits');
 
-        $existingRoles = $device->roles->pluck('name')->filter('is_string')->all();
+        $existingRoles = $device->roles->pluck('name')
+            ->filter(static fn(mixed $name): bool => is_string($name))
+            ->all();
         if (empty($existingRoles) && $device->relationLoaded('globalRoles')) {
-            $existingRoles = $device->globalRoles->pluck('name')->filter('is_string')->all();
+            $existingRoles = $device->globalRoles->pluck('name')
+                ->filter(static fn(mixed $name): bool => is_string($name))
+                ->all();
         }
 
         if (!empty($existingRoles) && function_exists('setPermissionsTeamId') && function_exists('getPermissionsTeamId')) {

@@ -171,77 +171,23 @@ class UserService implements UserMutationServiceInterface
         /** @var UsimUnitsService $unitsService */
         $unitsService = app(UsimUnitsService::class);
         $hasOperationalUnits = $unitsService->hasOperationalUnits();
-
         $isInLobby = $user->isRegisteredInLobby();
 
-        $targetUnit = null;
+        $targetUnit = $this->resolveTargetUnitForSync($user, $data, $isInLobby, $hasOperationalUnits);
 
-        if ($isInLobby) {
-            if ($hasOperationalUnits) {
-                if (! empty($data['target_unit'])) {
-                    $targetUnit = is_numeric($data['target_unit'])
-                        ? UsimUnit::find($data['target_unit'])
-                        : UsimUnit::where('slug', $data['target_unit'])->first();
-                }
-
-                if (! $targetUnit) {
-                    $targetUnit = UsimUnit::query()
-                        ->where(function ($q) {
-                            $q->where('type', '!=', 'system')->orWhereNull('type');
-                        })
-                        ->whereNotIn('slug', ['main', 'lobby'])
-                        ->first();
-                }
-
-                if (! $targetUnit) {
-                    return $this->validationError('target_unit', 'A valid operational unit is required.');
-                }
-            } else {
-                $targetUnit = UsimUnit::where('slug', 'main')->first()
-                    ?? UsimUnit::firstOrCreate(['slug' => 'lobby'], ['type' => 'system']);
-            }
-        } else {
-            if (! empty($data['target_unit'])) {
-                $targetUnit = is_numeric($data['target_unit'])
-                    ? UsimUnit::find($data['target_unit'])
-                    : UsimUnit::where('slug', $data['target_unit'])->first();
-            }
-
-            if (! $targetUnit) {
-                $targetUnit = $user->usimUnits()->whereNotIn('slug', ['lobby'])->first();
-            }
-
-            if (! $targetUnit) {
-                $targetUnit = UsimUnit::where('slug', 'main')->first()
-                    ?? UsimUnit::where('slug', 'lobby')->first();
-            }
+        if ($isInLobby && $hasOperationalUnits && ! $targetUnit) {
+            return $this->validationError('target_unit', 'A valid operational unit is required.');
         }
 
         $previousTeamId = function_exists('getPermissionsTeamId') ? getPermissionsTeamId() : null;
 
         try {
             if ($isInLobby) {
-                $lobbyUnit = UsimUnit::where('slug', 'lobby')->first();
-                if ($lobbyUnit) {
-                    if (function_exists('setPermissionsTeamId')) {
-                        setPermissionsTeamId($lobbyUnit->id);
-                    }
-                    /** @var string $defaultRegRole */
-                    $defaultRegRole = config('usim.default_registering_role', 'registered');
-                    if ($user->hasRole($defaultRegRole)) {
-                        $user->removeRole($defaultRegRole);
-                    }
-                    if (! $targetUnit || $targetUnit->id !== $lobbyUnit->id) {
-                        $user->usimUnits()->detach($lobbyUnit->id);
-                    }
-                }
+                $this->detachUserFromLobby($user, $targetUnit);
             }
 
             if ($targetUnit) {
                 $user->usimUnits()->syncWithoutDetaching([$targetUnit->id]);
-            }
-
-            if ($targetUnit) {
                 setPermissionsTeamId($targetUnit->id);
             }
 
@@ -260,6 +206,80 @@ class UserService implements UserMutationServiceInterface
     }
 
     /**
+     * Resolve the target unit for role synchronization based on lobby and operational unit state.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveTargetUnitForSync(
+        User $user,
+        array $data,
+        bool $isInLobby,
+        bool $hasOperationalUnits
+    ): ?UsimUnit {
+        $targetUnit = $this->findUnitByIdentifier($data['target_unit'] ?? null);
+        if ($targetUnit) {
+            return $targetUnit;
+        }
+
+        if ($isInLobby) {
+            if ($hasOperationalUnits) {
+                return UsimUnit::query()
+                    ->where(function ($q) {
+                        $q->where('type', '!=', 'system')->orWhereNull('type');
+                    })
+                    ->whereNotIn('slug', ['main', 'lobby'])
+                    ->first();
+            }
+
+            return UsimUnit::where('slug', 'main')->first()
+                ?? UsimUnit::firstOrCreate(['slug' => 'lobby'], ['type' => 'system']);
+        }
+
+        return $user->usimUnits()->whereNotIn('slug', ['lobby'])->first()
+            ?? UsimUnit::where('slug', 'main')->first()
+            ?? UsimUnit::where('slug', 'lobby')->first();
+    }
+
+    /**
+     * Find a UsimUnit by numeric ID or slug.
+     */
+    private function findUnitByIdentifier(mixed $identifier): ?UsimUnit
+    {
+        if (empty($identifier) || (! is_int($identifier) && ! is_string($identifier))) {
+            return null;
+        }
+
+        return is_numeric($identifier)
+            ? UsimUnit::find($identifier)
+            : UsimUnit::where('slug', (string) $identifier)->first();
+    }
+
+    /**
+     * Remove default lobby registration role and detach user from lobby unit when transitioning out.
+     */
+    private function detachUserFromLobby(User $user, ?UsimUnit $targetUnit): void
+    {
+        $lobbyUnit = UsimUnit::where('slug', 'lobby')->first();
+        if (! $lobbyUnit) {
+            return;
+        }
+
+        if (function_exists('setPermissionsTeamId')) {
+            setPermissionsTeamId($lobbyUnit->id);
+        }
+
+        /** @var string $defaultRegRole */
+        $defaultRegRole = config('usim.default_registering_role', 'registered');
+        if ($user->hasRole($defaultRegRole)) {
+            $user->removeRole($defaultRegRole);
+        }
+
+        if (! $targetUnit || $targetUnit->id !== $lobbyUnit->id) {
+            $user->usimUnits()->detach($lobbyUnit->id);
+        }
+    }
+
+    /**
      * Validate update payload for empty or null values
      *
      * @param  array<string, mixed>  $data
@@ -273,7 +293,10 @@ class UserService implements UserMutationServiceInterface
             }
         }
 
-        if (array_key_exists('password', $data) && $this->isNullOrEmpty($data, 'password_confirmation')) {
+        if (
+            array_key_exists('password', $data)
+            && (! array_key_exists('password_confirmation', $data) || $this->isNullOrEmpty($data, 'password_confirmation'))
+        ) {
             return $this->validationError('password_confirmation', 'The password confirmation field cannot be empty.');
         }
 
