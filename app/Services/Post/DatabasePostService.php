@@ -12,7 +12,11 @@ class DatabasePostService implements PostServiceInterface
     {
         return DB::table('posts')
             ->join('users', 'posts.user_id', '=', 'users.id')
-            ->select('posts.*', 'users.name as author_name')
+            ->select(
+                'posts.*',
+                'users.id as author_id',
+                'users.name as author_name'
+            )
             ->orderByDesc('posts.created_at')
             ->orderByDesc('posts.id')
             ->get();
@@ -22,7 +26,11 @@ class DatabasePostService implements PostServiceInterface
     {
         return DB::table('posts')
             ->join('users', 'posts.user_id', '=', 'users.id')
-            ->select('posts.*', 'users.name as author_name')
+            ->select(
+                'posts.*',
+                'users.id as author_id',
+                'users.name as author_name'
+            )
             ->where('posts.id', $id)
             ->first();
     }
@@ -44,4 +52,3 @@ class DatabasePostService implements PostServiceInterface
         return DB::table('posts')->where('id', $id)->delete() > 0;
     }
 }
-

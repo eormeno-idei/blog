@@ -16,7 +16,6 @@ use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\Visibility;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
-use Idei\Usim\Upload\UploadService;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
@@ -206,6 +205,8 @@ class Home extends Screen
         $height = Size::px($dim[1] + 40);
 
         foreach ($posts as $post) {
+            $isOwner = Auth::check() && Auth::id() === $post->author_id;
+
             $postCard = UI::container("post_card_{$post->id}")
                 ->card()
                 ->layout(LayoutType::VERTICAL)
@@ -218,7 +219,7 @@ class Home extends Screen
                 UI::image("post_img_{$post->id}")
                     ->src($post->image ?? '')
                     ->storage('uploads/images')
-                    ->caption((string) $post->title)
+                    ->alt((string) $post->title)
                     ->width(Size::full())
                     ->height($height)
                     ->objectFit('scale-down')
@@ -261,10 +262,19 @@ class Home extends Screen
                 ->layout(LayoutType::HORIZONTAL)
                 ->justifyContent(JustifyContent::END)
                 ->plain()
-                ->shadow(false)
+                ->gap(Spacing::px(4))
                 ->padding(Spacing::zero());
 
-            if ($isAdmin) {
+            if ($isOwner) {
+                $postActionBox->add(
+                    UI::button("btn_edit_post_{$post->id}")
+                        ->label('✏️')
+                        ->action('go_to_publish', ['post_id' => (int) $post->id])
+                        ->style('secondary')
+                );
+            }
+
+            if ($isAdmin || $isOwner) {
                 $postActionBox->add(
                     UI::button("btn_delete_post_{$post->id}")
                         ->label('🗑️')
