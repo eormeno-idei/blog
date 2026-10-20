@@ -7,6 +7,7 @@ use App\Models\User;
 use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\Login;
 use App\UI\Screens\Auth\Register;
+use App\UI\Screens\Post\EditPost;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Enums\AlignItems;
@@ -207,6 +208,9 @@ class Home extends Screen
         foreach ($posts as $post) {
             $isOwner = Auth::check() && Auth::id() === $post->author_id;
 
+            $backgroundColor = $post->background_color ?? '#7c3aed';
+            $textColor = $post->text_color ?? '#ffffff';
+
             $postCard = UI::container("post_card_{$post->id}")
                 ->card()
                 ->layout(LayoutType::VERTICAL)
@@ -224,6 +228,7 @@ class Home extends Screen
                     ->height($height)
                     ->objectFit('scale-down')
                     ->rounded(4)
+                    ->placeholderColors($backgroundColor, $textColor)
                     ->placeholderAspect(AspectRatio::_16_9)
                     ->placeholderId($post->id)
             );
@@ -269,7 +274,7 @@ class Home extends Screen
                 $postActionBox->add(
                     UI::button("btn_edit_post_{$post->id}")
                         ->label('✏️')
-                        ->action('go_to_publish', ['post_id' => (int) $post->id])
+                        ->action('edit_post', ['post_id' => (int) $post->id])
                         ->style('secondary')
                 );
             }
@@ -319,6 +324,19 @@ class Home extends Screen
     public function onGoToUsers(array $params): void
     {
         $this->showInto(UsersManager::class, updateBrowserUrl: true);
+    }
+
+    public function onEditPost(array $params): void
+    {
+        $postId = isset($params['post_id']) && is_numeric($params['post_id'])
+            ? (int) $params['post_id']
+            : 0;
+
+        if ($postId <= 0) {
+            return;
+        }
+
+        $this->showInto(EditPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
     }
 
     /**

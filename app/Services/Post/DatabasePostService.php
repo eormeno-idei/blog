@@ -8,15 +8,28 @@ use Illuminate\Support\Facades\DB;
 
 class DatabasePostService implements PostServiceInterface
 {
-    public function getLatestPosts(): Collection
+    public function getLatestPosts(int $ownerId = 0, string $filter = ''): Collection
     {
-        return DB::table('posts')
+        $query = DB::table('posts')
             ->join('users', 'posts.user_id', '=', 'users.id')
             ->select(
                 'posts.*',
                 'users.id as author_id',
                 'users.name as author_name'
-            )
+            );
+        
+        if ($ownerId > 0) {
+            $query->where('posts.user_id', $ownerId);
+        }
+
+        if (!empty($filter)) {
+            $query->where(function ($q) use ($filter) {
+                $q->where('posts.title', 'like', "%{$filter}%")
+                  ->orWhere('posts.content', 'like', "%{$filter}%");
+            });
+        }
+
+        return $query
             ->orderByDesc('posts.created_at')
             ->orderByDesc('posts.id')
             ->get();
@@ -42,6 +55,13 @@ class DatabasePostService implements PostServiceInterface
             'title' => $data['title'],
             'content' => $data['content'],
             'image' => $data['image'] ?? null,
+            'background_color' => $data['background_color'] ?? null,
+            'text_color' => $data['text_color'] ?? null,
+            'background_image' => $data['background_image'] ?? null,
+            'aspect_ratio' => $data['aspect_ratio'] ?? null,
+            'from' => $data['from'] ?? null,
+            'to' => $data['to'] ?? null,
+            'status' => $data['status'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

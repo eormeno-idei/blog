@@ -23,13 +23,14 @@ fi
 if [[ "$env_db" == "sqlite" ]]; then
     # Remove the database
     rm -f database/database.sqlite
+    echo "Removed SQLite database: database/database.sqlite"
 fi
 
 php artisan migrate --force
 
-php artisan db:seed --no-interaction
 php artisan usim:discover
 php artisan usim:sync
+php artisan db:seed
 
 # Clear cache before starting the server
 echo "Clearing cache..."

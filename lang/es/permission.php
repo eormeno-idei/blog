@@ -139,4 +139,12 @@ return [
             'description' => 'Permite eliminar cualquier post publicado.',
         ],
     ],
+    'post' => [
+        'edit_post' => [
+            'access' => [
+                'name' => 'Acceder a Post Edit Post',
+                'description' => 'Permite acceder a la pantalla Post Edit Post.',
+            ],
+        ],
+    ],
 ];

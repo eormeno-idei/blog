@@ -1,0 +1,223 @@
+<?php
+
+namespace App\UI\Screens\Post;
+
+use App\Contracts\PostServiceInterface;
+use App\Models\User;
+use App\UI\Screens\Home;
+use Idei\Usim\Components\Container;
+use Idei\Usim\Components\Input;
+use Idei\Usim\Components\Uploader;
+use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\AspectRatio;
+use Idei\Usim\Enums\JustifyContent;
+use Idei\Usim\Enums\LayoutType;
+use Idei\Usim\Screen;
+use Idei\Usim\UI;
+use Idei\Usim\ValueObjects\Size;
+use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Auth;
+
+class EditPost extends Screen
+{
+    protected Input $post_title;
+    protected Input $post_content;
+    protected Uploader $post_image;
+
+    public function __construct(
+        protected PostServiceInterface $postService
+    ) {
+    }
+
+    public static function authorize(): bool
+    {
+        return self::requireRole(['publisher', 'admin']);
+    }
+
+    public static function getMenuLabel(): string
+    {
+        return 'Editar Post';
+    }
+
+    public static function getMenuIcon(): ?string
+    {
+        return '✏️';
+    }
+
+    protected function buildBaseUI(Container $container, ...$params): void
+    {
+        /** @var array<string, mixed> $params */
+        $postId = isset($params['post_id']) && is_numeric($params['post_id'])
+            ? (int) $params['post_id']
+            : 0;
+
+        if ($postId <= 0) {
+            return;
+        }
+
+        $post = $this->postService->findById($postId);
+        if (!$post) {
+            $this->toast('Post no encontrado.', 'error');
+            $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+            return;
+        }
+
+        $container
+            ->plain()
+            ->width(Size::full())
+            ->maxWidth(Size::px(720))
+            ->centerHorizontal()
+            ->padding(Spacing::px(24))
+            ->gap(Spacing::px(16));
+
+        $header = UI::container('publish_header')
+            ->width(Size::full())
+            ->layout(LayoutType::HORIZONTAL)
+            ->justifyContent(JustifyContent::SPACE_BETWEEN)
+            ->alignItems(AlignItems::CENTER)
+            ->plain()
+            ->shadow(false)
+            ->padding(Spacing::zero())
+            ->gap(Spacing::px(16));
+
+        $header->add(
+            UI::label('lbl_publish_title')
+                ->text('✏️ Editar Post')
+                ->style('h2')
+                ->color('primary')
+        );
+
+        $header->add(
+            UI::button('btn_back_home')
+                ->label('← Volver al Inicio')
+                ->action('cancel_edit')
+                ->style('secondary')
+        );
+
+        $container->add($header);
+
+        $formCard = UI::container('publish_form_card')
+            ->card()
+            ->width(Size::full())
+            ->layout(LayoutType::VERTICAL)
+            ->padding(Spacing::px(24))
+            ->gap(Spacing::px(16));
+
+        $this->post_title = UI::input('post_title')
+            ->label('Título del Post')
+            ->placeholder('Escribe un título atractivo...')
+            ->required(true)
+            ->value($post->title)
+            ->width(Size::full());
+
+        $this->post_content = UI::input('post_content')
+            ->label('Contenido')
+            ->placeholder('Desarrolla el contenido de tu publicación...')
+            ->required(true)
+            ->value($post->content)
+            ->width(Size::full());
+
+        $this->post_image = UI::uploader('post_image')
+            ->images()
+            ->maxFiles(1)
+            ->maxSize(5)
+            ->aspect(AspectRatio::_16_9)
+            ->size(2)
+            ->label('Imagen de Portada (opcional)');
+
+        $actionsRow = UI::container('publish_actions_row')
+            ->width(Size::full())
+            ->layout(LayoutType::HORIZONTAL)
+            ->justifyContent(JustifyContent::END)
+            ->gap(Spacing::px(12))
+            ->plain()
+            ->shadow(false)
+            ->padding(Spacing::zero());
+
+        $actionsRow->add(
+            UI::button('btn_cancel_post')
+                ->label('Cancelar')
+                ->action('cancel_post')
+                ->style('secondary')
+        );
+
+        $actionsRow->add(
+            UI::button('btn_save_post')
+                ->label('Guardar Cambios')
+                ->action('save_post')
+                ->style('primary')
+        );
+
+        $formCard->add($this->post_title);
+        $formCard->add($this->post_content);
+        $formCard->add($this->post_image);
+        $formCard->add($actionsRow);
+
+        $container->add($formCard);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function onSavePost(array $params): void
+    {
+        $user = Auth::user();
+        if (!$user instanceof User) {
+            $this->toast('Debes iniciar sesión para publicar.', 'error');
+            return;
+        }
+
+        $rawTitle = $params['post_title'] ?? '';
+        $rawContent = $params['post_content'] ?? '';
+
+        $title = is_string($rawTitle) ? trim($rawTitle) : '';
+        $content = is_string($rawContent) ? trim($rawContent) : '';
+
+        $this->post_title->error(null);
+        $this->post_content->error(null);
+
+        $hasErrors = false;
+        if ($title === '') {
+            $this->post_title->error('El título es obligatorio.');
+            $hasErrors = true;
+        }
+
+        if ($content === '') {
+            $this->post_content->error('El contenido es obligatorio.');
+            $hasErrors = true;
+        }
+
+        if ($hasErrors) {
+            $this->toast('Por favor completa los campos obligatorios.', 'warning');
+            return;
+        }
+
+        // Confirmar y persistir la imagen subida usando Uploader::confirm()
+        $confirmedImage = $this->post_image->confirm($params, 'images');
+        $imageFilename = null;
+        if (is_string($confirmedImage) && $confirmedImage !== '') {
+            $imageFilename = $confirmedImage;
+        } elseif (is_array($confirmedImage) && isset($confirmedImage[0]) && is_string($confirmedImage[0])) {
+            $imageFilename = $confirmedImage[0];
+        }
+
+        $this->postService->createPost([
+            'user_id' => (int) $user->id,
+            'title' => $title,
+            'content' => $content,
+            'image' => $imageFilename,
+        ]);
+
+        $this->toast('¡Post publicado correctamente!', 'success');
+
+        $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function onCancelEdit(array $params): void
+    {
+        $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+    }
+}
