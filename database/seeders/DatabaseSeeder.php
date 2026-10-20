@@ -6,7 +6,6 @@ use App\Contracts\PostServiceInterface;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class DatabaseSeeder extends Seeder
 {
@@ -36,7 +35,7 @@ class DatabaseSeeder extends Seeder
         $postService->createPost([
             'user_id' => (int) $publisher->id,
             'title' => 'Cómo publicar contenido con UI::uploader y UI::image',
-            'content' => 'En USIM, el componente UI::uploader() sube los archivos de forma asíncrona a una carpeta temporal con vista previa inmediata, y al enviar el formulario se confirma con $this->post_image->confirm($params, \'images\'). Luego, UI::image() los renderiza de forma responsiva.',
+            'content' => 'En USIM, el componente UI::uploader().',
             'image' => '',
             'aspect_ratio' => '16:9',
             'background_color' => '#7c3aed',
@@ -47,7 +46,7 @@ class DatabaseSeeder extends Seeder
         $postService->createPost([
             'user_id' => (int) $admin->id,
             'title' => 'Bienvenido al Gestor de Posts Didáctico con USIM',
-            'content' => 'Esta aplicación demuestra el flujo de roles en una única unidad organizacional (lobby): los invitados (guest) leen los últimos posts, los nuevos usuarios (registered) ven su pantalla de espera y editan su avatar, los publicadores (publisher) crean posts y los administradores (admin) moderan posts y asignan roles.',
+            'content' => 'Esta aplicación muestra el flujo de roles.',
             'image' => '',
             'aspect_ratio' => '16:9',
             'background_color' => '#facc15',
