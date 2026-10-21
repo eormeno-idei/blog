@@ -6,6 +6,7 @@ use App\Contracts\PostServiceInterface;
 use App\Models\User;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
+use Idei\Usim\Components\Select;
 use Idei\Usim\Components\Uploader;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\AspectRatio;
@@ -21,12 +22,12 @@ class PublishPost extends Screen
 {
     protected Input $post_title;
     protected Input $post_content;
+    protected Select $aspect_ratio;
     protected Uploader $post_image;
 
     public function __construct(
         protected PostServiceInterface $postService
-    ) {
-    }
+    ) {}
 
     public static function authorize(): bool
     {
@@ -102,9 +103,11 @@ class PublishPost extends Screen
             ->images()
             ->maxFiles(1)
             ->maxSize(5)
-            ->aspect(AspectRatio::_16_9)
+            ->aspect(AspectRatio::_9_16)
             ->size(2)
             ->label('Imagen de Portada (opcional)');
+
+        $this->aspect_ratio = $this->aspectRatioSelect();
 
         $actionsRow = UI::container('publish_actions_row')
             ->width(Size::full())
@@ -132,6 +135,7 @@ class PublishPost extends Screen
         $formCard->add($this->post_title);
         $formCard->add($this->post_content);
         $formCard->add($this->post_image);
+        $formCard->add($this->aspect_ratio);
         $formCard->add($actionsRow);
 
         $container->add($formCard);
@@ -187,6 +191,13 @@ class PublishPost extends Screen
             'title' => $title,
             'content' => $content,
             'image' => $imageFilename,
+            'background_color' => "#32637b",
+            'text_color' => "#000000",
+            'background_image' => null,
+            'aspect_ratio' => '9:16',
+            'from' => null,
+            'to' => null,
+            'status' => 'draft',
         ]);
 
         $this->toast('¡Post publicado correctamente!', 'success');
@@ -200,5 +211,17 @@ class PublishPost extends Screen
     public function onCancelPost(array $params): void
     {
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+    }
+
+    protected function aspectRatioSelect() : Select
+    {
+        $aspects = AspectRatio::all();
+        $defaultAspect = AspectRatio::default();
+
+        return UI::select('aspect_ratio')
+            ->label('Relación de Aspecto')
+            ->options($aspects)
+            ->value($defaultAspect)
+            ->required(true);
     }
 }
