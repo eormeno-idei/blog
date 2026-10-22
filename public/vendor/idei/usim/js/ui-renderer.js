@@ -724,6 +724,40 @@ class UIComponent {
     }
 
     /**
+     * Dispatch an action using USIM component helpers (sendUiEvent + applyUiUpdate)
+     * or fallback to sendEventToBackend.
+     *
+     * @param {string} action - Action name (e.g. 'on_plain_saved', 'submit')
+     * @param {object} [parameters={}] - Action parameters
+     * @param {string} [event='input'] - Event type
+     */
+    async triggerAction(action, parameters = {}, event = 'input') {
+        try {
+            const componentId = this.getComponentId();
+            const helpers = window.USIM_COMPONENT_HELPERS;
+            if (helpers?.sendUiEvent) {
+                const { ok, result } = await helpers.sendUiEvent({
+                    componentId,
+                    event,
+                    action,
+                    parameters,
+                });
+
+                if (ok) {
+                    helpers.applyUiUpdate?.(result);
+                }
+                return;
+            }
+
+            if (typeof this.sendEventToBackend === 'function') {
+                await this.sendEventToBackend(event, action, parameters);
+            }
+        } catch (error) {
+            console.error(`UIComponent [${this.constructor.name}] triggerAction error:`, error);
+        }
+    }
+
+    /**
      * Send UI event to backend
      *
      * @param {string} event - Event type (click, change, etc.)
@@ -1052,6 +1086,8 @@ class UIComponent {
     }
 }
 
+window.UIComponent = UIComponent;
+
 // ==================== Component Factory ====================
 class ComponentFactory {
     static create(id, config) {
@@ -1225,7 +1261,7 @@ class UIRenderer {
 
         // Handle storage updates if present on initial render
         if (this.data.storage) {
-            this.handleStorageUpdate(this.data.storage);
+            this.handleStorageUpdate(this.data.storage, this.data);
         }
 
         if (this.data.change_theme) {
@@ -1528,11 +1564,16 @@ class UIRenderer {
     }
 
     /**
-     * Handle storage updates - store variables in sessionStorage
+     * Handle storage updates - store variables in sessionStorage with non-destructive merging
      *
      * @param {object} storageData - Storage variables object
+     * @param {object} [context] - Optional update context to detect explicit actions (e.g. logout)
      */
-    handleStorageUpdate(storageData) {
+    handleStorageUpdate(storageData, context = {}) {
+        if (!storageData || typeof storageData !== 'object') {
+            return;
+        }
+
         const storageKeys = Object.keys(storageData);
         if (storageKeys.length > 0) {
             const currentKey = getActiveUsimStorageKey();
@@ -1540,20 +1581,55 @@ class UIRenderer {
             setActiveUsimStorageKey(preferredKey);
         }
 
+        const isLogout = context?.action === 'logout' ||
+                         context?.action === 'confirm_logout' ||
+                         context?.logout === true ||
+                         Boolean(context?.clear_auth);
+
         storageKeys.forEach(key => {
+            const rawValue = storageData[key];
 
-            const value = storageData[key];
-
-            // Store the value in sessionStorage
-            // If it's an object/array, stringify it
             try {
-                if (typeof value === 'object' && value !== null) {
-                    sessionStorage.setItem(key, JSON.stringify(value));
+                const incomingObj = typeof rawValue === 'object' && rawValue !== null
+                    ? rawValue
+                    : safeParseJsonObject(rawValue);
+
+                if (incomingObj && typeof incomingObj === 'object') {
+                    const existingRaw = sessionStorage.getItem(key);
+                    const existingObj = safeParseJsonObject(existingRaw) || {};
+
+                    // Token preservation:
+                    // If an existing valid token exists, and the incoming update does not provide a token
+                    // or provides an empty/falsy string, preserve the existing token UNLESS this is an explicit logout.
+                    if (existingObj.store_token && (!incomingObj.store_token || incomingObj.store_token === '')) {
+                        if (!isLogout && incomingObj.store_token !== null) {
+                            incomingObj.store_token = existingObj.store_token;
+                        }
+                    }
+
+                    if (existingObj.store_token_crypt && (!incomingObj.store_token_crypt || incomingObj.store_token_crypt === '')) {
+                        if (!isLogout && incomingObj.store_token_crypt !== null) {
+                            incomingObj.store_token_crypt = existingObj.store_token_crypt;
+                        }
+                    }
+
+                    const merged = Object.assign({}, existingObj, incomingObj);
+
+                    if (isLogout && (incomingObj.store_token === '' || incomingObj.store_token === null)) {
+                        delete merged.store_token;
+                    }
+                    if (isLogout && (incomingObj.store_token_crypt === '' || incomingObj.store_token_crypt === null)) {
+                        delete merged.store_token_crypt;
+                    }
+
+                    sessionStorage.setItem(key, JSON.stringify(merged));
+                } else if (typeof rawValue === 'object' && rawValue !== null) {
+                    sessionStorage.setItem(key, JSON.stringify(rawValue));
                 } else {
-                    sessionStorage.setItem(key, String(value));
+                    sessionStorage.setItem(key, String(rawValue));
                 }
             } catch (error) {
-                // Ignore storage errors
+                // Ignore storage errors (private mode / blocked storage)
             }
         });
 
@@ -1826,7 +1902,7 @@ class UIRenderer {
 
         // Handle storage updates if present
         if (uiUpdate.storage) {
-            this.handleStorageUpdate(uiUpdate.storage);
+            this.handleStorageUpdate(uiUpdate.storage, uiUpdate);
         }
 
         if (uiUpdate.change_theme) {
@@ -2858,6 +2934,8 @@ class UIRenderer {
         }
     }
 }
+
+window.UIRenderer = UIRenderer;
 
 // Global renderer instance
 let globalRenderer = null;

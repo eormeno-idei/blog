@@ -70,14 +70,16 @@ class UsimImageComponent extends UIComponent {
         // Attach attributes to the outer wrapper
         this.applyCommonAttributes(wrapper);
 
-        // Fetch or assign source
+        // Show the initial source while an asynchronous image request is running.
+        if (this.config.src) {
+            img.src = this.config.src;
+        }
+
         if (this.config.action && this.config.auto_fetch !== false) {
             // Queue fetch on mount
             setTimeout(() => {
                 this.loadImage();
             }, 0);
-        } else if (this.config.src) {
-            img.src = this.config.src;
         }
 
         return wrapper;
@@ -159,4 +161,3 @@ if (window.USIM_COMPONENTS?.register) {
         source: 'modular',
     });
 }
-

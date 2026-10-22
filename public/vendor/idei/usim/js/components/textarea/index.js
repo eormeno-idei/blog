@@ -523,6 +523,43 @@ class UsimTextareaComponent extends UIComponent {
 
     // ─── Backend events ───────────────────────────────────────────────────────
 
+    buildActionParameters(baseParameters = {}, currentValue = '') {
+        const params = {
+            ...(baseParameters || {}),
+            value: currentValue,
+        };
+
+        if (this.config.name) {
+            params[this.config.name] = currentValue;
+            params.name = this.config.name;
+        }
+
+        return params;
+    }
+
+    async triggerAction(action, parameters, event = 'input') {
+        try {
+            const componentId = this.getComponentId();
+            const helpers = window.USIM_COMPONENT_HELPERS;
+            if (!helpers?.sendUiEvent) {
+                return;
+            }
+
+            const { ok, result } = await helpers.sendUiEvent({
+                componentId,
+                event,
+                action,
+                parameters,
+            });
+
+            if (ok) {
+                helpers.applyUiUpdate?.(result);
+            }
+        } catch (error) {
+            console.error('Textarea action error:', error);
+        }
+    }
+
     _triggerOnInput() {
         if (!this.config.on_input) return;
         const debounce = this.config.debounce ?? 0;
@@ -530,7 +567,8 @@ class UsimTextareaComponent extends UIComponent {
         this._debounceTimer = setTimeout(() => {
             this.triggerAction(
                 this.config.on_input.action,
-                { ...this.config.on_input.parameters, value: this._textarea?.value ?? '' }
+                this.buildActionParameters(this.config.on_input.parameters, this._textarea?.value ?? ''),
+                'input'
             );
         }, debounce);
     }
@@ -539,7 +577,8 @@ class UsimTextareaComponent extends UIComponent {
         if (!this.config.on_change) return;
         this.triggerAction(
             this.config.on_change.action,
-            { ...this.config.on_change.parameters, value: this._textarea?.value ?? '' }
+            this.buildActionParameters(this.config.on_change.parameters, this._textarea?.value ?? ''),
+            'change'
         );
     }
 }

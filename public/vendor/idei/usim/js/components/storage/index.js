@@ -17,12 +17,30 @@ class UsimStorageComponent extends UIComponent {
         }
 
         storageKeys.forEach(key => {
-            const value = this.config[key];
+            const rawValue = this.config[key];
             try {
-                if (typeof value === 'object' && value !== null) {
-                    sessionStorage.setItem(key, JSON.stringify(value));
+                const incomingObj = typeof rawValue === 'object' && rawValue !== null
+                    ? rawValue
+                    : (typeof safeParseJsonObject === 'function' ? safeParseJsonObject(rawValue) : null);
+
+                if (incomingObj && typeof incomingObj === 'object') {
+                    const existingRaw = sessionStorage.getItem(key);
+                    const existingObj = (typeof safeParseJsonObject === 'function' ? safeParseJsonObject(existingRaw) : null) || {};
+
+                    if (existingObj.store_token && (!incomingObj.store_token || incomingObj.store_token === '')) {
+                        incomingObj.store_token = existingObj.store_token;
+                    }
+
+                    if (existingObj.store_token_crypt && (!incomingObj.store_token_crypt || incomingObj.store_token_crypt === '')) {
+                        incomingObj.store_token_crypt = existingObj.store_token_crypt;
+                    }
+
+                    const merged = Object.assign({}, existingObj, incomingObj);
+                    sessionStorage.setItem(key, JSON.stringify(merged));
+                } else if (typeof rawValue === 'object' && rawValue !== null) {
+                    sessionStorage.setItem(key, JSON.stringify(rawValue));
                 } else {
-                    sessionStorage.setItem(key, String(value));
+                    sessionStorage.setItem(key, String(rawValue));
                 }
             } catch (error) {
                 // Ignore storage errors (private mode / blocked storage)

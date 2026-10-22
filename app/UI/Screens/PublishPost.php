@@ -6,7 +6,7 @@ use App\Contracts\PostServiceInterface;
 use App\Models\User;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
-use Idei\Usim\Components\Select;
+use Idei\Usim\Components\Textarea;
 use Idei\Usim\Components\Uploader;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\AspectRatio;
@@ -21,8 +21,7 @@ use Illuminate\Support\Facades\Auth;
 class PublishPost extends Screen
 {
     protected Input $post_title;
-    protected Input $post_content;
-    protected Select $aspect_ratio;
+    protected Textarea $post_content;
     protected Uploader $post_image;
 
     public function __construct(
@@ -93,21 +92,23 @@ class PublishPost extends Screen
             ->required(true)
             ->width(Size::full());
 
-        $this->post_content = UI::input('post_content')
-            ->label('Contenido')
-            ->placeholder('Desarrolla el contenido de tu publicación...')
-            ->required(true)
-            ->width(Size::full());
+        $this->post_content = UI::textarea('post_content')
+            ->label('Notas rápidas')
+            ->placeholder('Escribe algo aquí…')
+            ->plainText()
+            ->width(Size::full())
+            ->height(Size::px(200))
+            ->maxLength(300)
+            ->helpText('Máximo 300 caracteres. Se guarda al salir del campo (onChange).')
+            ->onChange('on_plain_saved');
 
         $this->post_image = UI::uploader('post_image')
             ->images()
             ->maxFiles(1)
             ->maxSize(5)
-            ->aspect(AspectRatio::_9_16)
+            ->aspect(AspectRatio::_16_9)
             ->size(2)
             ->label('Imagen de Portada (opcional)');
-
-        $this->aspect_ratio = $this->aspectRatioSelect();
 
         $actionsRow = UI::container('publish_actions_row')
             ->width(Size::full())
@@ -135,7 +136,6 @@ class PublishPost extends Screen
         $formCard->add($this->post_title);
         $formCard->add($this->post_content);
         $formCard->add($this->post_image);
-        $formCard->add($this->aspect_ratio);
         $formCard->add($actionsRow);
 
         $container->add($formCard);
@@ -213,15 +213,9 @@ class PublishPost extends Screen
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 
-    protected function aspectRatioSelect() : Select
+    public function onPlainSaved(array $params): void
     {
-        $aspects = AspectRatio::all();
-        $defaultAspect = AspectRatio::default();
-
-        return UI::select('aspect_ratio')
-            ->label('Relación de Aspecto')
-            ->options($aspects)
-            ->value($defaultAspect)
-            ->required(true);
+        $rawValue = $params['value'] ?? '';
+        $value = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
     }
 }
