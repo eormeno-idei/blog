@@ -51,6 +51,10 @@ class UsimTextareaComponent extends UIComponent {
             this._updateCounter();
         }
 
+        if (this._textarea && newConfig.name !== undefined) {
+            this._textarea.name = this.config.name || '';
+        }
+
         // Sync error state
         if (newConfig.error !== undefined) {
             this._syncErrorState();
@@ -311,7 +315,10 @@ class UsimTextareaComponent extends UIComponent {
         if (inMarkdownMode) {
             ta.classList.add('usim-textarea-el-markdown');
         }
-        if (this.config.name) ta.id = `usim-ta-${this.id}`;
+        if (this.config.name) {
+            ta.name = this.config.name;
+            ta.id = `usim-ta-${this.id}`;
+        }
         ta.placeholder = this.config.placeholder ?? '';
         ta.value = this.config.value ?? '';
         ta.disabled = !!this.config.disabled;

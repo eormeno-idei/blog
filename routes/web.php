@@ -1,13 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\LogViewerController;
 
-// Disabled by usim:install to allow USIM catch-all route.
-// Route::get('/', function () {
-//     return view('welcome');
-// });
-
-
+if (config('app.env') === 'local') {
+    // Rutas para el visor de logs - Solo en entorno local
+    Route::prefix('logs')->group(function () {
+        Route::get('/', [LogViewerController::class, 'index'])->name('logs.index');
+        Route::get('/content', [LogViewerController::class, 'content'])->name('logs.content');
+        Route::get('/download', [LogViewerController::class, 'download'])->name('logs.download');
+        Route::post('/clear', [LogViewerController::class, 'clear'])->name('logs.clear');
+    });
+}
 
 // Dynamic UI Screen Catcher (Catch-All)
 // Allows URLs like /admin/dashboard to resolve to Admin\UsersManager screen class

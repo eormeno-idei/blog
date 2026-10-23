@@ -17,6 +17,7 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class PublishPost extends Screen
 {
@@ -217,5 +218,6 @@ class PublishPost extends Screen
     {
         $rawValue = $params['value'] ?? '';
         $value = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
+        $this->post_content->value($value);
     }
 }
