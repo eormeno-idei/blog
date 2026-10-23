@@ -3,6 +3,7 @@
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
+use App\Http\Requests\PostRequest;
 use App\Models\User;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
@@ -142,10 +143,7 @@ class PublishPost extends Screen
         $container->add($formCard);
     }
 
-    /**
-     * @param array<string, mixed> $params
-     */
-    public function onSavePost(array $params): void
+    public function onSavePost(PostRequest $request): void
     {
         $user = Auth::user();
         if (!$user instanceof User) {
@@ -153,33 +151,8 @@ class PublishPost extends Screen
             return;
         }
 
-        $rawTitle = $params['post_title'] ?? '';
-        $rawContent = $params['post_content'] ?? '';
-
-        $title = is_string($rawTitle) ? trim($rawTitle) : '';
-        $content = is_string($rawContent) ? trim($rawContent) : '';
-
-        $this->post_title->error(null);
-        $this->post_content->error(null);
-
-        $hasErrors = false;
-        if ($title === '') {
-            $this->post_title->error('El título es obligatorio.');
-            $hasErrors = true;
-        }
-
-        if ($content === '') {
-            $this->post_content->error('El contenido es obligatorio.');
-            $hasErrors = true;
-        }
-
-        if ($hasErrors) {
-            $this->toast('Por favor completa los campos obligatorios.', 'warning');
-            return;
-        }
-
         // Confirmar y persistir la imagen subida usando Uploader::confirm()
-        $confirmedImage = $this->post_image->confirm($params, 'images');
+        $confirmedImage = $this->post_image->confirm($request->all(), 'images');
         $imageFilename = null;
         if (is_string($confirmedImage) && $confirmedImage !== '') {
             $imageFilename = $confirmedImage;
@@ -189,8 +162,8 @@ class PublishPost extends Screen
 
         $this->postService->createPost([
             'user_id' => (int) $user->id,
-            'title' => $title,
-            'content' => $content,
+            'title' => $request->title(),
+            'content' => $request->content(),
             'image' => $imageFilename,
             'background_color' => "#32637b",
             'text_color' => "#000000",

@@ -3,6 +3,7 @@
 namespace App\UI\Screens\Post;
 
 use App\Contracts\PostServiceInterface;
+use App\Http\Requests\PostRequest;
 use App\Models\User;
 use App\UI\Screens\Home;
 use Idei\Usim\Components\Container;
@@ -17,17 +18,19 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EditPost extends Screen
 {
-    protected Input $post_title;
-    protected Input $post_content;
-    protected Uploader $post_image;
+    protected ?Input $post_title;
+
+    protected ?Input $post_content;
+
+    protected ?Uploader $post_image;
 
     public function __construct(
         protected PostServiceInterface $postService
-    ) {
-    }
+    ) {}
 
     public static function authorize(): bool
     {
@@ -46,6 +49,7 @@ class EditPost extends Screen
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
+        Log::info('Building EditPost UI with params: ' . json_encode($params));
         /** @var array<string, mixed> $params */
         $postId = isset($params['post_id']) && is_numeric($params['post_id'])
             ? (int) $params['post_id']
@@ -56,9 +60,10 @@ class EditPost extends Screen
         }
 
         $post = $this->postService->findById($postId);
-        if (!$post) {
+        if (! $post) {
             $this->toast('Post no encontrado.', 'error');
             $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+
             return;
         }
 
@@ -156,44 +161,17 @@ class EditPost extends Screen
         $container->add($formCard);
     }
 
-    /**
-     * @param array<string, mixed> $params
-     */
-    public function onSavePost(array $params): void
+    public function onSavePost(PostRequest $request): void
     {
         $user = Auth::user();
-        if (!$user instanceof User) {
+        if (! $user instanceof User) {
             $this->toast('Debes iniciar sesión para publicar.', 'error');
-            return;
-        }
 
-        $rawTitle = $params['post_title'] ?? '';
-        $rawContent = $params['post_content'] ?? '';
-
-        $title = is_string($rawTitle) ? trim($rawTitle) : '';
-        $content = is_string($rawContent) ? trim($rawContent) : '';
-
-        $this->post_title->error(null);
-        $this->post_content->error(null);
-
-        $hasErrors = false;
-        if ($title === '') {
-            $this->post_title->error('El título es obligatorio.');
-            $hasErrors = true;
-        }
-
-        if ($content === '') {
-            $this->post_content->error('El contenido es obligatorio.');
-            $hasErrors = true;
-        }
-
-        if ($hasErrors) {
-            $this->toast('Por favor completa los campos obligatorios.', 'warning');
             return;
         }
 
         // Confirmar y persistir la imagen subida usando Uploader::confirm()
-        $confirmedImage = $this->post_image->confirm($params, 'images');
+        $confirmedImage = $this->post_image->confirm($request->all(), 'images');
         $imageFilename = null;
         if (is_string($confirmedImage) && $confirmedImage !== '') {
             $imageFilename = $confirmedImage;
@@ -203,8 +181,8 @@ class EditPost extends Screen
 
         $this->postService->createPost([
             'user_id' => (int) $user->id,
-            'title' => $title,
-            'content' => $content,
+            'title' => $request->title(),
+            'content' => $request->content(),
             'image' => $imageFilename,
         ]);
 
@@ -214,7 +192,7 @@ class EditPost extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCancelEdit(array $params): void
     {

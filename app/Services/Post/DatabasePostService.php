@@ -17,15 +17,15 @@ class DatabasePostService implements PostServiceInterface
                 'users.id as author_id',
                 'users.name as author_name'
             );
-        
+
         if ($ownerId > 0) {
             $query->where('posts.user_id', $ownerId);
         }
 
-        if (!empty($filter)) {
+        if (! empty($filter)) {
             $query->where(function ($q) use ($filter) {
                 $q->where('posts.title', 'like', "%{$filter}%")
-                  ->orWhere('posts.content', 'like', "%{$filter}%");
+                    ->orWhere('posts.content', 'like', "%{$filter}%");
             });
         }
 
@@ -55,13 +55,13 @@ class DatabasePostService implements PostServiceInterface
             'title' => $data['title'],
             'content' => $data['content'],
             'image' => $data['image'] ?? null,
-            'background_color' => $data['background_color'] ?? null,
-            'text_color' => $data['text_color'] ?? null,
+            'background_color' => $data['background_color'] ?? '#32637b',
+            'text_color' => $data['text_color'] ?? '#000000',
             'background_image' => $data['background_image'] ?? null,
-            'aspect_ratio' => $data['aspect_ratio'] ?? null,
+            'aspect_ratio' => $data['aspect_ratio'] ?? '16:9',
             'from' => $data['from'] ?? null,
             'to' => $data['to'] ?? null,
-            'status' => $data['status'] ?? null,
+            'status' => $data['status'] ?? 'draft',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

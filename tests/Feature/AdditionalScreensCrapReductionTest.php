@@ -148,17 +148,18 @@ it('validates and publishes posts in PublishPost screen', function () {
 
     /** @var PublishPost $screen */
     $screen = Screen::make(PublishPost::class);
-    ScreenTestHarness::for($screen)->render([], shouldReset: true);
+    $harness = ScreenTestHarness::for($screen);
+    $harness->render([], shouldReset: true);
 
     $postService = app(PostServiceInterface::class);
     $initialCount = $postService->getLatestPosts()->count();
 
     // Validation errors when title or content is empty
-    $screen->onSavePost(['post_title' => '', 'post_content' => '']);
+    $harness->call('save_post', ['post_title' => '', 'post_content' => '']);
     expect($postService->getLatestPosts()->count())->toBe($initialCount);
 
     // Successful post creation
-    $screen->onSavePost([
+    $harness->call('save_post', [
         'post_title' => 'My First Post',
         'post_content' => 'Hello world content',
     ]);
@@ -170,7 +171,7 @@ it('validates and publishes posts in PublishPost screen', function () {
 
     // Unauthenticated guard
     Auth::logout();
-    $screen->onSavePost([
+    $harness->call('save_post', [
         'post_title' => 'Should Not Save',
         'post_content' => 'No auth',
     ]);
