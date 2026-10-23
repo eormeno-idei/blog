@@ -1,5 +1,4 @@
 <?php
-
 namespace App\UI\Screens\Post;
 
 use App\Contracts\PostServiceInterface;
@@ -18,7 +17,6 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class EditPost extends Screen
 {
@@ -49,7 +47,6 @@ class EditPost extends Screen
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
-        Log::info('Building EditPost UI with params: ' . json_encode($params));
         /** @var array<string, mixed> $params */
         $postId = isset($params['post_id']) && is_numeric($params['post_id'])
             ? (int) $params['post_id']

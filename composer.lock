@@ -1181,16 +1181,16 @@
         },
         {
             "name": "idei/usim",
-            "version": "1.4.0",
+            "version": "1.4.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/idei/usim.git",
-                "reference": "9b1df544c6e4c4044b5560486a63f49c9d9fc7af"
+                "reference": "b19d9f9c2501b8adc8365791a54f0d9f2a04c516"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/idei/usim/zipball/9b1df544c6e4c4044b5560486a63f49c9d9fc7af",
-                "reference": "9b1df544c6e4c4044b5560486a63f49c9d9fc7af",
+                "url": "https://api.github.com/repos/idei/usim/zipball/b19d9f9c2501b8adc8365791a54f0d9f2a04c516",
+                "reference": "b19d9f9c2501b8adc8365791a54f0d9f2a04c516",
                 "shasum": ""
             },
             "require": {
@@ -1247,7 +1247,7 @@
                 "issues": "https://github.com/idei/usim/issues",
                 "source": "https://github.com/idei/usim"
             },
-            "time": "2026-10-23T19:15:37+00:00"
+            "time": "2026-10-23T21:46:32+00:00"
         },
         {
             "name": "laminas/laminas-diactoros",
