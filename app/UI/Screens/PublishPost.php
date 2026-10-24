@@ -18,17 +18,20 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class PublishPost extends Screen
 {
     protected Input $post_title;
     protected Textarea $post_content;
+    protected Textarea $ai_response;
     protected Uploader $post_image;
 
     public function __construct(
         protected PostServiceInterface $postService
-    ) {}
+    ) {
+    }
 
     public static function authorize(): bool
     {
@@ -99,10 +102,19 @@ class PublishPost extends Screen
             ->placeholder('Escribe algo aquí…')
             ->plainText()
             ->width(Size::full())
-            ->height(Size::px(200))
-            ->maxLength(300)
-            ->helpText('Máximo 300 caracteres. Se guarda al salir del campo (onChange).')
+            ->height(Size::px(150))
+            ->maxLength(100)
+            ->helpText('Máximo 100 caracteres. Se guarda al salir del campo (onChange).')
             ->onChange('on_plain_saved');
+
+        $this->ai_response = UI::textarea('ai_response')
+            ->label('Respuesta de la IA')
+            ->placeholder('La respuesta de la IA aparecerá aquí...')
+            ->plainText()
+            ->width(Size::full())
+            ->height(Size::px(150))
+            ->maxLength(1000)
+            ->helpText('La respuesta de la IA se mostrará aquí.');
 
         $this->post_image = UI::uploader('post_image')
             ->images()
@@ -135,8 +147,16 @@ class PublishPost extends Screen
                 ->style('primary')
         );
 
+        $actionsRow->add(
+            UI::button('btn_ask_ai')
+                ->label('Preguntar a la IA')
+                ->action('ask_ai')
+                ->style('secondary')
+        );
+
         $formCard->add($this->post_title);
         $formCard->add($this->post_content);
+        $formCard->add($this->ai_response);
         $formCard->add($this->post_image);
         $formCard->add($actionsRow);
 
@@ -177,6 +197,47 @@ class PublishPost extends Screen
         $this->toast('¡Post publicado correctamente!', 'success');
 
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+    }
+
+    public function onAskAI(PostRequest $request): void
+    {
+        $question = $request->content();
+        $response = Http::withToken(config('services.openrouter.key'))
+            ->withHeaders([
+                'HTTP-Referer' => config('app.url'),
+                'X-Title'      => config('app.name'),
+            ])
+            ->timeout(60)
+            ->post(config('services.openrouter.url') . '/chat/completions', [
+                'model'    => config('services.openrouter.model'),
+                'messages' => [
+                    ['role' => 'user', 'content' => $question],
+                ],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('OpenRouter falló', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+
+            $this->toast(
+                'OpenRouter: ' . ($response->json('error.message') ?? "HTTP {$response->status()}"),
+                'error'
+            );
+            return;
+        }
+
+        $answer = $response->json('choices.0.message.content')
+            ?? $response->json('choices.0.message.reasoning');
+
+        if (blank($answer)) {
+            Log::warning('OpenRouter sin contenido', ['body' => $response->body()]);
+            $this->toast('El modelo no devolvió contenido.', 'warning');
+            return;
+        }
+
+        $this->ai_response->value((string) $answer);
     }
 
     /**
