@@ -2,6 +2,7 @@
 
 namespace App\UI\Screens;
 
+use App\Ai\Agents\ChatAgent;
 use App\Contracts\PostServiceInterface;
 use App\Http\Requests\PostRequest;
 use App\Models\User;
@@ -18,8 +19,6 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class PublishPost extends Screen
 {
@@ -100,6 +99,7 @@ class PublishPost extends Screen
         $this->post_content = UI::textarea('post_content')
             ->label('Notas rápidas')
             ->placeholder('Escribe algo aquí…')
+            ->value('¿Cómo se llama la capital de Francia?')
             ->plainText()
             ->width(Size::full())
             ->height(Size::px(150))
@@ -163,6 +163,13 @@ class PublishPost extends Screen
         $container->add($formCard);
     }
 
+    public function onAskAI(PostRequest $request): void
+    {
+        $question = $request->content();
+        $answer = new ChatAgent()->prompt($question);
+        $this->ai_response->value($answer->text);
+    }
+
     public function onSavePost(PostRequest $request): void
     {
         $user = Auth::user();
@@ -197,47 +204,6 @@ class PublishPost extends Screen
         $this->toast('¡Post publicado correctamente!', 'success');
 
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
-    }
-
-    public function onAskAI(PostRequest $request): void
-    {
-        $question = $request->content();
-        $response = Http::withToken(config('services.openrouter.key'))
-            ->withHeaders([
-                'HTTP-Referer' => config('app.url'),
-                'X-Title'      => config('app.name'),
-            ])
-            ->timeout(60)
-            ->post(config('services.openrouter.url') . '/chat/completions', [
-                'model'    => config('services.openrouter.model'),
-                'messages' => [
-                    ['role' => 'user', 'content' => $question],
-                ],
-            ]);
-
-        if ($response->failed()) {
-            Log::error('OpenRouter falló', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-
-            $this->toast(
-                'OpenRouter: ' . ($response->json('error.message') ?? "HTTP {$response->status()}"),
-                'error'
-            );
-            return;
-        }
-
-        $answer = $response->json('choices.0.message.content')
-            ?? $response->json('choices.0.message.reasoning');
-
-        if (blank($answer)) {
-            Log::warning('OpenRouter sin contenido', ['body' => $response->body()]);
-            $this->toast('El modelo no devolvió contenido.', 'warning');
-            return;
-        }
-
-        $this->ai_response->value((string) $answer);
     }
 
     /**
