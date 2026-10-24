@@ -19,8 +19,9 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 class PublishPost extends Screen
@@ -103,7 +104,7 @@ class PublishPost extends Screen
             ->label('Notas rápidas')
             ->placeholder('Escribe algo aquí…')
             ->value(
-<<<EOT
+                <<<EOT
 Proyecto de Desarrollo Tecnológico y Social (PDTS)
 Universidad Nacional de San Juan
 Secretaría de Ciencia, Tecnología e Innovación – Gobierno de San Juan
@@ -175,6 +176,8 @@ EOT
 
     public function onAskAI(PostRequest $request): void
     {
+        set_time_limit(0); // Aumentar el tiempo de ejecución para procesos largos
+
         $question = $request->content();
         $answer = new PostAgent()->prompt($question);
         $jsonString = $answer->text;
@@ -192,18 +195,27 @@ EOT
         $videoPath = storage_path("app/public/reels/{$videoFilename}");
         File::ensureDirectoryExists(storage_path('app/public/reels'));
 
-        // 3. Ejecutar renderizado
-        // $result = Process::path(base_path('video-engine'))
-        //     ->timeout(120) // Dar tiempo suficiente para la generación asíncrona
-        //     ->run("npx remotion render src/index.ts ReelInstitucional {$videoPath} --props={$jsonPath}");
+        Log::info("Generando video con Remotion: JSON Path: {$jsonPath}, Video Path: {$videoPath}");
 
-        // File::delete($jsonPath); // Limpieza temporal
+        try {
+            // 3. Ejecutar renderizado
+            $result = Process::path(base_path('video-engine'))
+                ->timeout(1200) // Dar tiempo suficiente para la generación asíncrona
+                ->run("npx remotion render src/index.ts ReelInstitucional {$videoPath} --props={$jsonPath}");
 
-        // if ($result->successful()) {
-        //     $this->toast('Previsualización generada con éxito.', 'success');
-        // } else {
-        //     $this->toast('Error al generar el video con IA.', 'error');
-        // }
+            Log::info("Resultado del renderizado: " . $result->output());
+
+            File::delete($jsonPath); // Limpieza temporal
+
+            if ($result->successful()) {
+                $this->toast('Previsualización generada con éxito.', 'success');
+            } else {
+                $this->toast('Error al generar el video con IA.', 'error');
+            }
+        } catch (\Throwable $e) {
+            Log::error("Error al ejecutar Remotion: " . $e->getMessage());
+            $this->toast('Error al generar el video con IA.', 'error');
+        }
     }
 
     public function onSavePost(PostRequest $request): void
