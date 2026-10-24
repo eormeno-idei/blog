@@ -2,7 +2,7 @@
 
 namespace App\UI\Screens;
 
-use App\Ai\Agents\ChatAgent;
+use App\Ai\Agents\PostAgent;
 use App\Contracts\PostServiceInterface;
 use App\Http\Requests\PostRequest;
 use App\Models\User;
@@ -103,8 +103,8 @@ class PublishPost extends Screen
             ->plainText()
             ->width(Size::full())
             ->height(Size::px(150))
-            ->maxLength(100)
-            ->helpText('Máximo 100 caracteres. Se guarda al salir del campo (onChange).')
+            ->maxLength(2000)
+            ->helpText('Máximo 2000 caracteres. Se guarda al salir del campo (onChange).')
             ->onChange('on_plain_saved');
 
         $this->ai_response = UI::textarea('ai_response')
@@ -112,7 +112,7 @@ class PublishPost extends Screen
             ->placeholder('La respuesta de la IA aparecerá aquí...')
             ->plainText()
             ->width(Size::full())
-            ->height(Size::px(150))
+            ->height(Size::px(300))
             ->maxLength(1000)
             ->helpText('La respuesta de la IA se mostrará aquí.');
 
@@ -166,7 +166,7 @@ class PublishPost extends Screen
     public function onAskAI(PostRequest $request): void
     {
         $question = $request->content();
-        $answer = new ChatAgent()->prompt($question);
+        $answer = new PostAgent()->prompt($question);
         $this->ai_response->value($answer->text);
     }
 

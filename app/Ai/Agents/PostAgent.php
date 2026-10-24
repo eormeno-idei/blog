@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Ai\Agents;
+
+use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\Conversational;
+use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Messages\Message;
+use Laravel\Ai\Promptable;
+use Laravel\Ai\Providers\Tools\ProviderTool;
+use Stringable;
+
+class PostAgent implements Agent, Conversational, HasTools
+{
+    use Promptable;
+
+    /**
+     * Get the instructions that the agent should follow.
+     */
+    public function instructions(): Stringable|string
+    {
+        return <<<PROMPT
+        Eres un orquestador de contenido visual para cartelería digital universitaria.
+        Tu única tarea es convertir las notas informales del usuario en un guion estructurado estrictamente en formato JSON válido.
+
+        CRÍTICO: Devuelve ÚNICAMENTE el JSON crudo. No uses bloques de código markdown (```json ... ```). No incluyas saludos, explicaciones, ni texto conversacional.
+
+        Reglas de contenido:
+        1. El valor de "headline" debe tener un máximo de 4 palabras.
+        2. El valor de "body" es un arreglo de strings. Cada ítem debe tener un máximo de 6 palabras.
+        3. El valor de "layout_template" solo puede ser: "title_hero", "bullet_points", o "call_to_action".
+        4. Define siempre "image_url" y "qr_image_url" como null (el sistema se encargará de esto luego).
+
+        Esquema JSON obligatorio que debes respetar y devolver:
+        {
+          "metadata": {
+            "autor": "string",
+            "tema": "string",
+            "duracion_total_segundos": number
+          },
+          "scenes": [
+            {
+              "scene_index": number,
+              "layout_template": "string",
+              "duration_seconds": number,
+              "text_content": {
+                "headline": "string",
+                "subheadline": "string o null",
+                "body": ["string"]
+              },
+              "visual_assets": {
+                "image_url": null,
+                "qr_image_url": null
+              }
+            }
+          ]
+        }
+        PROMPT;
+    }
+
+    /**
+     * Get the list of messages comprising the conversation so far.
+     *
+     * @return Message[]
+     */
+    public function messages(): iterable
+    {
+        return [];
+    }
+
+    /**
+     * Get the tools available to the agent.
+     *
+     * @return list<Agent|Tool|ProviderTool>
+     */
+    public function tools(): iterable
+    {
+        return [];
+    }
+}
