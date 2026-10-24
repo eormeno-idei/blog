@@ -19,12 +19,15 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class PublishPost extends Screen
 {
     protected Input $post_title;
     protected Textarea $post_content;
-    protected Textarea $ai_response;
+    protected Input $ai_response;
     protected Uploader $post_image;
 
     public function __construct(
@@ -99,22 +102,29 @@ class PublishPost extends Screen
         $this->post_content = UI::textarea('post_content')
             ->label('Notas rápidas')
             ->placeholder('Escribe algo aquí…')
-            ->value('¿Cómo se llama la capital de Francia?')
+            ->value(
+<<<EOT
+Proyecto de Desarrollo Tecnológico y Social (PDTS)
+Universidad Nacional de San Juan
+Secretaría de Ciencia, Tecnología e Innovación – Gobierno de San Juan
+Convocatoria 2025
+
+1. DENOMINACIÓN DEL PROYECTO
+Innovación en Desarrollo de Software: Validación de Arquitectura Backend-Driven UI en la aplicación "+65 Agenda Salud"
+
+2. RESUMEN
+El presente proyecto tiene por objeto la validación científica y transferencia al sector productivo de una tecnología de desarrollo de software basada en arquitectura Backend-Driven. Esta herramienta, resultado de un Proyecto de Investigación (PIC) previo del Instituto de Informática, propone centralizar la lógica de interfaz en el servidor para acelerar los tiempos de desarrollo de software. La propuesta intentará validar el framework  en dos fases de ejecución: primero, se utilizará el framework para construir y desplegar "+65 Agenda Salud", una aplicación móvil de autogestión sanitaria para adultos mayores. Segundo, se ejecutará un experimento controlado en dos empresas de Cuyo: Aconcagua Software Factory y Nodos Hub, en las cuales se comparará la productividad de este enfoque frente al desarrollo tradicional, consolidando la transferencia de la tecnología a la industria de software regional.
+EOT
+            )
             ->plainText()
             ->width(Size::full())
-            ->height(Size::px(150))
+            ->height(Size::px(300))
             ->maxLength(2000)
             ->helpText('Máximo 2000 caracteres. Se guarda al salir del campo (onChange).')
             ->onChange('on_plain_saved');
 
-        $this->ai_response = UI::textarea('ai_response')
-            ->label('Respuesta de la IA')
-            ->placeholder('La respuesta de la IA aparecerá aquí...')
-            ->plainText()
-            ->width(Size::full())
-            ->height(Size::px(300))
-            ->maxLength(1000)
-            ->helpText('La respuesta de la IA se mostrará aquí.');
+        $this->ai_response = UI::input('ai_response')
+            ->type('hidden');
 
         $this->post_image = UI::uploader('post_image')
             ->images()
@@ -167,7 +177,33 @@ class PublishPost extends Screen
     {
         $question = $request->content();
         $answer = new PostAgent()->prompt($question);
-        $this->ai_response->value($answer->text);
+        $jsonString = $answer->text;
+        $this->ai_response->value($jsonString);
+
+        // 2. Preparar el entorno para Remotion
+        $uuid = Str::uuid()->toString();
+        $tempDir = storage_path('app/temp');
+        File::ensureDirectoryExists($tempDir);
+
+        $jsonPath = $tempDir . "/reel_{$uuid}.json";
+        File::put($jsonPath, $jsonString);
+
+        $videoFilename = "preview_{$uuid}.mp4";
+        $videoPath = storage_path("app/public/reels/{$videoFilename}");
+        File::ensureDirectoryExists(storage_path('app/public/reels'));
+
+        // 3. Ejecutar renderizado
+        // $result = Process::path(base_path('video-engine'))
+        //     ->timeout(120) // Dar tiempo suficiente para la generación asíncrona
+        //     ->run("npx remotion render src/index.ts ReelInstitucional {$videoPath} --props={$jsonPath}");
+
+        // File::delete($jsonPath); // Limpieza temporal
+
+        // if ($result->successful()) {
+        //     $this->toast('Previsualización generada con éxito.', 'success');
+        // } else {
+        //     $this->toast('Error al generar el video con IA.', 'error');
+        // }
     }
 
     public function onSavePost(PostRequest $request): void

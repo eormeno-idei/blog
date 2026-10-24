@@ -31,6 +31,7 @@ class PostAgent implements Agent, Conversational, HasTools
         2. El valor de "body" es un arreglo de strings. Cada ítem debe tener un máximo de 6 palabras.
         3. El valor de "layout_template" solo puede ser: "title_hero", "bullet_points", o "call_to_action".
         4. Define siempre "image_url" y "qr_image_url" como null (el sistema se encargará de esto luego).
+        5. Incluye siempre el bloque "animation_config" en cada escena. Usa "stagger_ms": 600 para listas.
 
         Esquema JSON obligatorio que debes respetar y devolver:
         {
@@ -44,6 +45,14 @@ class PostAgent implements Agent, Conversational, HasTools
               "scene_index": number,
               "layout_template": "string",
               "duration_seconds": number,
+              "animation_config": {
+                "entrance_type": "string (center, slide_from_left, slide_from_right, slide_from_bottom)",
+                "fade_in": true,
+                "stagger_ms": number,
+                "scale_start": number,
+                "rotate_start_deg": number,
+                "easing": "string (ease_out, bounce)"
+              },
               "text_content": {
                 "headline": "string",
                 "subheadline": "string o null",

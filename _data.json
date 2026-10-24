@@ -1,0 +1,81 @@
+{
+  "publicacion_id": "pub_9f8e7d6c",
+  "metadata": {
+    "autor": "Emilio Gustavo Ormeño",
+    "departamento": "IDEI - FCEFN",
+    "tema": "Concurso de Becas 2026",
+    "duracion_total_segundos": 14
+  },
+  "scenes": [
+    {
+      "scene_index": 1,
+      "layout_template": "title_hero",
+      "duration_seconds": 4,
+      "animation_config": {
+        "entrance_type": "center",
+        "fade_in": true,
+        "stagger_ms": 0,
+        "scale_start": 0.4,
+        "rotate_start_deg": -15,
+        "easing": "bounce"
+      },
+      "text_content": {
+        "headline": "Nueva Beca IDEI",
+        "subheadline": "Proyectos de IA",
+        "body": []
+      },
+      "visual_assets": {
+        "image_url": "https://pantallas.fcefn.unsj.edu.ar/storage/bg/neural-nodes.jpg",
+        "qr_image_url": null
+      }
+    },
+    {
+      "scene_index": 2,
+      "layout_template": "bullet_points",
+      "duration_seconds": 6,
+      "animation_config": {
+        "entrance_type": "slide_from_bottom",
+        "fade_in": true,
+        "stagger_ms": 600,
+        "scale_start": 1,
+        "rotate_start_deg": 0,
+        "easing": "ease_out"
+      },
+      "text_content": {
+        "headline": "Requisitos excluyentes",
+        "subheadline": null,
+        "body": [
+          "Dominio de Vanilla JS",
+          "Conocimientos en Laravel 13",
+          "Estudiante activo UNSJ"
+        ]
+      },
+      "visual_assets": {
+        "image_url": null,
+        "qr_image_url": null
+      }
+    },
+    {
+      "scene_index": 3,
+      "layout_template": "call_to_action",
+      "duration_seconds": 4,
+      "animation_config": {
+        "entrance_type": "slide_from_left",
+        "fade_in": true,
+        "stagger_ms": 0,
+        "scale_start": 1,
+        "rotate_start_deg": 0,
+        "easing": "ease_in_out"
+      },
+      "text_content": {
+        "headline": "Postulate hoy",
+        "subheadline": "Cierre: 30 de Noviembre",
+        "body": ["Escaneá el código para ver las bases"]
+      },
+      "visual_assets": {
+        "image_url": null,
+        "qr_image_url": "https://pantallas.fcefn.unsj.edu.ar/storage/qrs/beca-ia.png"
+      }
+    }
+  ]
+}
