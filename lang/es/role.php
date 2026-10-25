@@ -51,4 +51,8 @@ return [
         'name' => 'Publicador',
         'description' => 'Puede crear y publicar nuevos posts con imagen.',
     ],
+    'reviewer' => [
+        'name' => 'Revisor',
+        'description' => 'Puede revisar propuestas de posts, solicitar correcciones o aprobar su publicación.',
+    ],
 ];

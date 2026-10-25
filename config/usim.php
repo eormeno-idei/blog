@@ -111,6 +111,16 @@ return [
             ],
         ],
 
+        'reviewer' => [
+            'first_name' => 'Director',
+            'last_name' => 'Revisor',
+            'email' => 'reviewer@example.com',
+            'password' => '11111111',
+            'unit_roles' => [
+                'lobby' => ['reviewer'],
+            ],
+        ],
+
         'registered' => [
             'first_name' => 'Usuario',
             'last_name' => 'Registrado',
@@ -152,6 +162,7 @@ return [
             'permissions' => [
                 'home.access',
                 'publish_post.access',
+                'posts.review',
                 'posts.delete',
                 'admin.users_manager.access',
                 'manage.roles',
@@ -172,11 +183,27 @@ return [
             'permissions' => [
                 'home.access',
                 'publish_post.access',
+                'posts.review',
                 'posts.delete',
                 'admin.users_manager.access',
                 'manage.roles',
                 'create.users',
                 'remove.users',
+            ],
+        ],
+
+        'reviewer' => [
+            'default_translations' => [
+                'es' => [
+                    'display_name' => 'Revisor',
+                    'description' => 'Puede revisar propuestas de posts, solicitar correcciones o aprobar su publicación.',
+                ],
+            ],
+            'priority' => 3,
+            'home_screen' => Home::class,
+            'permissions' => [
+                'home.access',
+                'posts.review',
             ],
         ],
 
@@ -187,7 +214,7 @@ return [
                     'description' => 'Puede crear y publicar nuevos posts con imagen.',
                 ],
             ],
-            'priority' => 3,
+            'priority' => 4,
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
@@ -253,6 +280,14 @@ return [
                 'es' => [
                     'display_name' => 'Eliminar Posts',
                     'description' => 'Permite eliminar cualquier post publicado.',
+                ],
+            ],
+        ],
+        'posts.review' => [
+            'default_translations' => [
+                'es' => [
+                    'display_name' => 'Revisar Posts',
+                    'description' => 'Permite moderar, solicitar cambios y aprobar propuestas de publicación.',
                 ],
             ],
         ],

@@ -26,8 +26,13 @@ return new class extends Migration
             $table->enum('font', ['sans-serif', 'serif', 'monospace'])->default('sans-serif');
             $table->dateTime('from')->nullable();
             $table->dateTime('to')->nullable();
-            $table->enum('status', ['draft', 'published', 'archived'])->default('draft');
+            $table->enum('status', ['draft', 'pending_review', 'changes_requested', 'published', 'archived'])->default('draft');
             $table->string('image')->nullable();
+            $table->text('ai_script')->nullable();
+            $table->string('reel_video')->nullable();
+            $table->text('reviewer_comment')->nullable();
+            $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('reviewed_at')->nullable();
             $table->timestamps();
         });
     }

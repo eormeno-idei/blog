@@ -16,6 +16,8 @@ class PostRequest extends UIRequest
     protected array $map = [
         'title' => 'post_title',
         'content' => 'post_content',
+        'from' => 'post_from',
+        'to' => 'post_to',
     ];
 
     /**
@@ -36,20 +38,28 @@ class PostRequest extends UIRequest
      */
     protected function prepareForValidation(): void
     {
-        if (! isset($this->parameters['post_title']) && isset($this->parameters['title'])) {
-            $this->parameters['post_title'] = $this->parameters['title'];
-        }
+        $this->mapAliasIfMissing('title', 'post_title');
+        $this->mapAliasIfMissing('content', 'post_content');
+        $this->mapAliasIfMissing('from', 'post_from');
+        $this->mapAliasIfMissing('to', 'post_to');
 
-        if (! isset($this->parameters['post_content']) && isset($this->parameters['content'])) {
-            $this->parameters['post_content'] = $this->parameters['content'];
-        }
+        $this->trimParameter('post_title');
+        $this->trimParameter('post_content');
+        $this->trimParameter('post_from');
+        $this->trimParameter('post_to');
+    }
 
-        if (isset($this->parameters['post_title']) && is_string($this->parameters['post_title'])) {
-            $this->parameters['post_title'] = trim($this->parameters['post_title']);
+    private function mapAliasIfMissing(string $alias, string $target): void
+    {
+        if (! isset($this->parameters[$target]) && isset($this->parameters[$alias])) {
+            $this->parameters[$target] = $this->parameters[$alias];
         }
+    }
 
-        if (isset($this->parameters['post_content']) && is_string($this->parameters['post_content'])) {
-            $this->parameters['post_content'] = trim($this->parameters['post_content']);
+    private function trimParameter(string $key): void
+    {
+        if (isset($this->parameters[$key]) && is_string($this->parameters[$key])) {
+            $this->parameters[$key] = trim($this->parameters[$key]);
         }
     }
 
@@ -63,6 +73,8 @@ class PostRequest extends UIRequest
         return [
             'post_title' => ['required', 'string'],
             'post_content' => ['required', 'string'],
+            'post_from' => ['nullable', 'date'],
+            'post_to' => ['nullable', 'date', 'after_or_equal:post_from'],
         ];
     }
 
@@ -76,6 +88,9 @@ class PostRequest extends UIRequest
         return [
             'post_title.required' => 'El título es obligatorio.',
             'post_content.required' => 'El contenido es obligatorio.',
+            'post_from.date' => 'La fecha de inicio no es válida.',
+            'post_to.date' => 'La fecha de finalización no es válida.',
+            'post_to.after_or_equal' => 'La fecha de fin debe ser igual o posterior a la fecha de inicio.',
         ];
     }
 
@@ -97,6 +112,26 @@ class PostRequest extends UIRequest
         $content = $this->validated('post_content') ?? $this->input('post_content') ?? $this->input('content');
 
         return is_string($content) ? trim($content) : '';
+    }
+
+    /**
+     * Get the optional start date.
+     */
+    public function fromDate(): ?string
+    {
+        $from = $this->validated('post_from') ?? $this->input('post_from') ?? $this->input('from');
+
+        return is_string($from) && trim($from) !== '' ? trim($from) : null;
+    }
+
+    /**
+     * Get the optional end date.
+     */
+    public function toDate(): ?string
+    {
+        $to = $this->validated('post_to') ?? $this->input('post_to') ?? $this->input('to');
+
+        return is_string($to) && trim($to) !== '' ? trim($to) : null;
     }
 
     /**

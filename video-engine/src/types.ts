@@ -2,6 +2,9 @@ export interface AnimationConfig {
     entrance_type: string;
     fade_in: boolean;
     stagger_ms: number;
+    scale_start?: number;
+    rotate_start_deg?: number;
+    easing?: string;
 }
 
 export interface TextContent {
