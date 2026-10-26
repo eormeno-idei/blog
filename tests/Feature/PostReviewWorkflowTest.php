@@ -7,6 +7,9 @@ use App\Services\User\UsimUserService;
 use App\UI\Screens\Home;
 use App\UI\Screens\Post\ReviewPost;
 use App\UI\Screens\PublishPost;
+use Idei\Usim\Components\Button;
+use Idei\Usim\Components\Carousel;
+use Idei\Usim\Components\Timer;
 use Idei\Usim\Screen;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
@@ -47,7 +50,7 @@ it('formats storyboard markdown cleanly in ReelStoryboardFormatter', function ()
         ],
     ];
 
-    $markdown = $formatter->format(json_encode($script), 'Hazlo más breve');
+    $markdown = $formatter->format((string) json_encode($script), 'Hazlo más breve');
 
     expect($markdown)
         ->toContain('Último ajuste aplicado: "Hazlo más breve"')
@@ -57,6 +60,7 @@ it('formats storyboard markdown cleanly in ReelStoryboardFormatter', function ()
 });
 
 it('completes the full institutional workflow: publisher submits, reviewer requests changes, publisher refines, reviewer approves, and post expires to archived', function () {
+    /** @var \Tests\TestCase $this */
     Queue::fake();
 
     $userService = app(UsimUserService::class);
@@ -80,8 +84,10 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     $publishHarness->render(['post_id' => $draftPost->id], shouldReset: true);
 
     // No debe existir el botón "Cancelar", "Enviar a Revisión" inicia deshabilitado, y la pestaña Estudio de Reel IA inicia deshabilitada
+    /** @var Button|null $initialSaveBtn */
+    $initialSaveBtn = $publishScreen->getContainer()?->findByName('btn_save_post');
     expect($publishScreen->getContainer()?->findByName('btn_cancel_post'))->toBeNull()
-        ->and($publishScreen->getContainer()?->findByName('btn_save_post')?->get('enabled'))->toBeFalse();
+        ->and($initialSaveBtn?->get('enabled'))->toBeFalse();
 
     // Al modificar el título, se guarda inmediatamente en la BBDD
     $publishHarness->call('on_title_saved', ['value' => 'Título en Vivo']);
@@ -95,6 +101,7 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         ->and($tabsRaw['tabs_active'] ?? null)->toBe('form_tab');
 
     // El reproductor de preview debe ser vertical (9:16 -> 315x560)
+    /** @var Carousel|null $playerComponent */
     $playerComponent = $publishScreen->getContainer()?->findByName('reel_preview_player');
     expect($playerComponent?->get('width'))->toBe('315px')
         ->and($playerComponent?->get('height'))->toBe('560px');
@@ -116,7 +123,7 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     // Simular que el usuario cierra la ventana mientras está en rendering_video y vuelve a abrir el post más tarde
     $jobId = (string) $draftPost->id;
 
-    $sampleJson = json_encode([
+    $sampleJson = (string) json_encode([
         'metadata' => ['autor' => 'UNSJ', 'tema' => 'TFG', 'duracion_total_segundos' => 12],
         'scenes' => [
             [
@@ -143,14 +150,16 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         'status' => 'rendering_video',
         'message' => 'Renderizando...',
         'detail' => 'Codificando...',
-        'parsed_script' => json_decode((string) $sampleJson, true),
+        'parsed_script' => json_decode($sampleJson, true),
     ]);
 
     // Si el usuario reabre PublishPost mientras está en rendering_video, retoma el estado desde la BBDD
     /** @var PublishPost $reopenedScreen */
     $reopenedScreen = Screen::make(PublishPost::class);
     ScreenTestHarness::for($reopenedScreen)->render(['post_id' => $draftPost->id], shouldReset: true);
-    expect($reopenedScreen->getContainer()?->findByName('tmr_reel_poll')?->get('enabled'))->toBeTrue();
+    /** @var Timer|null $reopenedPollTimer */
+    $reopenedPollTimer = $reopenedScreen->getContainer()?->findByName('tmr_reel_poll');
+    expect($reopenedPollTimer?->get('enabled'))->toBeTrue();
 
     $publishHarness->call('check_reel_status');
 
@@ -160,14 +169,16 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         'scene_count' => 1,
         'duration_seconds' => 12,
         'json_script' => $sampleJson,
-        'parsed_script' => json_decode((string) $sampleJson, true),
+        'parsed_script' => json_decode($sampleJson, true),
         'video_filename' => 'preview_v1.mp4',
         'video_url' => '/storage/reels/preview_v1.mp4',
     ]);
     $publishHarness->call('check_reel_status');
 
     // Una vez completada al menos una generación de IA, el botón "Enviar a Revisión" queda habilitado
-    expect($publishScreen->getContainer()?->findByName('btn_save_post')?->get('enabled'))->toBeTrue();
+    /** @var Button|null $enabledSaveBtn */
+    $enabledSaveBtn = $publishScreen->getContainer()?->findByName('btn_save_post');
+    expect($enabledSaveBtn?->get('enabled'))->toBeTrue();
 
     // Probar loop de refinamiento (v2) y navegación entre versiones
     $publishHarness->call('quick_refine', [
@@ -229,8 +240,8 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         ->and($reviewedPost?->reviewer_comment)->toBe('Falta agregar el requisito de materias aprobadas en la escena 1.')
         ->and((int) $reviewedPost?->reviewed_by)->toBe($reviewer->id);
 
-    // 4. Publisher presiona "Corregir" en Home, y aunque recargue la página (sin params explícitos) o limpie caché,
-    // no se crea un "Borrador sin título" extra ni se duplica el post al enviarlo a revisión
+    // 4. Publisher presiona "Corregir" en Home o accede directamente por URL (?post_id=...)
+    // y no se crea un "Borrador sin título" extra ni se duplica el post al enviarlo a revisión
     $this->actingAs($publisher);
     $postsCountBeforeEdit = $postService->getLatestPosts()->count();
 
@@ -240,12 +251,14 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     /** @var PublishPost $editScreen */
     $editScreen = Screen::make(PublishPost::class);
     $editHarness = ScreenTestHarness::for($editScreen);
-    // Renderizando sin pasar ['post_id' => ...] explícito (simulando F5 / cache reset en /publish-post)
-    $editHarness->render([], shouldReset: true);
+    // Simulando acceso/recarga con parámetro en la URL (?post_id=...)
+    $editHarness->withQuery(['post_id' => (string) $createdPost->id])->render([], shouldReset: true);
 
     expect($postService->getLatestPosts()->count())->toBe($postsCountBeforeEdit);
     $editHarness->assertHasComponent('lbl_reviewer_alert_body');
-    expect($editScreen->getContainer()?->findByName('btn_save_post')?->get('enabled'))->toBeTrue();
+    /** @var Button|null $editSaveBtn */
+    $editSaveBtn = $editScreen->getContainer()?->findByName('btn_save_post');
+    expect($editSaveBtn?->get('enabled'))->toBeTrue();
 
     $editHarness->call('save_post', [
         'post_id' => (string) $createdPost->id,
@@ -262,6 +275,7 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
 
     // 5. Reviewer aprueba la publicación -> pasa a published
     $this->actingAs($reviewer);
+    /** @var ReviewPost $reviewScreen2 */
     $reviewScreen2 = Screen::make(ReviewPost::class);
     ScreenTestHarness::for($reviewScreen2)->render(['post_id' => $createdPost->id], shouldReset: true);
     $reviewScreen2->onApprovePost([]);
@@ -284,7 +298,7 @@ it('executes GenerateReelPreviewJob handle for initial generation, refinement, a
         '*' => \Illuminate\Support\Facades\Process::result(output: 'Rendered successfully', exitCode: 0),
     ]);
 
-    $validJson = json_encode([
+    $validJson = (string) json_encode([
         'metadata' => ['autor' => 'UNSJ', 'tema' => 'Test', 'duracion_total_segundos' => 10],
         'scenes' => [
             [

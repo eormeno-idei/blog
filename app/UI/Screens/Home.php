@@ -418,7 +418,6 @@ class Home extends Screen
                 'from' => now()->format('Y-m-d'),
                 'to' => now()->addDays(14)->format('Y-m-d'),
             ]);
-            session(['editing_post_id' => $draftId]);
             $screenParams['post_id'] = $draftId;
         }
 
@@ -446,7 +445,6 @@ class Home extends Screen
             return;
         }
 
-        session(['editing_post_id' => $postId]);
         $this->showInto(PublishPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
     }
 
@@ -463,7 +461,6 @@ class Home extends Screen
             return;
         }
 
-        session(['reviewing_post_id' => $postId]);
         $this->showInto(ReviewPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
     }
 

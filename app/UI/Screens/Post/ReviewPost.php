@@ -22,7 +22,6 @@ use Illuminate\Support\Facades\Auth;
 class ReviewPost extends Screen
 {
     protected int $state_post_id = 0;
-    protected int $store_reviewing_post_id = 0;
 
     protected Textarea $reviewer_comment;
     protected Carousel $review_reel_player;
@@ -60,8 +59,6 @@ class ReviewPost extends Screen
         }
 
         $this->state_post_id = $postId;
-        $this->store_reviewing_post_id = $postId;
-        session(['reviewing_post_id' => $postId]);
         $post = $this->postService->findById($postId);
         if (! $post) {
             $this->toast('Propuesta no encontrada.', 'error');
@@ -313,9 +310,9 @@ class ReviewPost extends Screen
     {
         $candidates = [
             $params['post_id'] ?? null,
+            $this->getQueryParams()['post_id'] ?? null,
+            request()->query('post_id'),
             $this->state_post_id,
-            $this->store_reviewing_post_id,
-            session('reviewing_post_id'),
         ];
 
         foreach ($candidates as $candidate) {
@@ -332,8 +329,6 @@ class ReviewPost extends Screen
      */
     public function onCancelReview(array $params): void
     {
-        $this->store_reviewing_post_id = 0;
-        session()->forget('reviewing_post_id');
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 }

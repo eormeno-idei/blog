@@ -267,8 +267,7 @@ class Menu extends Screen
                 return;
             }
 
-            $screenParams = $screen === PublishPost::class ? ['create_new' => true] : [];
-            $this->showInto($screen, slot: $slot, params: $screenParams, updateBrowserUrl: true, force: true);
+            $this->showInto($screen, slot: $slot, updateBrowserUrl: true, force: true);
         }
     }
 

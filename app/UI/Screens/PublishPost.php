@@ -35,7 +35,6 @@ class PublishPost extends Screen
     protected Button $btn_save_post;
 
     protected int $state_post_id = 0;
-    protected int $store_editing_post_id = 0;
 
     public function __construct(
         protected PostServiceInterface $postService
@@ -61,9 +60,7 @@ class PublishPost extends Screen
     protected function buildBaseUI(Container $container, ...$params): void
     {
         /** @var array<string, mixed> $params */
-        $explicitPostId = isset($params['post_id']) && is_numeric($params['post_id'])
-            ? (int) $params['post_id']
-            : 0;
+        $explicitPostId = $this->resolveExplicitPostId($params);
 
         $post = $this->resolveOrCreatePost($params);
         if ($explicitPostId > 0 && $post === null) {
@@ -98,17 +95,23 @@ class PublishPost extends Screen
     /**
      * @param array<string, mixed> $params
      */
+    private function resolveExplicitPostId(array $params): int
+    {
+        $rawId = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? request()->query('post_id');
+
+        return is_numeric($rawId) && (int) $rawId > 0 ? (int) $rawId : 0;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
     private function resolveOrCreatePost(array $params): ?object
     {
-        if (! empty($params['create_new'])) {
-            return $this->createInitialDraftPost();
-        }
-
         $candidateId = $this->resolveCandidatePostId($params);
         if ($candidateId > 0) {
             $existing = $this->postService->findById($candidateId);
-            if ($existing !== null || isset($params['post_id'])) {
-                $this->syncActivePostId($candidateId);
+            if ($existing !== null || $this->resolveExplicitPostId($params) > 0) {
+                $this->state_post_id = $candidateId;
 
                 return $existing;
             }
@@ -124,10 +127,10 @@ class PublishPost extends Screen
     {
         $candidates = [
             $params['post_id'] ?? null,
+            $this->getQueryParams()['post_id'] ?? null,
+            request()->query('post_id'),
             request()->input('parameters.post_id'),
             $this->state_post_id,
-            $this->store_editing_post_id,
-            session('editing_post_id'),
         ];
 
         foreach ($candidates as $candidate) {
@@ -146,7 +149,7 @@ class PublishPost extends Screen
             return null;
         }
 
-        $draftId = $this->postService->createPost([
+        $this->state_post_id = $this->postService->createPost([
             'user_id' => (int) $user->id,
             'title' => 'Borrador sin título',
             'content' => self::defaultNotesTemplate(),
@@ -155,22 +158,7 @@ class PublishPost extends Screen
             'to' => now()->addDays(14)->format('Y-m-d'),
         ]);
 
-        $this->syncActivePostId($draftId);
-
-        return $this->postService->findById($draftId);
-    }
-
-    private function syncActivePostId(int $postId): void
-    {
-        $this->state_post_id = $postId;
-        $this->store_editing_post_id = $postId;
-        session(['editing_post_id' => $postId]);
-    }
-
-    private function clearActivePostContext(): void
-    {
-        $this->store_editing_post_id = 0;
-        session()->forget('editing_post_id');
+        return $this->postService->findById($this->state_post_id);
     }
 
     private function buildReviewerCommentAlert(object $post): Container
@@ -411,7 +399,6 @@ class PublishPost extends Screen
             $this->state_post_id = $this->postService->createPost($payload);
         }
 
-        $this->clearActivePostContext();
         $this->toast('¡Propuesta enviada a revisión correctamente!', 'success');
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
@@ -440,7 +427,6 @@ class PublishPost extends Screen
     public function onCancelPost(array $params): void
     {
         $this->stopActiveReelJobPolling();
-        $this->clearActivePostContext();
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 
@@ -455,7 +441,7 @@ class PublishPost extends Screen
 
         $targetPostId = $this->resolveCandidatePostId($params);
         if ($targetPostId > 0) {
-            $this->syncActivePostId($targetPostId);
+            $this->state_post_id = $targetPostId;
             $this->postService->updatePost($targetPostId, [
                 'title' => $value !== '' ? $value : 'Borrador sin título',
             ]);
@@ -473,7 +459,7 @@ class PublishPost extends Screen
 
         $targetPostId = $this->resolveCandidatePostId($params);
         if ($targetPostId > 0 && $value !== '') {
-            $this->syncActivePostId($targetPostId);
+            $this->state_post_id = $targetPostId;
             $this->postService->updatePost($targetPostId, [
                 'content' => $value,
             ]);
