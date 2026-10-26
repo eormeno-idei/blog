@@ -54,6 +54,10 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "queue:videos": [
+            "Composer\\Config::disableProcessTimeout",
+            "/usr/bin/php artisan queue:work --queue=videos --tries=1 --timeout=1200"
+        ],
         "crap": [
             "@php scripts/crap.php"
         ],

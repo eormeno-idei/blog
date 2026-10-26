@@ -83,7 +83,7 @@ php artisan view:clear
 
 # Start queue worker in background
 echo "Starting queue worker in background..."
-php artisan queue:work --queue=default,emails --tries=3 --timeout=1200 --sleep=3 > storage/logs/queue-worker.log 2>&1 &
+php artisan queue:work --queue=default,emails,videos --tries=3 --timeout=1200 --sleep=3 > storage/logs/queue-worker.log 2>&1 &
 QUEUE_PID=$!
 echo "Queue worker started with PID: $QUEUE_PID"
 

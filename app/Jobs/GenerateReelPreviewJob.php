@@ -29,6 +29,7 @@ class GenerateReelPreviewJob implements ShouldQueue
         public ?string $userFeedback = null,
         public int $versionNumber = 1,
     ) {
+        $this->onQueue('videos');
     }
 
     public static function cacheKey(int|string $jobId): string
