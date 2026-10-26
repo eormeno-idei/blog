@@ -72,6 +72,10 @@ class DatabasePostService implements PostServiceInterface
             'status' => $data['status'] ?? 'pending_review',
             'ai_script' => $data['ai_script'] ?? null,
             'reel_video' => $data['reel_video'] ?? null,
+            'ai_job_status' => $data['ai_job_status'] ?? 'idle',
+            'ai_job_payload' => isset($data['ai_job_payload']) && is_array($data['ai_job_payload'])
+                ? json_encode($data['ai_job_payload'], JSON_UNESCAPED_UNICODE)
+                : ($data['ai_job_payload'] ?? null),
             'reviewer_comment' => $data['reviewer_comment'] ?? null,
             'reviewed_by' => $data['reviewed_by'] ?? null,
             'reviewed_at' => $data['reviewed_at'] ?? null,
@@ -95,12 +99,17 @@ class DatabasePostService implements PostServiceInterface
             'status',
             'ai_script',
             'reel_video',
+            'ai_job_status',
+            'ai_job_payload',
             'reviewer_comment',
             'reviewed_by',
             'reviewed_at',
         ];
 
         $payload = array_intersect_key($data, array_flip($allowedKeys));
+        if (isset($payload['ai_job_payload']) && is_array($payload['ai_job_payload'])) {
+            $payload['ai_job_payload'] = json_encode($payload['ai_job_payload'], JSON_UNESCAPED_UNICODE);
+        }
         $payload['updated_at'] = now();
 
         return DB::table('posts')

@@ -30,6 +30,8 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->text('ai_script')->nullable();
             $table->string('reel_video')->nullable();
+            $table->string('ai_job_status')->default('idle');
+            $table->longText('ai_job_payload')->nullable();
             $table->text('reviewer_comment')->nullable();
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('reviewed_at')->nullable();

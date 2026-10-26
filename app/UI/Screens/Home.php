@@ -7,7 +7,6 @@ use App\Models\User;
 use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\Login;
 use App\UI\Screens\Auth\Register;
-use App\UI\Screens\Post\EditPost;
 use App\UI\Screens\Post\ReviewPost;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
@@ -283,12 +282,6 @@ class Home extends Screen
             );
         }
 
-        $postCard->add(
-            UI::label("post_content_{$post->id}")
-                ->text((string) $post->content)
-                ->style('p')
-        );
-
         $postCard->add($this->buildPostCardActions($post, $isOwner, $isAdmin, $isReviewer));
 
         return $postCard;
@@ -311,30 +304,41 @@ class Home extends Screen
                 ->style('h3')
         );
 
-        [$badgeText, $badgeStyle] = $this->resolveStatusBadge((string) ($post->status ?? 'draft'));
+        [$badgeText, $badgeStyle, $customBg, $customBorder] = $this->resolveStatusBadge($post);
 
-        $postHeader->add(
-            UI::label("post_status_{$post->id}")
-                ->text($badgeText)
-                ->variant('badge')
-                ->style($badgeStyle)
-                ->size('xs')
-        );
+        $statusBadge = UI::label("post_status_{$post->id}")
+            ->text($badgeText)
+            ->variant('badge')
+            ->style($badgeStyle)
+            ->size('xs');
+
+        if ($customBg !== null && $customBorder !== null) {
+            $statusBadge->backgroundColor($customBg)->borderColor($customBorder);
+        }
+
+        $postHeader->add($statusBadge);
 
         return $postHeader;
     }
 
     /**
-     * @return array{0: string, 1: string}
+     * @return array{0: string, 1: string, 2: ?string, 3: ?string}
      */
-    private function resolveStatusBadge(string $status): array
+    private function resolveStatusBadge(object $post): array
     {
+        $status = (string) ($post->status ?? 'draft');
+        $jobStatus = (string) ($post->ai_job_status ?? 'idle');
+
+        if ($status === 'draft' && in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
+            return ['⚙️ Procesando IA', 'info', null, null];
+        }
+
         return match ($status) {
-            'pending_review' => ['⏳ En revisión', 'info'],
-            'changes_requested' => ['⚠️ Con observaciones', 'warning'],
-            'published' => ['🟢 Publicado', 'success'],
-            'archived' => ['📦 Archivado', 'secondary'],
-            default => ['📝 Borrador', 'secondary'],
+            'pending_review' => ['⏳ En revisión', 'info', null, null],
+            'changes_requested' => ['⚠️ Con observaciones', 'error', null, null],
+            'published' => ['🟢 Publicado', 'success', null, null],
+            'archived' => ['📦 Archivado', 'info', 'rgba(148, 163, 184, 0.22)', 'rgba(148, 163, 184, 0.45)'],
+            default => ['📝 Borrador', 'warning', null, null],
         };
     }
 
@@ -402,7 +406,23 @@ class Home extends Screen
      */
     public function onGoToPublish(array $params): void
     {
-        $this->showInto(PublishPost::class, updateBrowserUrl: true, force: true);
+        $user = Auth::user();
+        $screenParams = [];
+
+        if ($user instanceof User) {
+            $draftId = $this->postService->createPost([
+                'user_id' => (int) $user->id,
+                'title' => 'Borrador sin título',
+                'content' => PublishPost::defaultNotesTemplate(),
+                'status' => 'draft',
+                'from' => now()->format('Y-m-d'),
+                'to' => now()->addDays(14)->format('Y-m-d'),
+            ]);
+            session(['editing_post_id' => $draftId]);
+            $screenParams['post_id'] = $draftId;
+        }
+
+        $this->showInto(PublishPost::class, updateBrowserUrl: true, force: true, params: $screenParams);
     }
 
     /**
@@ -426,7 +446,8 @@ class Home extends Screen
             return;
         }
 
-        $this->showInto(EditPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
+        session(['editing_post_id' => $postId]);
+        $this->showInto(PublishPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
     }
 
     /**
@@ -442,6 +463,7 @@ class Home extends Screen
             return;
         }
 
+        session(['reviewing_post_id' => $postId]);
         $this->showInto(ReviewPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
     }
 

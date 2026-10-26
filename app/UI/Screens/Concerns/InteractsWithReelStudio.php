@@ -23,6 +23,7 @@ use Illuminate\Support\Str;
 trait InteractsWithReelStudio
 {
     protected Timer $tmr_reel_poll;
+    protected Container $workspace_tabs;
     protected Container $ai_studio_card;
     protected Container $ai_progress_box;
     protected Label $lbl_ai_progress_step;
@@ -58,12 +59,48 @@ trait InteractsWithReelStudio
         return $this->tmr_reel_poll;
     }
 
+    protected function buildWorkspaceTabs(Container $formCard): Container
+    {
+        $this->workspace_tabs = UI::container('workspace_tabs')
+            ->plain()
+            ->shadow(false)
+            ->width(Size::full())
+            ->tabs([
+                'form_tab' => [
+                    'label' => '📝 Datos de la Publicación',
+                ],
+                'reel_studio_tab' => [
+                    'label' => '🎬 Estudio de Reel IA',
+                    'disabled' => true,
+                ],
+            ], 'form_tab');
+
+        $this->workspace_tabs->add($formCard, tab: 'form_tab');
+        $this->workspace_tabs->add($this->buildAiStudioCard(), tab: 'reel_studio_tab');
+
+        return $this->workspace_tabs;
+    }
+
+    protected function enableReelStudioTab(bool $activate = false): void
+    {
+        if (! isset($this->workspace_tabs)) {
+            return;
+        }
+
+        $this->workspace_tabs->disableTab('reel_studio_tab', false);
+
+        if ($activate) {
+            $this->workspace_tabs->activeTab('reel_studio_tab');
+        }
+    }
+
     protected function buildAiStudioCard(): Container
     {
         $this->ai_studio_card = UI::container('ai_studio_card')
             ->card()
             ->width(Size::full())
-            ->maxWidth(Size::px(540))
+            ->maxWidth(Size::px(760))
+            ->centerHorizontal()
             ->layout(LayoutType::VERTICAL)
             ->padding(Spacing::px(24))
             ->gap(Spacing::px(16));
@@ -145,7 +182,10 @@ trait InteractsWithReelStudio
             ->loop(true)
             ->showPrev(false)
             ->showNext(false)
-            ->hideIndicators();
+            ->hideIndicators()
+            ->width(Size::px(315))
+            ->maxWidth(Size::px(315))
+            ->height(Size::px(560));
 
         $this->ai_preview_box->add($this->reel_preview_player);
         $this->ai_preview_box->add($this->buildStoryboardCard());
@@ -288,39 +328,101 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * Precarga una versión existente (por ejemplo, al abrir EditPost para corregir observaciones del revisor).
+     * Restaura el estado del Estudio de Reel desde el registro en base de datos,
+     * incluyendo versiones previas o un procesamiento de IA en curso si el usuario cerró la ventana y volvió a entrar.
      */
-    protected function preloadExistingReel(?string $jsonScript, ?string $videoFilename): void
+    protected function restoreReelStudioFromPost(object $post): void
     {
-        $hasScript = is_string($jsonScript) && trim($jsonScript) !== '';
-        $hasVideo = is_string($videoFilename) && trim($videoFilename) !== '';
+        $statusData = isset($post->id) && is_numeric($post->id)
+            ? GenerateReelPreviewJob::getStatus((int) $post->id)
+            : null;
 
-        if (! $hasScript && ! $hasVideo) {
+        $savedVersions = is_array($statusData['versions'] ?? null) ? $statusData['versions'] : [];
+        if ($savedVersions !== []) {
+            $this->hydrateSavedVersions($savedVersions);
+        } else {
+            $this->preloadExistingReel(
+                is_string($post->ai_script ?? null) ? $post->ai_script : null,
+                is_string($post->reel_video ?? null) ? $post->reel_video : null
+            );
+        }
+
+        $jobStatus = (string) ($statusData['status'] ?? ($post->ai_job_status ?? 'idle'));
+        if (in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
+            $this->state_active_job_id = (string) ($post->id ?? '');
+            $versionNumber = (int) ($statusData['version'] ?? (count($this->state_reel_versions) + 1));
+            $this->updateUiForJobStart($versionNumber, false, null);
+
+            if ($jobStatus === 'rendering_video') {
+                $this->handleRenderingVideoStatus($statusData ?? []);
+            } else {
+                $this->handleGeneratingScriptStatus($statusData ?? []);
+            }
+
             return;
         }
 
-        $formatter = app(ReelStoryboardFormatter::class);
-        $decoded = $hasScript ? (json_decode($jsonScript, true) ?: []) : [];
-        $scenes = is_array($decoded['scenes'] ?? null) ? $decoded['scenes'] : [];
+        if ($jobStatus === 'failed' && is_array($statusData)) {
+            $this->enableReelStudioTab(activate: false);
+            $this->handleFailedStatus($statusData);
+        }
+    }
 
-        $durationSeconds = 0;
-        foreach ($scenes as $scene) {
-            $durationSeconds += (int) ($scene['duration_seconds'] ?? 0);
+    /**
+     * @param array<int, array<string, mixed>> $savedVersions
+     */
+    private function hydrateSavedVersions(array $savedVersions): void
+    {
+        $formatter = app(ReelStoryboardFormatter::class);
+        $this->state_reel_versions = [];
+
+        foreach ($savedVersions as $idx => $ver) {
+            $jsonScript = (string) ($ver['json_script'] ?? '');
+            $feedback = isset($ver['feedback_applied']) && is_string($ver['feedback_applied'])
+                ? $ver['feedback_applied']
+                : null;
+
+            $this->state_reel_versions[] = [
+                'version' => (int) ($ver['version'] ?? ($idx + 1)),
+                'video_url' => (string) ($ver['video_url'] ?? ''),
+                'video_filename' => (string) ($ver['video_filename'] ?? ''),
+                'json_script' => $jsonScript,
+                'scene_count' => (int) ($ver['scene_count'] ?? 0),
+                'duration_seconds' => (int) ($ver['duration_seconds'] ?? 10),
+                'storyboard_markdown' => $formatter->format($jsonScript, $feedback),
+                'feedback_applied' => $feedback,
+            ];
         }
 
-        $this->state_reel_versions = [[
-            'version' => 1,
-            'video_url' => $hasVideo ? "/storage/reels/{$videoFilename}" : '',
-            'video_filename' => $hasVideo ? $videoFilename : '',
-            'json_script' => $hasScript ? $jsonScript : '',
-            'scene_count' => count($scenes),
-            'duration_seconds' => max(10, $durationSeconds),
-            'storyboard_markdown' => $formatter->format($decoded),
-            'feedback_applied' => null,
-        ]];
-
-        $this->state_current_version_index = 0;
+        $this->state_current_version_index = count($this->state_reel_versions) - 1;
+        $this->enableReelStudioTab(activate: false);
         $this->applyCurrentVersionToUI();
+    }
+
+    /**
+     * Precarga una versión existente (por ejemplo, al abrir un post que ya tenía ai_script o reel_video).
+     */
+    protected function preloadExistingReel(?string $jsonScript, ?string $videoFilename): void
+    {
+        $script = trim((string) $jsonScript);
+        $video = trim((string) $videoFilename);
+
+        if ($script === '' && $video === '') {
+            return;
+        }
+
+        $decoded = $script !== '' ? (json_decode($script, true) ?: []) : [];
+        $scenes = is_array($decoded['scenes'] ?? null) ? $decoded['scenes'] : [];
+
+        $this->hydrateSavedVersions([[
+            'version' => 1,
+            'video_url' => $video !== '' ? "/storage/reels/{$video}" : '',
+            'video_filename' => $video,
+            'json_script' => $script,
+            'scene_count' => count($scenes),
+            'duration_seconds' => 10,
+            'feedback_applied' => null,
+        ]]);
     }
 
     /**
@@ -390,7 +492,9 @@ trait InteractsWithReelStudio
             return;
         }
 
-        $jobId = Str::uuid()->toString();
+        $jobId = isset($this->state_post_id) && $this->state_post_id > 0
+            ? (string) $this->state_post_id
+            : Str::uuid()->toString();
         $nextVersionNumber = count($this->state_reel_versions) + 1;
         $this->state_active_job_id = $jobId;
         $isRefinement = $previousJson !== null && $userFeedback !== null;
@@ -415,6 +519,8 @@ trait InteractsWithReelStudio
 
     private function updateUiForJobStart(int $versionNumber, bool $isRefinement, ?string $userFeedback): void
     {
+        $this->enableReelStudioTab(activate: true);
+
         $this->ai_progress_box->visible(true);
         $this->lbl_ai_progress_step
             ->text($isRefinement
@@ -607,6 +713,10 @@ trait InteractsWithReelStudio
         $this->btn_prev_version->enabled($this->state_current_version_index > 0);
         $this->btn_next_version->enabled($this->state_current_version_index < $totalVersions - 1);
 
+        if (isset($this->btn_save_post)) {
+            $this->btn_save_post->enabled(true);
+        }
+
         if ($videoUrl !== '') {
             $this->reel_preview_player->currentMedia([
                 'id' => "reel_v{$versionNum}",
@@ -619,6 +729,14 @@ trait InteractsWithReelStudio
         }
 
         $this->lbl_storyboard_summary->text($storyboard);
+
+        if (isset($this->state_post_id, $this->postService) && $this->state_post_id > 0) {
+            $videoFilename = (string) ($versionData['video_filename'] ?? '');
+            $this->postService->updatePost($this->state_post_id, [
+                'ai_script' => $jsonScript !== '' ? $jsonScript : null,
+                'reel_video' => $videoFilename !== '' ? $videoFilename : null,
+            ]);
+        }
     }
 
     /**

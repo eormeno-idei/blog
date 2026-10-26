@@ -5,7 +5,6 @@ use App\Jobs\GenerateReelPreviewJob;
 use App\Services\Post\ReelStoryboardFormatter;
 use App\Services\User\UsimUserService;
 use App\UI\Screens\Home;
-use App\UI\Screens\Post\EditPost;
 use App\UI\Screens\Post\ReviewPost;
 use App\UI\Screens\PublishPost;
 use Idei\Usim\Screen;
@@ -65,22 +64,57 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     $reviewer = $userService->provisionFromConfig('reviewer');
     $postService = app(PostServiceInterface::class);
 
-    // 1. Publisher inicia creación de propuesta y dispara generación de Reel con IA
+    // 1. Publisher presiona "Publicar Post" en Home o ingresa a PublishPost -> se crea inmediatamente el borrador en BBDD
     $this->actingAs($publisher);
+
+    $homePublisherHarness = ScreenTestHarness::for(Home::class)->render(shouldReset: true);
+    $homePublisherHarness->call('go_to_publish');
+
+    $draftPost = $postService->getLatestPosts()->firstWhere('author_id', $publisher->id);
+    expect($draftPost)->not->toBeNull()
+        ->and($draftPost->status)->toBe('draft');
 
     /** @var PublishPost $publishScreen */
     $publishScreen = Screen::make(PublishPost::class);
     $publishHarness = ScreenTestHarness::for($publishScreen);
-    $publishHarness->render([], shouldReset: true);
+    $publishHarness->render(['post_id' => $draftPost->id], shouldReset: true);
+
+    // No debe existir el botón "Cancelar", "Enviar a Revisión" inicia deshabilitado, y la pestaña Estudio de Reel IA inicia deshabilitada
+    expect($publishScreen->getContainer()?->findByName('btn_cancel_post'))->toBeNull()
+        ->and($publishScreen->getContainer()?->findByName('btn_save_post')?->get('enabled'))->toBeFalse();
+
+    // Al modificar el título, se guarda inmediatamente en la BBDD
+    $publishHarness->call('on_title_saved', ['value' => 'Título en Vivo']);
+    expect($postService->findById($draftPost->id)?->title)->toBe('Título en Vivo');
+
+    $tabsContainer = $publishScreen->getContainer()?->findByName('workspace_tabs');
+    $tabsRaw = $tabsContainer ? ($tabsContainer->toJson()[$tabsContainer->getId()] ?? []) : [];
+    $tabsConfig = $tabsRaw['tabs'] ?? [];
+    $studioTabBefore = collect($tabsConfig)->firstWhere('id', 'reel_studio_tab');
+    expect($studioTabBefore['disabled'] ?? null)->toBeTrue()
+        ->and($tabsRaw['tabs_active'] ?? null)->toBe('form_tab');
+
+    // El reproductor de preview debe ser vertical (9:16 -> 315x560)
+    $playerComponent = $publishScreen->getContainer()?->findByName('reel_preview_player');
+    expect($playerComponent?->get('width'))->toBe('315px')
+        ->and($playerComponent?->get('height'))->toBe('560px');
 
     $publishHarness->call('ask_ai', ['post_content' => 'Notas de propuesta de trabajo final']);
     Queue::assertPushed(GenerateReelPreviewJob::class);
 
-    // Simular progresos del Job en caché (generating_script -> rendering_video -> completed)
-    $reflect = new ReflectionClass($publishScreen);
-    $jobIdProp = $reflect->getProperty('state_active_job_id');
-    $jobIdProp->setAccessible(true);
-    $jobId = (string) $jobIdProp->getValue($publishScreen);
+    // El estado del procesamiento se guarda en la tabla posts (ai_job_status)
+    expect($postService->findById($draftPost->id)?->ai_job_status)->toBe('generating_script');
+
+    // Al iniciar la generación, la pestaña Estudio de Reel IA se habilita y pasa a estar activa
+    $tabsContainerAfter = $publishScreen->getContainer()?->findByName('workspace_tabs');
+    $tabsRawAfter = $tabsContainerAfter ? ($tabsContainerAfter->toJson()[$tabsContainerAfter->getId()] ?? []) : [];
+    $tabsConfigAfter = $tabsRawAfter['tabs'] ?? [];
+    $studioTabAfter = collect($tabsConfigAfter)->firstWhere('id', 'reel_studio_tab');
+    expect($studioTabAfter['disabled'] ?? null)->toBeFalse()
+        ->and($tabsRawAfter['tabs_active'] ?? null)->toBe('reel_studio_tab');
+
+    // Simular que el usuario cierra la ventana mientras está en rendering_video y vuelve a abrir el post más tarde
+    $jobId = (string) $draftPost->id;
 
     $sampleJson = json_encode([
         'metadata' => ['autor' => 'UNSJ', 'tema' => 'TFG', 'duracion_total_segundos' => 12],
@@ -111,6 +145,13 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         'detail' => 'Codificando...',
         'parsed_script' => json_decode((string) $sampleJson, true),
     ]);
+
+    // Si el usuario reabre PublishPost mientras está en rendering_video, retoma el estado desde la BBDD
+    /** @var PublishPost $reopenedScreen */
+    $reopenedScreen = Screen::make(PublishPost::class);
+    ScreenTestHarness::for($reopenedScreen)->render(['post_id' => $draftPost->id], shouldReset: true);
+    expect($reopenedScreen->getContainer()?->findByName('tmr_reel_poll')?->get('enabled'))->toBeTrue();
+
     $publishHarness->call('check_reel_status');
 
     GenerateReelPreviewJob::putStatus($jobId, [
@@ -125,14 +166,16 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     ]);
     $publishHarness->call('check_reel_status');
 
+    // Una vez completada al menos una generación de IA, el botón "Enviar a Revisión" queda habilitado
+    expect($publishScreen->getContainer()?->findByName('btn_save_post')?->get('enabled'))->toBeTrue();
+
     // Probar loop de refinamiento (v2) y navegación entre versiones
     $publishHarness->call('quick_refine', [
         'prompt' => 'Más corto',
         'post_content' => 'Notas de propuesta de trabajo final',
     ]);
-    $jobIdV2 = (string) $jobIdProp->getValue($publishScreen);
 
-    GenerateReelPreviewJob::putStatus($jobIdV2, [
+    GenerateReelPreviewJob::putStatus($jobId, [
         'status' => 'completed',
         'version' => 2,
         'scene_count' => 1,
@@ -186,22 +229,33 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         ->and($reviewedPost?->reviewer_comment)->toBe('Falta agregar el requisito de materias aprobadas en la escena 1.')
         ->and((int) $reviewedPost?->reviewed_by)->toBe($reviewer->id);
 
-    // 4. Publisher abre EditPost, ve la alerta con la observación del revisor y reenvía a revisión
+    // 4. Publisher presiona "Corregir" en Home, y aunque recargue la página (sin params explícitos) o limpie caché,
+    // no se crea un "Borrador sin título" extra ni se duplica el post al enviarlo a revisión
     $this->actingAs($publisher);
-    /** @var EditPost $editScreen */
-    $editScreen = Screen::make(EditPost::class);
-    $editHarness = ScreenTestHarness::for($editScreen);
-    $editHarness->render(['post_id' => $createdPost->id], shouldReset: true);
+    $postsCountBeforeEdit = $postService->getLatestPosts()->count();
 
+    $homeEditHarness = ScreenTestHarness::for(Home::class)->render(shouldReset: true);
+    $homeEditHarness->call('edit_post', ['post_id' => $createdPost->id]);
+
+    /** @var PublishPost $editScreen */
+    $editScreen = Screen::make(PublishPost::class);
+    $editHarness = ScreenTestHarness::for($editScreen);
+    // Renderizando sin pasar ['post_id' => ...] explícito (simulando F5 / cache reset en /publish-post)
+    $editHarness->render([], shouldReset: true);
+
+    expect($postService->getLatestPosts()->count())->toBe($postsCountBeforeEdit);
     $editHarness->assertHasComponent('lbl_reviewer_alert_body');
+    expect($editScreen->getContainer()?->findByName('btn_save_post')?->get('enabled'))->toBeTrue();
 
     $editHarness->call('save_post', [
+        'post_id' => (string) $createdPost->id,
         'post_title' => 'Propuesta Trabajo Final IA (Corregida)',
         'post_content' => 'Notas corregidas con requisitos de materias',
         'post_from' => '2026-10-25',
         'post_to' => '2026-11-15',
     ]);
 
+    expect($postService->getLatestPosts()->count())->toBe($postsCountBeforeEdit);
     $resubmittedPost = $postService->findById($createdPost->id);
     expect($resubmittedPost?->status)->toBe('pending_review')
         ->and($resubmittedPost?->title)->toBe('Propuesta Trabajo Final IA (Corregida)');

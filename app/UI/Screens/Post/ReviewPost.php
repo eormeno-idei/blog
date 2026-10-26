@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 class ReviewPost extends Screen
 {
     protected int $state_post_id = 0;
+    protected int $store_reviewing_post_id = 0;
 
     protected Textarea $reviewer_comment;
     protected Carousel $review_reel_player;
@@ -52,15 +53,15 @@ class ReviewPost extends Screen
     protected function buildBaseUI(Container $container, ...$params): void
     {
         /** @var array<string, mixed> $params */
-        $postId = isset($params['post_id']) && is_numeric($params['post_id'])
-            ? (int) $params['post_id']
-            : $this->state_post_id;
+        $postId = $this->resolveReviewPostId($params);
 
         if ($postId <= 0) {
             return;
         }
 
         $this->state_post_id = $postId;
+        $this->store_reviewing_post_id = $postId;
+        session(['reviewing_post_id' => $postId]);
         $post = $this->postService->findById($postId);
         if (! $post) {
             $this->toast('Propuesta no encontrada.', 'error');
@@ -206,7 +207,10 @@ class ReviewPost extends Screen
             ->loop(true)
             ->showPrev(false)
             ->showNext(false)
-            ->hideIndicators();
+            ->hideIndicators()
+            ->width(Size::px(315))
+            ->maxWidth(Size::px(315))
+            ->height(Size::px(560));
 
         if (! empty($post->reel_video) && is_string($post->reel_video)) {
             $this->review_reel_player->currentMedia([
@@ -305,8 +309,31 @@ class ReviewPost extends Screen
     /**
      * @param array<string, mixed> $params
      */
+    private function resolveReviewPostId(array $params): int
+    {
+        $candidates = [
+            $params['post_id'] ?? null,
+            $this->state_post_id,
+            $this->store_reviewing_post_id,
+            session('reviewing_post_id'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                return (int) $candidate;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
     public function onCancelReview(array $params): void
     {
+        $this->store_reviewing_post_id = 0;
+        session()->forget('reviewing_post_id');
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
 }

@@ -144,12 +144,6 @@ return [
         ],
     ],
     'post' => [
-        'edit_post' => [
-            'access' => [
-                'name' => 'Acceder a Post Edit Post',
-                'description' => 'Permite acceder a la pantalla Post Edit Post.',
-            ],
-        ],
         'review_post' => [
             'access' => [
                 'name' => 'Acceder a Post Review Post',

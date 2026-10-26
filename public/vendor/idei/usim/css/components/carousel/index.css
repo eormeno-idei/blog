@@ -83,6 +83,15 @@ body[data-theme="dark"] {
     object-fit: cover;
 }
 
+.usim-carousel[style*="height"] .usim-carousel-frame {
+    height: 100%;
+    aspect-ratio: 9 / 16;
+}
+
+.usim-carousel[style*="height"] .usim-carousel-media.video {
+    object-fit: contain;
+}
+
 .usim-carousel-audio-wrap {
     width: min(640px, 92%);
     padding: 24px;
