@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Response;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LogViewerController extends Controller
 {
     private const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
     private const DEFAULT_LINES = 1000;
 
     /**
@@ -21,9 +22,10 @@ class LogViewerController extends Controller
     public function index(): View
     {
         $logFiles = $this->getLogFiles();
+
         return view('logs.viewer', [
             'logFiles' => $logFiles,
-            'selectedFile' => request('file', 'laravel.log')
+            'selectedFile' => request('file', 'laravel.log'),
         ]);
     }
 
@@ -47,11 +49,11 @@ class LogViewerController extends Controller
         $searchInput = $request->input('search', '');
         $search = is_string($searchInput) ? $searchInput : '';
 
-        $logPath = storage_path('logs/' . basename($fileName));
+        $logPath = storage_path('logs/'.basename($fileName));
 
-        if (!File::exists($logPath)) {
+        if (! File::exists($logPath)) {
             return response()->json([
-                'error' => 'Log file not found'
+                'error' => 'Log file not found',
             ], 404);
         }
 
@@ -59,9 +61,9 @@ class LogViewerController extends Controller
 
         if ($fileSize > self::MAX_FILE_SIZE) {
             return response()->json([
-                'warning' => 'File is too large. Showing last ' . $lines . ' lines.',
+                'warning' => 'File is too large. Showing last '.$lines.' lines.',
                 'content' => $this->getLastLines($logPath, $lines, $search),
-                'fileSize' => $this->formatBytes($fileSize)
+                'fileSize' => $this->formatBytes($fileSize),
             ]);
         }
 
@@ -77,7 +79,7 @@ class LogViewerController extends Controller
         return response()->json([
             'content' => implode("\n", $logLines),
             'fileSize' => $this->formatBytes($fileSize),
-            'totalLines' => count(explode("\n", $content))
+            'totalLines' => count(explode("\n", $content)),
         ]);
     }
 
@@ -88,9 +90,9 @@ class LogViewerController extends Controller
     {
         $fileInput = $request->input('file', 'laravel.log');
         $fileName = is_string($fileInput) ? $fileInput : 'laravel.log';
-        $logPath = storage_path('logs/' . basename($fileName));
+        $logPath = storage_path('logs/'.basename($fileName));
 
-        if (!File::exists($logPath)) {
+        if (! File::exists($logPath)) {
             abort(404, 'Log file not found');
         }
 
@@ -106,15 +108,16 @@ class LogViewerController extends Controller
             // Accept both JSON and form data
             $fileNameInput = $request->input('file') ?? $request->get('file', 'laravel.log');
             $fileName = is_string($fileNameInput) && $fileNameInput !== '' ? $fileNameInput : 'laravel.log';
-            $logPath = storage_path('logs/' . basename($fileName));
+            $logPath = storage_path('logs/'.basename($fileName));
 
-            if (!File::exists($logPath)) {
+            if (! File::exists($logPath)) {
                 if ($request->input('redirect')) {
                     return redirect()->route('logs.index')->with('error', 'Log file not found');
                 }
+
                 return response()->json([
                     'success' => false,
-                    'error' => 'Log file not found'
+                    'error' => 'Log file not found',
                 ], 404);
             }
 
@@ -127,15 +130,16 @@ class LogViewerController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Log file cleared successfully'
+                'message' => 'Log file cleared successfully',
             ]);
         } catch (\Exception $e) {
             if ($request->input('redirect')) {
-                return redirect()->route('logs.index')->with('error', 'Error clearing log: ' . $e->getMessage());
+                return redirect()->route('logs.index')->with('error', 'Error clearing log: '.$e->getMessage());
             }
+
             return response()->json([
                 'success' => false,
-                'error' => 'Error clearing log: ' . $e->getMessage()
+                'error' => 'Error clearing log: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -157,7 +161,7 @@ class LogViewerController extends Controller
                 $logFiles[] = [
                     'name' => $file->getFilename(),
                     'size' => $this->formatBytes($file->getSize()),
-                    'modified' => date('Y-m-d H:i:s', $file->getMTime())
+                    'modified' => date('Y-m-d H:i:s', $file->getMTime()),
                 ];
             }
         }
@@ -178,10 +182,11 @@ class LogViewerController extends Controller
         $file->seek($startLine);
 
         $content = [];
-        while (!$file->eof()) {
+        while (! $file->eof()) {
             $line = $file->current();
-            if (!is_string($line)) {
+            if (! is_string($line)) {
                 $file->next();
+
                 continue;
             }
 
@@ -220,6 +225,6 @@ class LogViewerController extends Controller
             $i++;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, 2).' '.$units[$i];
     }
 }

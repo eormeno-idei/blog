@@ -1,11 +1,14 @@
 <?php
+
 // @usim: feature="admin", type="service"
+
 namespace App\Services\User;
 
 use App\Models\User;
 use Idei\Usim\Models\UsimUnit;
 use Illuminate\Support\Facades\Hash;
 use InvalidArgumentException;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class UsimUserService
@@ -19,7 +22,7 @@ class UsimUserService
         /** @var array<string, mixed> $userData */
         $userData = config("usim.users.{$configKey}");
 
-        if (!$userData) {
+        if (! $userData) {
             throw new InvalidArgumentException("La key '{$configKey}' no existe en la configuración usim.users.");
         }
 
@@ -63,7 +66,7 @@ class UsimUserService
 
                 // Aseguramos que los roles existan antes de asignarlos
                 foreach ($roles as $roleName) {
-                    \Spatie\Permission\Models\Role::findOrCreate($roleName);
+                    Role::findOrCreate($roleName);
                 }
 
                 $user->syncRoles($roles);

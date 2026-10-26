@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin;
 
 use App\Models\User;
@@ -22,6 +24,7 @@ use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -76,7 +79,7 @@ class EditUser extends Screen
     protected function buildBaseUI(Container $container, ...$params): void
     {
         $rawUser = $params['user'] ?? null;
-        $rawUserId = $params['user_id'] ?? $params['id'] ?? request()->query('id') ?? request()->query('user_id');
+        $rawUserId = $params['user_id'] ?? $params['id'] ?? null;
 
         /** @var array<string, mixed>|null $user */
         $user = $this->resolveUserPayload($rawUser, $rawUserId);
@@ -284,7 +287,7 @@ class EditUser extends Screen
      *
      * @param  array<string, mixed>  $params
      */
-    private function resolveTargetUserForAction(array $params, bool $updateResultLabel = false): ?\Illuminate\Database\Eloquent\Model
+    private function resolveTargetUserForAction(array $params, bool $updateResultLabel = false): ?Model
     {
         $rawId = $params['user_id'] ?? null;
         $userId = (is_int($rawId) || is_string($rawId)) ? (int) $rawId : 0;

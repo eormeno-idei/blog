@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="service"
+
 namespace App\Services\Device;
 
 use App\Models\Device;
@@ -34,11 +36,11 @@ class DeviceService
         ]);
 
         $unitIds = $this->resolveUnitIdsFromPayload($data) ?? [];
-        if (!empty($unitIds)) {
+        if (! empty($unitIds)) {
             $device->usimUnits()->sync($unitIds);
         }
 
-        if (!empty($data['roles'])) {
+        if (! empty($data['roles'])) {
             $roles = is_array($data['roles']) ? $data['roles'] : [$data['roles']];
             $this->syncDeviceRolesAcrossUnits($device, $roles, $unitIds);
         }
@@ -47,7 +49,6 @@ class DeviceService
     }
 
     /**
-     * @param int|string $id
      * @param array{
      *     name?: string,
      *     roles?: list<string>|string,
@@ -59,7 +60,7 @@ class DeviceService
     public function updateDevice(int|string $id, array $data): ?Device
     {
         $device = $this->getDevice($id);
-        if (!$device) {
+        if (! $device) {
             return null;
         }
 
@@ -82,7 +83,7 @@ class DeviceService
             $roles = is_array($data['roles']) ? $data['roles'] : [$data['roles']];
             /** @var list<int> $effectiveUnits */
             $effectiveUnits = $unitIds ?? array_map(
-                static fn(mixed $unitId): int => is_int($unitId) || is_string($unitId) ? (int) $unitId : 0,
+                static fn (mixed $unitId): int => is_int($unitId) || is_string($unitId) ? (int) $unitId : 0,
                 $device->usimUnits->pluck('id')->all()
             );
             $this->syncDeviceRolesAcrossUnits($device, $roles, $effectiveUnits);
@@ -94,20 +95,20 @@ class DeviceService
     /**
      * Extract normalized unit IDs from payload when provided.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return list<int>|null
      */
     private function resolveUnitIdsFromPayload(array $data): ?array
     {
         if (array_key_exists('unit_ids', $data) && is_array($data['unit_ids'])) {
             return array_values(array_map(
-                static fn(mixed $unitId): int => is_int($unitId) || is_string($unitId) ? (int) $unitId : 0,
+                static fn (mixed $unitId): int => is_int($unitId) || is_string($unitId) ? (int) $unitId : 0,
                 $data['unit_ids']
             ));
         }
 
         if (array_key_exists('unit_id', $data)) {
-            return !empty($data['unit_id']) && (is_int($data['unit_id']) || is_string($data['unit_id']))
+            return ! empty($data['unit_id']) && (is_int($data['unit_id']) || is_string($data['unit_id']))
                 ? [(int) $data['unit_id']]
                 : [];
         }
@@ -118,12 +119,12 @@ class DeviceService
     /**
      * Synchronize device roles across the given unit IDs (or globally when empty).
      *
-     * @param list<string> $roles
-     * @param list<int> $unitIds
+     * @param  list<string>  $roles
+     * @param  list<int>  $unitIds
      */
     private function syncDeviceRolesAcrossUnits(Device $device, array $roles, array $unitIds): void
     {
-        $targetUnits = !empty($unitIds) ? $unitIds : [null];
+        $targetUnits = ! empty($unitIds) ? $unitIds : [null];
 
         foreach ($targetUnits as $targetUnitId) {
             if ($targetUnitId !== null && function_exists('setPermissionsTeamId') && function_exists('getPermissionsTeamId')) {
@@ -143,33 +144,31 @@ class DeviceService
     /**
      * Share a device with specified unit(s), replicating its roles in those units.
      *
-     * @param int|string $id
-     * @param int|string|list<int|string> $unitIds
-     * @return Device|null
+     * @param  int|string|list<int|string>  $unitIds
      */
     public function shareDevice(int|string $id, int|string|array $unitIds): ?Device
     {
         $device = $this->getDevice($id);
-        if (!$device) {
+        if (! $device) {
             return null;
         }
 
         $units = is_array($unitIds)
-            ? array_map(static fn(int|string $unitId): int => (int) $unitId, $unitIds)
+            ? array_map(static fn (int|string $unitId): int => (int) $unitId, $unitIds)
             : [(int) $unitIds];
         $device->usimUnits()->syncWithoutDetaching($units);
         $device->load('usimUnits');
 
         $existingRoles = $device->roles->pluck('name')
-            ->filter(static fn(mixed $name): bool => is_string($name))
+            ->filter(static fn (mixed $name): bool => is_string($name))
             ->all();
         if (empty($existingRoles) && $device->relationLoaded('globalRoles')) {
             $existingRoles = $device->globalRoles->pluck('name')
-                ->filter(static fn(mixed $name): bool => is_string($name))
+                ->filter(static fn (mixed $name): bool => is_string($name))
                 ->all();
         }
 
-        if (!empty($existingRoles) && function_exists('setPermissionsTeamId') && function_exists('getPermissionsTeamId')) {
+        if (! empty($existingRoles) && function_exists('setPermissionsTeamId') && function_exists('getPermissionsTeamId')) {
             $prevTeamId = getPermissionsTeamId();
             try {
                 foreach ($units as $uId) {
@@ -190,7 +189,7 @@ class DeviceService
     public function makeDeviceInstitutional(int|string $id): ?Device
     {
         $rawMainId = UsimUnit::where('slug', 'main')->value('id');
-        if (!is_numeric($rawMainId)) {
+        if (! is_numeric($rawMainId)) {
             return null;
         }
 
@@ -200,7 +199,7 @@ class DeviceService
     public function deleteDevice(int|string $id): bool
     {
         $device = $this->getDevice($id);
-        if (!$device) {
+        if (! $device) {
             return false;
         }
 
@@ -213,7 +212,7 @@ class DeviceService
     public function unpairDevice(int|string $id): bool
     {
         $device = $this->getDevice($id);
-        if (!$device) {
+        if (! $device) {
             return false;
         }
 
@@ -239,7 +238,7 @@ class DeviceService
         }
 
         $device = $this->getDevice($id);
-        if (!$device) {
+        if (! $device) {
             return [
                 'success' => false,
                 'message' => 'Dispositivo no encontrado.',
@@ -291,7 +290,7 @@ class DeviceService
         }
 
         $manager = $this->pairingManager ?? app(DevicePairingManager::class);
-        if (!$manager->isValidPin($cleanPin)) {
+        if (! $manager->isValidPin($cleanPin)) {
             return [
                 'success' => false,
                 'message' => t('screens.admin.users_manager.device_invalid_pin'),
@@ -303,8 +302,9 @@ class DeviceService
             $device = $this->createDevice($data);
             $success = $manager->approve($cleanPin, $device);
 
-            if (!$success) {
+            if (! $success) {
                 DB::rollBack();
+
                 return [
                     'success' => false,
                     'message' => t('screens.admin.users_manager.device_invalid_pin'),

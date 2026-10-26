@@ -1,4 +1,5 @@
 <?php
+
 use App\Contracts\PostServiceInterface;
 use App\Http\Requests\PostRequest;
 use App\Services\User\UsimUserService;

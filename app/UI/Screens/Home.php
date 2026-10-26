@@ -26,13 +26,25 @@ class Home extends Screen
     public static Visibility $visibility = Visibility::PUBLIC;
 
     protected ?Container $posts_list_container = null;
+
     protected Label $lbl_registered_message;
 
     public function __construct(
         protected PostServiceInterface $postService
     ) {}
 
-    public function buildBaseUI(Container $container, ...$params): void
+    // public static function getMenuLabel(): string
+    // {
+    //     return 'Inicio';
+    // }
+
+    // public static function getMenuIcon(): ?string
+    // {
+    //     return '🏠';
+    // }
+
+
+    protected function buildBaseUI(Container $container, ...$params): void
     {
         /** @var User|null $user */
         $user = Auth::user();
@@ -153,7 +165,7 @@ class Home extends Screen
     }
 
     /**
-     * @param string|list<string> $roles
+     * @param  string|list<string>  $roles
      */
     private function currentUserHasRole(string|array $roles): bool
     {
@@ -242,7 +254,7 @@ class Home extends Screen
         $postCard = UI::container("post_card_{$post->id}")
             ->card()
             ->layout(LayoutType::VERTICAL)
-            ->minWidth(Size::px(320))->maxWidth(Size::px(320))
+            ->minWidth(Size::px(350))->maxWidth(Size::px(350))
             ->minHeight(Size::px(390))->maxHeight(Size::px(430))
             ->padding(Spacing::px(8))
             ->gap(Spacing::px(6));
@@ -268,7 +280,7 @@ class Home extends Screen
 
         $postCard->add(
             UI::label("post_meta_{$post->id}")
-                ->text("Propuesto por: {$authorName} • {$createdAt}")
+                ->text("Autor: {$authorName} • {$createdAt}")
                 ->size('small')
                 ->style('muted')
         );
@@ -304,7 +316,7 @@ class Home extends Screen
                 ->style('h3')
         );
 
-        [$badgeText, $badgeStyle, $customBg, $customBorder] = $this->resolveStatusBadge($post);
+        [$badgeText, $badgeStyle] = $this->resolveStatusBadge($post);
 
         $statusBadge = UI::label("post_status_{$post->id}")
             ->text($badgeText)
@@ -312,17 +324,13 @@ class Home extends Screen
             ->style($badgeStyle)
             ->size('xs');
 
-        if ($customBg !== null && $customBorder !== null) {
-            $statusBadge->backgroundColor($customBg)->borderColor($customBorder);
-        }
-
         $postHeader->add($statusBadge);
 
         return $postHeader;
     }
 
     /**
-     * @return array{0: string, 1: string, 2: ?string, 3: ?string}
+     * @return array{0: string, 1: string}
      */
     private function resolveStatusBadge(object $post): array
     {
@@ -330,15 +338,15 @@ class Home extends Screen
         $jobStatus = (string) ($post->ai_job_status ?? 'idle');
 
         if ($status === 'draft' && in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
-            return ['⚙️ Procesando IA', 'info', null, null];
+            return ['⚙️ Procesando IA', 'info'];
         }
 
         return match ($status) {
-            'pending_review' => ['⏳ En revisión', 'info', null, null],
-            'changes_requested' => ['⚠️ Con observaciones', 'error', null, null],
-            'published' => ['🟢 Publicado', 'success', null, null],
-            'archived' => ['📦 Archivado', 'info', 'rgba(148, 163, 184, 0.22)', 'rgba(148, 163, 184, 0.45)'],
-            default => ['📝 Borrador', 'warning', null, null],
+            'pending_review' => ['⏳ En revisión', 'info'],
+            'changes_requested' => ['⚠️ Con observaciones', 'error'],
+            'published' => ['🟢 Publicado', 'success'],
+            'archived' => ['📦 Archivado', 'muted'],
+            default => ['📝 Borrador', 'warning'],
         };
     }
 
@@ -386,7 +394,7 @@ class Home extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onOpenLogin(array $params): void
     {
@@ -394,7 +402,7 @@ class Home extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onOpenRegister(array $params): void
     {
@@ -402,7 +410,7 @@ class Home extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onGoToPublish(array $params): void
     {
@@ -412,8 +420,8 @@ class Home extends Screen
         if ($user instanceof User) {
             $draftId = $this->postService->createPost([
                 'user_id' => (int) $user->id,
-                'title' => 'Borrador sin título',
-                'content' => PublishPost::defaultNotesTemplate(),
+                'title' => PublishPost::defaultPostTemplate()['title'],
+                'content' => PublishPost::defaultPostTemplate()['content'],
                 'status' => 'draft',
                 'from' => now()->format('Y-m-d'),
                 'to' => now()->addDays(14)->format('Y-m-d'),
@@ -421,19 +429,19 @@ class Home extends Screen
             $screenParams['post_id'] = $draftId;
         }
 
-        $this->showInto(PublishPost::class, updateBrowserUrl: true, force: true, params: $screenParams);
+        $this->navigate(PublishPost::class, params: $screenParams);
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onGoToUsers(array $params): void
     {
-        $this->showInto(UsersManager::class, updateBrowserUrl: true);
+        $this->navigate(UsersManager::class);
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onEditPost(array $params): void
     {
@@ -445,11 +453,11 @@ class Home extends Screen
             return;
         }
 
-        $this->showInto(PublishPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
+        $this->navigate(PublishPost::class, params: ['post_id' => $postId]);
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onReviewPost(array $params): void
     {
@@ -461,11 +469,11 @@ class Home extends Screen
             return;
         }
 
-        $this->showInto(ReviewPost::class, updateBrowserUrl: true, force: true, params: ['post_id' => $postId]);
+        $this->navigate(ReviewPost::class, params: ['post_id' => $postId]);
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeletePost(array $params): void
     {
@@ -512,7 +520,7 @@ class Home extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onUpdatedProfile(array $params): void
     {

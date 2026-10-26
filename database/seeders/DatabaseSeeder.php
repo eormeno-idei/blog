@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
         $admin = User::where('email', 'admin@example.com')->first()
             ?? $publisher;
 
-        if (!$publisher instanceof User || !$admin instanceof User) {
+        if (! $publisher instanceof User || ! $admin instanceof User) {
             return;
         }
 

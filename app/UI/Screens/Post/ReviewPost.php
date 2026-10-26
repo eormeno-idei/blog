@@ -11,6 +11,7 @@ use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Components\Textarea;
 use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\AspectRatio;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Screen;
@@ -24,7 +25,9 @@ class ReviewPost extends Screen
     protected int $state_post_id = 0;
 
     protected Textarea $reviewer_comment;
+
     protected Carousel $review_reel_player;
+
     protected Label $lbl_review_storyboard;
 
     public function __construct(
@@ -51,15 +54,16 @@ class ReviewPost extends Screen
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
-        /** @var array<string, mixed> $params */
-        $postId = $this->resolveReviewPostId($params);
+        $rawPostId = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? null;
+        if (isset($rawPostId) && is_numeric($rawPostId)) {
+            $this->state_post_id = (int) $rawPostId;
+        }
 
-        if ($postId <= 0) {
+        if ($this->state_post_id <= 0) {
             return;
         }
 
-        $this->state_post_id = $postId;
-        $post = $this->postService->findById($postId);
+        $post = $this->postService->findById($this->state_post_id);
         if (! $post) {
             $this->toast('Propuesta no encontrada.', 'error');
             $this->showInto(Home::class, force: true, updateBrowserUrl: true);
@@ -207,7 +211,9 @@ class ReviewPost extends Screen
             ->hideIndicators()
             ->width(Size::px(315))
             ->maxWidth(Size::px(315))
-            ->height(Size::px(560));
+            ->height(Size::px(560))
+            ->aspect(AspectRatio::_9_16)
+            ->objectFit('contain');
 
         if (! empty($post->reel_video) && is_string($post->reel_video)) {
             $this->review_reel_player->currentMedia([
@@ -266,7 +272,7 @@ class ReviewPost extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onRequestChanges(array $params): void
     {
@@ -289,7 +295,7 @@ class ReviewPost extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onApprovePost(array $params): void
     {
@@ -304,32 +310,10 @@ class ReviewPost extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
-     */
-    private function resolveReviewPostId(array $params): int
-    {
-        $candidates = [
-            $params['post_id'] ?? null,
-            $this->getQueryParams()['post_id'] ?? null,
-            request()->query('post_id'),
-            $this->state_post_id,
-        ];
-
-        foreach ($candidates as $candidate) {
-            if (is_numeric($candidate) && (int) $candidate > 0) {
-                return (int) $candidate;
-            }
-        }
-
-        return 0;
-    }
-
-    /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCancelReview(array $params): void
     {
-        $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+        $this->navigate(Home::class);
     }
 }
-

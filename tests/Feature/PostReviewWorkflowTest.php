@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\Agents\PostAgent;
 use App\Contracts\PostServiceInterface;
 use App\Jobs\GenerateReelPreviewJob;
 use App\Services\Post\ReelStoryboardFormatter;
@@ -13,7 +14,9 @@ use Idei\Usim\Components\Timer;
 use Idei\Usim\Screen;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
+use Tests\TestCase;
 
 beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
@@ -60,7 +63,7 @@ it('formats storyboard markdown cleanly in ReelStoryboardFormatter', function ()
 });
 
 it('completes the full institutional workflow: publisher submits, reviewer requests changes, publisher refines, reviewer approves, and post expires to archived', function () {
-    /** @var \Tests\TestCase $this */
+    /** @var TestCase $this */
     Queue::fake();
 
     $userService = app(UsimUserService::class);
@@ -294,8 +297,8 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
 });
 
 it('executes GenerateReelPreviewJob handle for initial generation, refinement, and failure handling', function () {
-    \Illuminate\Support\Facades\Process::fake([
-        '*' => \Illuminate\Support\Facades\Process::result(output: 'Rendered successfully', exitCode: 0),
+    Process::fake([
+        '*' => Process::result(output: 'Rendered successfully', exitCode: 0),
     ]);
 
     $validJson = (string) json_encode([
@@ -310,7 +313,7 @@ it('executes GenerateReelPreviewJob handle for initial generation, refinement, a
         ],
     ]);
 
-    \App\Ai\Agents\PostAgent::fake([
+    PostAgent::fake([
         "```json\n{$validJson}\n```",
         'no-es-json',
     ]);
@@ -341,4 +344,3 @@ it('executes GenerateReelPreviewJob handle for initial generation, refinement, a
     $failStatus = GenerateReelPreviewJob::getStatus('test-job-fail');
     expect($failStatus['status'] ?? null)->toBe('failed');
 });
-

@@ -1,8 +1,10 @@
 <?php
+
 // @usim: feature="core", type="test"
+
 namespace Tests\Support;
 
-use App\Models\User;
+use Idei\Usim\Layout\AbstractLayout;
 use Idei\Usim\Support\UIStateManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -14,7 +16,9 @@ use Tests\TestCase;
 final class UiScenario
 {
     private const STORAGE_HEADER = 'header';
+
     private const STORAGE_BODY = 'body';
+
     private const STORAGE_NONE = 'none';
 
     private TestCase $test;
@@ -35,7 +39,7 @@ final class UiScenario
     private function __construct(TestCase $test)
     {
         $this->test = $test;
-        $this->memory = new UiMemoryRenderer();
+        $this->memory = new UiMemoryRenderer;
         $this->clientId = (string) Str::uuid();
         $this->screenClass = '';
         $this->screenQuery = [];
@@ -43,8 +47,8 @@ final class UiScenario
 
     public static function boot(TestCase $test, string $screenClass, array $query = []): self
     {
-        if (class_exists(\Idei\Usim\Layout\AbstractLayout::class)) {
-            \Idei\Usim\Layout\AbstractLayout::setCurrent(null);
+        if (class_exists(AbstractLayout::class)) {
+            AbstractLayout::setCurrent(null);
         }
 
         $scenario = new self($test);
@@ -64,7 +68,7 @@ final class UiScenario
         $existingAuthToken = null;
         $actor = Auth::guard('web')->user() ?? Auth::guard('device')->user();
         if ($actor !== null && method_exists($actor, 'createToken')) {
-            $existingAuthToken = $actor->createToken('scenario-' . $scenario->clientId)->plainTextToken;
+            $existingAuthToken = $actor->createToken('scenario-'.$scenario->clientId)->plainTextToken;
         }
 
         if ($existingAuthToken !== null) {
@@ -96,6 +100,7 @@ final class UiScenario
     public function ingest(array $payload, string $mode = 'auto'): self
     {
         $this->memory->ingest($payload, $mode);
+
         return $this;
     }
 
@@ -118,7 +123,7 @@ final class UiScenario
         $component = $this->mustGetComponent($componentName);
         $action = $component['action'] ?? null;
 
-        if (!is_string($action) || $action === '') {
+        if (! is_string($action) || $action === '') {
             throw new RuntimeException("Component '{$componentName}' has no action configured.");
         }
 
@@ -236,7 +241,7 @@ final class UiScenario
             // Some backend flows return only meta keys (e.g. storage) with no component deltas.
             // In that case, refresh current screen snapshot to keep the in-memory model browser-like.
             $responseJson = $response->json();
-            if ($syncComponentId !== null && !$this->hasUiComponents($responseJson)) {
+            if ($syncComponentId !== null && ! $this->hasUiComponents($responseJson)) {
                 $this->syncFromServer();
             }
         }
@@ -270,6 +275,7 @@ final class UiScenario
     public function assertNoIssues(): self
     {
         expect($this->memory->issues())->toBe([]);
+
         return $this;
     }
 
@@ -295,7 +301,7 @@ final class UiScenario
         $component = $this->mustGetComponent($name);
         $componentId = $component['_json_key'] ?? ($component['_id'] ?? null);
 
-        if (!is_numeric($componentId)) {
+        if (! is_numeric($componentId)) {
             throw new RuntimeException("Component '{$name}' does not have a numeric component ID.");
         }
 
@@ -337,12 +343,12 @@ final class UiScenario
 
     private function hasUiComponents(mixed $payload): bool
     {
-        if (!is_array($payload)) {
+        if (! is_array($payload)) {
             return false;
         }
 
         foreach ($payload as $value) {
-            if (!is_array($value)) {
+            if (! is_array($value)) {
                 continue;
             }
 

@@ -1,20 +1,23 @@
 <?php
 
 // @usim: feature="core", type="test"
+
 namespace Tests;
 
-use Tests\Traits\UsimTestHelpers;
 use Idei\Usim\Support\UIIdGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Testing\TestResponse;
+use Tests\Traits\UsimTestHelpers;
+
 /**
  * @method TestResponse postJson(string $uri, array $data = [], array $headers = [], int $options = 0)
  */
 abstract class TestCase extends BaseTestCase
 {
-    use UsimTestHelpers;
     use RefreshDatabase;
+    use UsimTestHelpers;
+
     protected function setUp(): void
     {
         parent::setUp();

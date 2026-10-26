@@ -58,7 +58,7 @@ body[data-theme="dark"] {
     position: relative;
     width: 100%;
     min-height: 280px;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: var(--usim-carousel-aspect-ratio, 16 / 9);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -80,16 +80,16 @@ body[data-theme="dark"] {
 
 .usim-carousel-media.image,
 .usim-carousel-media.video {
-    object-fit: cover;
+    object-fit: var(--usim-carousel-object-fit, cover);
 }
 
 .usim-carousel[style*="height"] .usim-carousel-frame {
     height: 100%;
-    aspect-ratio: 9 / 16;
+    aspect-ratio: var(--usim-carousel-aspect-ratio, auto);
 }
 
 .usim-carousel[style*="height"] .usim-carousel-media.video {
-    object-fit: contain;
+    object-fit: var(--usim-carousel-object-fit, contain);
 }
 
 .usim-carousel-audio-wrap {

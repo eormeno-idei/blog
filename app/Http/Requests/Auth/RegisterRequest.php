@@ -90,4 +90,3 @@ class RegisterRequest extends FormRequest
         return $errorMessages !== [] ? implode(' ', $errorMessages) : $result->message;
     }
 }
-

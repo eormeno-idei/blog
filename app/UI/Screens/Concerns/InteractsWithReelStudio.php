@@ -12,6 +12,7 @@ use Idei\Usim\Components\Label;
 use Idei\Usim\Components\Textarea;
 use Idei\Usim\Components\Timer;
 use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\AspectRatio;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\UI;
@@ -23,21 +24,33 @@ use Illuminate\Support\Str;
 trait InteractsWithReelStudio
 {
     protected Timer $tmr_reel_poll;
+
     protected Container $workspace_tabs;
+
     protected Container $ai_studio_card;
+
     protected Container $ai_progress_box;
+
     protected Label $lbl_ai_progress_step;
+
     protected Label $lbl_ai_progress_detail;
 
     protected Container $ai_preview_box;
+
     protected Label $lbl_version_badge;
+
     protected Button $btn_prev_version;
+
     protected Button $btn_next_version;
+
     protected Carousel $reel_preview_player;
+
     protected Label $lbl_storyboard_summary;
 
     protected Textarea $ai_feedback;
+
     protected Button $btn_refine_ai;
+
     protected Input $ai_response;
 
     protected string $state_active_job_id = '';
@@ -132,7 +145,7 @@ trait InteractsWithReelStudio
         $this->lbl_version_badge = UI::label('lbl_version_badge')
             ->text('Sin previsualización')
             ->variant('badge')
-            ->style('secondary');
+            ->secondary();
 
         $studioHeader->add($this->lbl_version_badge);
 
@@ -185,7 +198,9 @@ trait InteractsWithReelStudio
             ->hideIndicators()
             ->width(Size::px(315))
             ->maxWidth(Size::px(315))
-            ->height(Size::px(560));
+            ->height(Size::px(560))
+            ->aspect(AspectRatio::_9_16)
+            ->objectFit('contain');
 
         $this->ai_preview_box->add($this->reel_preview_player);
         $this->ai_preview_box->add($this->buildStoryboardCard());
@@ -369,7 +384,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<int, array<string, mixed>> $savedVersions
+     * @param  array<int, array<string, mixed>>  $savedVersions
      */
     private function hydrateSavedVersions(array $savedVersions): void
     {
@@ -426,7 +441,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onAskAI(array $params): void
     {
@@ -442,7 +457,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onRefineAi(array $params): void
     {
@@ -460,7 +475,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onQuickRefine(array $params): void
     {
@@ -543,7 +558,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCheckReelStatus(array $params): void
     {
@@ -570,24 +585,24 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $statusData
+     * @param  array<string, mixed>  $statusData
      */
     private function handleGeneratingScriptStatus(array $statusData): void
     {
         $this->lbl_ai_progress_step
-            ->text('🧠 ' . (string) ($statusData['message'] ?? 'Paso 1/2: Generando guion con IA...'))
+            ->text('🧠 '.(string) ($statusData['message'] ?? 'Paso 1/2: Generando guion con IA...'))
             ->style('warning');
         $this->lbl_ai_progress_detail
             ->text((string) ($statusData['detail'] ?? ''));
     }
 
     /**
-     * @param array<string, mixed> $statusData
+     * @param  array<string, mixed>  $statusData
      */
     private function handleRenderingVideoStatus(array $statusData): void
     {
         $this->lbl_ai_progress_step
-            ->text('🎬 ' . (string) ($statusData['message'] ?? 'Paso 2/2: Renderizando video con Remotion...'))
+            ->text('🎬 '.(string) ($statusData['message'] ?? 'Paso 2/2: Renderizando video con Remotion...'))
             ->style('info');
         $this->lbl_ai_progress_detail
             ->text((string) ($statusData['detail'] ?? 'Codificando fotogramas en MP4...'));
@@ -599,7 +614,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $statusData
+     * @param  array<string, mixed>  $statusData
      */
     private function handleCompletedStatus(array $statusData): void
     {
@@ -639,7 +654,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $statusData
+     * @param  array<string, mixed>  $statusData
      */
     private function handleFailedStatus(array $statusData): void
     {
@@ -647,7 +662,7 @@ trait InteractsWithReelStudio
         $this->state_active_job_id = '';
 
         $this->lbl_ai_progress_step
-            ->text('❌ ' . (string) ($statusData['message'] ?? 'Error al generar el video.'))
+            ->text('❌ '.(string) ($statusData['message'] ?? 'Error al generar el video.'))
             ->style('danger');
         $this->lbl_ai_progress_detail
             ->text((string) ($statusData['detail'] ?? 'Intenta nuevamente o ajusta tus notas.'));
@@ -660,7 +675,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onSelectPrevVersion(array $params): void
     {
@@ -671,7 +686,7 @@ trait InteractsWithReelStudio
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onSelectNextVersion(array $params): void
     {
@@ -780,4 +795,3 @@ trait InteractsWithReelStudio
         }
     }
 }
-

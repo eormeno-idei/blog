@@ -1,4 +1,5 @@
 <?php
+
 namespace App\UI\Screens\Auth;
 
 use App\Http\Requests\Auth\RegisterRequest;
@@ -28,13 +29,15 @@ class Register extends Screen
     public static Visibility $visibility = Visibility::GUEST;
 
     protected Label $lbl_register_result;
+
     protected string $store_token = '';
+
     protected bool $state_ask_for_role = false;
 
     public static function authorize(): bool
     {
         // Accessible to guests (users not authenticated) or admins managing users
-        return !self::requireAuth() || self::requirePermission('admin.users_manager.access');
+        return ! self::requireAuth() || self::requirePermission('admin.users_manager.access');
     }
 
     public static function getMenuLabel(): string
@@ -152,7 +155,7 @@ class Register extends Screen
             $roles = $roleService->getAllowedRoles();
 
             /** @var list<array{value: string, label: string}> $roleOptions */
-            $roleOptions = array_map(static fn(UsimRole $role): array => [
+            $roleOptions = array_map(static fn (UsimRole $role): array => [
                 'value' => $role->name,
                 'label' => t("role.{$role->name}.name"),
             ], $roles);

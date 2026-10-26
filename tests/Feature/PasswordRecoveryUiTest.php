@@ -1,4 +1,5 @@
 <?php
+
 // @usim: feature="auth", type="test"
 
 use App\Models\User;
@@ -8,12 +9,12 @@ use Idei\Usim\Notifications\ResetPasswordNotification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
+use Tests\TestCase;
 
 it('sends reset-password email from forgot-password screen', function () {
     $originalLocale = app()->getLocale();
 
-    /** @var \Tests\TestCase $this */
-
+    /** @var TestCase $this */
     foreach (['en', 'es'] as $locale) {
         app()->setLocale($locale);
         Notification::fake();
@@ -40,7 +41,7 @@ it('sends reset-password email from forgot-password screen', function () {
 
 it('resets password from the link received by email after validations pass', function () {
     $originalLocale = app()->getLocale();
-    /** @var \Tests\TestCase $this */
+    /** @var TestCase $this */
     foreach (['en', 'es'] as $locale) {
         app()->setLocale($locale);
         Notification::fake();
@@ -64,11 +65,12 @@ it('resets password from the link received by email after validations pass', fun
                 $mailMessage = $notification->toMail($user);
                 $url = $mailMessage->viewData['resetUrl'] ?? null;
 
-                if (!is_string($url) || $url === '') {
+                if (! is_string($url) || $url === '') {
                     return false;
                 }
 
                 $resetUrl = $url;
+
                 return true;
             }
         );
@@ -117,7 +119,7 @@ it('resets password from the link received by email after validations pass', fun
 });
 
 it('rejects expired reset links in reset-password screen', function () {
-    /** @var \Tests\TestCase $this */
+    /** @var TestCase $this */
     $originalLocale = app()->getLocale();
 
     foreach (['en', 'es'] as $locale) {

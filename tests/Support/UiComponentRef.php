@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="core", type="test"
+
 namespace Tests\Support;
 
 final class UiComponentRef
@@ -17,12 +19,14 @@ final class UiComponentRef
     public function click(array $parameters = []): self
     {
         $this->scenario->click($this->name, $parameters)->assertOk();
+
         return $this;
     }
 
     public function expect(string $field)
     {
         $component = $this->scenario->componentData($this->name);
+
         return expect($component[$field] ?? null);
     }
 
@@ -35,6 +39,7 @@ final class UiComponentRef
     public function dumpJson(): self
     {
         dumpJson($this->data());
+
         return $this;
     }
 
@@ -43,7 +48,7 @@ final class UiComponentRef
         $component = $this->data();
         $id = $component['_json_key'] ?? ($component['_id'] ?? null);
 
-        if (!is_numeric($id)) {
+        if (! is_numeric($id)) {
             throw new \RuntimeException("Component '{$this->name}' does not have a numeric component ID.");
         }
 

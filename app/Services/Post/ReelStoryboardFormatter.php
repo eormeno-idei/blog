@@ -7,7 +7,7 @@ class ReelStoryboardFormatter
     /**
      * Construye un resumen legible en Markdown a partir del guion JSON o arreglo de escenas.
      *
-     * @param string|array<string, mixed>|null $scriptOrJson
+     * @param  string|array<string, mixed>|null  $scriptOrJson
      */
     public function format(string|array|null $scriptOrJson, ?string $feedbackApplied = null): string
     {
@@ -30,7 +30,7 @@ class ReelStoryboardFormatter
     }
 
     /**
-     * @param string|array<string, mixed>|null $scriptOrJson
+     * @param  string|array<string, mixed>|null  $scriptOrJson
      * @return array<string, mixed>
      */
     private function normalizeScript(string|array|null $scriptOrJson): array
@@ -64,7 +64,7 @@ class ReelStoryboardFormatter
     }
 
     /**
-     * @param array<string, mixed> $scene
+     * @param  array<string, mixed>  $scene
      * @return list<string>
      */
     private function formatSceneLines(array $scene, int $fallbackIndex): array
@@ -87,7 +87,7 @@ class ReelStoryboardFormatter
         $lines = [$headerLine];
         foreach ($bodyItems as $bullet) {
             if (is_string($bullet) && trim($bullet) !== '') {
-                $lines[] = '  • ' . trim($bullet);
+                $lines[] = '  • '.trim($bullet);
             }
         }
 
@@ -104,4 +104,3 @@ class ReelStoryboardFormatter
         };
     }
 }
-

@@ -40,7 +40,7 @@ class GenerateReelPreviewJob implements ShouldQueue
     /**
      * Persiste el estado del procesamiento en la tabla `posts` (o en caché si no hay post numérico).
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public static function putStatus(int|string $jobId, array $payload): void
     {
@@ -137,7 +137,7 @@ class GenerateReelPreviewJob implements ShouldQueue
 
             $this->reportCompletedStatus($sceneCount, $totalSeconds, $jsonString, $decoded, $videoFilename, $isRefinement);
         } catch (\Throwable $e) {
-            Log::error('[GenerateReelPreviewJob] Error: ' . $e->getMessage());
+            Log::error('[GenerateReelPreviewJob] Error: '.$e->getMessage());
             $this->reportFailedStatus($e->getMessage());
         } finally {
             $this->deleteTempJsonFile($jsonPath);
@@ -190,7 +190,7 @@ class GenerateReelPreviewJob implements ShouldQueue
     }
 
     /**
-     * @param array<string, mixed> $decoded
+     * @param  array<string, mixed>  $decoded
      * @return array{0: int, 1: int}
      */
     private function calculateMetrics(array $decoded): array
@@ -210,7 +210,7 @@ class GenerateReelPreviewJob implements ShouldQueue
     }
 
     /**
-     * @param array<string, mixed> $decoded
+     * @param  array<string, mixed>  $decoded
      */
     private function reportRenderingStatus(int $sceneCount, int $totalSeconds, string $jsonString, array $decoded): void
     {
@@ -236,7 +236,7 @@ class GenerateReelPreviewJob implements ShouldQueue
         $tempDir = storage_path('app/temp');
         File::ensureDirectoryExists($tempDir);
 
-        $jsonPath = $tempDir . "/reel_{$this->jobId}_v{$this->versionNumber}.json";
+        $jsonPath = $tempDir."/reel_{$this->jobId}_v{$this->versionNumber}.json";
         File::put($jsonPath, $jsonString);
 
         $videoFilename = "preview_{$this->jobId}_v{$this->versionNumber}.mp4";
@@ -251,7 +251,7 @@ class GenerateReelPreviewJob implements ShouldQueue
             ->run("npx remotion render src/index.ts ReelInstitucional {$videoPath} --props={$jsonPath}");
 
         if (! $result->successful()) {
-            Log::error('[GenerateReelPreviewJob] Falló Remotion: ' . $result->errorOutput() . "\n" . $result->output());
+            Log::error('[GenerateReelPreviewJob] Falló Remotion: '.$result->errorOutput()."\n".$result->output());
             throw new \RuntimeException('Error durante el renderizado de video con Remotion.');
         }
 
@@ -259,7 +259,7 @@ class GenerateReelPreviewJob implements ShouldQueue
     }
 
     /**
-     * @param array<string, mixed> $decoded
+     * @param  array<string, mixed>  $decoded
      */
     private function reportCompletedStatus(
         int $sceneCount,
@@ -279,7 +279,7 @@ class GenerateReelPreviewJob implements ShouldQueue
             'json_script' => $jsonString,
             'parsed_script' => $decoded,
             'video_filename' => $videoFilename,
-            'video_url' => "/storage/reels/{$videoFilename}?v=" . time(),
+            'video_url' => "/storage/reels/{$videoFilename}?v=".time(),
             'feedback_applied' => $isRefinement ? $this->userFeedback : null,
             'message' => "¡Previsualización v{$this->versionNumber} generada con éxito!",
         ]);

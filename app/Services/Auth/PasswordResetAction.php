@@ -1,4 +1,5 @@
 <?php
+
 // @usim: feature="auth", type="service"
 
 namespace App\Services\Auth;

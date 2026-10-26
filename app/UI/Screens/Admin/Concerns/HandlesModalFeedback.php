@@ -1,18 +1,20 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin\Concerns;
 
 trait HandlesModalFeedback
 {
     /**
-     * @param array<string, mixed> $content
+     * @param  array<string, mixed>  $content
      */
     abstract protected function updateModal(array $content): void;
 
     /**
      * Format validation errors array into modal update instructions.
      *
-     * @param array<string, mixed> $errors
+     * @param  array<string, mixed>  $errors
      * @return array<string, array{error: string}>
      */
     protected function formatModalValidationErrors(array $errors): array
@@ -39,11 +41,11 @@ trait HandlesModalFeedback
     /**
      * Dispatch modal updates with validation errors if present.
      *
-     * @param array<string, mixed> $errors
+     * @param  array<string, mixed>  $errors
      */
     protected function updateModalWithErrors(array $errors): void
     {
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             $this->updateModal($this->formatModalValidationErrors($errors));
         }
     }

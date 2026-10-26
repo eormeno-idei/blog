@@ -1,11 +1,14 @@
 <?php
+
 // @usim: feature="admin", type="service"
+
 namespace App\Services\Auth;
 
 use App\Models\User;
 use App\Services\Units\UnitContextResolver;
 use App\UI\Screens\Home;
 use Idei\Usim\Events\UsimEvent;
+use Idei\Usim\Models\UsimRole;
 use Idei\Usim\Models\UsimUnit;
 use Idei\Usim\Screen;
 use Idei\Usim\Support\UIStateManager;
@@ -87,8 +90,7 @@ class AuthSessionService
     /**
      * Terminate the user session, revoke auth tokens, and dispatch domain logout event.
      *
-     * @param User|null $user
-     * @return class-string<\Idei\Usim\Screen>
+     * @return class-string<Screen>
      */
     public function logout(?User $user = null): string
     {
@@ -107,7 +109,7 @@ class AuthSessionService
             setPermissionsTeamId(null);
         }
 
-        /** @var class-string<\Idei\Usim\Screen> $homeScreen */
+        /** @var class-string<Screen> $homeScreen */
         $homeScreen = Home::class;
 
         event(new UsimEvent('user_logged_out', [
@@ -135,8 +137,6 @@ class AuthSessionService
     /**
      * Resolve the home screen for a user based on their roles and unit context.
      *
-     * @param User $user
-     * @param string|null $unit
      * @return class-string<Screen>
      */
     public function resolveHomeScreen(User $user, ?string $unit = null): string
@@ -144,7 +144,7 @@ class AuthSessionService
         if (config('permission.teams', false)) {
             if ($unit !== null || getPermissionsTeamId() === null) {
                 $resolvedUnit = UnitContextResolver::resolveAndApply($user, $unit);
-                if (!$resolvedUnit && is_string($unit) && $unit !== '') {
+                if (! $resolvedUnit && is_string($unit) && $unit !== '') {
                     $fallbackUnit = UsimUnit::where('slug', $unit)->first();
                     if ($fallbackUnit) {
                         setPermissionsTeamId($fallbackUnit->id);
@@ -156,7 +156,7 @@ class AuthSessionService
 
         $roleNames = $user->getRoleNames()->values()->toArray();
 
-        if ($user->isRoot() && !in_array('root', $roleNames, true)) {
+        if ($user->isRoot() && ! in_array('root', $roleNames, true)) {
             $roleNames[] = 'root';
         }
 
@@ -167,7 +167,7 @@ class AuthSessionService
         $roleNames = array_values(array_unique(array_filter($roleNames, 'is_string')));
 
         // 1. Obtenemos los modelos de roles desde la base de datos junto con sus configuraciones
-        $roles = \Idei\Usim\Models\UsimRole::with('usimSetting')
+        $roles = UsimRole::with('usimSetting')
             ->whereIn('name', $roleNames)
             ->get();
 

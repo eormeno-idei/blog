@@ -1969,6 +1969,7 @@ class UIRenderer {
             this.currentNavigateSlotId = slotContainerId;
             if (navUrl && window.history && typeof window.history.pushState === 'function') {
                 window.history.pushState({ path: navUrl, route: navRoute, slot: slotTarget }, navTitle, navUrl);
+                window.QUERY_PARAMS = new URLSearchParams(window.location.search);
                 if (navTitle) {
                     document.title = navTitle;
                 }
@@ -3688,9 +3689,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadScreenUI(null, initialResetState);  // Load main UI first to create globalRenderer
     await loadMenuUI(initialResetState);  // Then load menu and merge into globalRenderer
 
-    // Clear reset flag after both screen and menu consumed it.
+    // Clear reset flag after both screen and menu consumed it, preserving other query params.
     if (initialResetState) {
-        window.history.replaceState({}, document.title, window.location.pathname);
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete('reset');
+        const cleanQuery = cleanParams.toString();
+        const cleanUrl = cleanQuery
+            ? `${window.location.pathname}?${cleanQuery}`
+            : window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        window.QUERY_PARAMS = cleanParams;
         window.RESET_STATE = false;
     }
 

@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin\Concerns;
 
 use App\Services\Device\DeviceListingService;
@@ -24,6 +26,7 @@ use Idei\Usim\ValueObjects\Spacing;
  * Trait to manage the devices CRUD UI section, table events, and PIN pairing workflows.
  *
  * @mixin Screen
+ *
  * @property DeviceService $deviceService
  */
 trait ManagesDevicesSection
@@ -31,8 +34,11 @@ trait ManagesDevicesSection
     protected const string DEVICES_I18N_PREFIX = 'screens.admin.users_manager.';
 
     protected Table $devices_table;
+
     protected Input $search_devices;
+
     protected Button $add_device_btn;
+
     protected Button $pair_device_btn;
 
     protected function buildDevicesCrudContainer(): Container
@@ -50,20 +56,20 @@ trait ManagesDevicesSection
             ->gap(Spacing::px(10));
 
         $search = UI::input('search_devices')
-            ->placeholder(t(self::DEVICES_I18N_PREFIX . 'devices_search_placeholder'))
+            ->placeholder(t(self::DEVICES_I18N_PREFIX.'devices_search_placeholder'))
             ->width(Size::px(300))
             ->autocomplete('off')
             ->onInput('search_devices', [])
             ->debounce(500);
 
         $addBtn = UI::button('add_device_btn')
-            ->label(t(self::DEVICES_I18N_PREFIX . 'add_device'))
+            ->label(t(self::DEVICES_I18N_PREFIX.'add_device'))
             ->style('secondary')
             ->action('add_device_clicked')
             ->icon('plus');
 
         $pairBtn = UI::button('pair_device_btn')
-            ->label(t(self::DEVICES_I18N_PREFIX . 'pair_device'))
+            ->label(t(self::DEVICES_I18N_PREFIX.'pair_device'))
             ->style('secondary')
             ->action('pair_device_clicked')
             ->icon('link');
@@ -92,7 +98,7 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDevicesTableColumnClicked(array $params): void
     {
@@ -100,7 +106,7 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onSearchDevices(array $params): void
     {
@@ -110,7 +116,7 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onAddDeviceClicked(array $params): void
     {
@@ -121,7 +127,7 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onPairDeviceClicked(array $params): void
     {
@@ -135,7 +141,7 @@ trait ManagesDevicesSection
 
         $device = $deviceId !== null ? $this->deviceService->getDevice($deviceId) : null;
         $devicesOptions = [];
-        if (!$device) {
+        if (! $device) {
             $devices = app(DeviceListingService::class)->all();
             foreach ($devices as $d) {
                 $devicesOptions[] = [
@@ -145,7 +151,7 @@ trait ManagesDevicesSection
             }
         }
 
-        $caller = $this->screen ?? ($this instanceof \Idei\Usim\Screen ? $this : null);
+        $caller = $this->screen ?? ($this instanceof Screen ? $this : null);
         $caller?->openModal(AdminDevicePairingScreen::class, [
             'device' => $device,
             'devicesOptions' => $devicesOptions,
@@ -153,19 +159,21 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDevicesTableRowClicked(array $params): void
     {
         $deviceId = $this->selectableId($params, 'model_id');
         if ($deviceId === null) {
             $this->toast('Dispositivo no encontrado', 'error');
+
             return;
         }
 
         $device = $this->deviceService->getDevice($deviceId);
-        if (!$device) {
+        if (! $device) {
             $this->toast('Dispositivo no encontrado', 'error');
+
             return;
         }
 
@@ -181,7 +189,7 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onSubmitSaveDevice(array $params): void
     {
@@ -189,7 +197,8 @@ trait ManagesDevicesSection
         $name = trim($this->stringParamOrDefault($params, 'device_name', $this->stringParamOrDefault($params, 'name', '')));
 
         if ($name === '') {
-            $this->toast(t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX . 'device_name_label')]), 'error');
+            $this->toast(t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX.'device_name_label')]), 'error');
+
             return;
         }
 
@@ -200,8 +209,8 @@ trait ManagesDevicesSection
         $unitIds = null;
         if (is_array($rawUnits)) {
             $unitIds = array_values(array_filter(
-                array_map(static fn(mixed $u): ?int => is_numeric($u) ? (int) $u : null, $rawUnits),
-                static fn(?int $id): bool => $id !== null && $id > 0
+                array_map(static fn (mixed $u): ?int => is_numeric($u) ? (int) $u : null, $rawUnits),
+                static fn (?int $id): bool => $id !== null && $id > 0
             ));
         } elseif (is_int($rawUnitId) || (is_string($rawUnitId) && $rawUnitId !== '' && $rawUnitId !== '0')) {
             $unitIds = is_numeric($rawUnitId) ? [(int) $rawUnitId] : null;
@@ -211,13 +220,14 @@ trait ManagesDevicesSection
         if (is_string($rawRoles)) {
             $roles = [$rawRoles];
         } elseif (is_array($rawRoles)) {
-            $roles = array_values(array_filter($rawRoles, static fn($r): bool => is_string($r) && $r !== ''));
+            $roles = array_values(array_filter($rawRoles, static fn ($r): bool => is_string($r) && $r !== ''));
         } else {
             $roles = [];
         }
 
         if (empty($roles)) {
-            $this->toast(t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX . 'device_roles_label')]), 'error');
+            $this->toast(t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX.'device_roles_label')]), 'error');
+
             return;
         }
 
@@ -232,10 +242,10 @@ trait ManagesDevicesSection
 
         if ($deviceId) {
             $this->deviceService->updateDevice($deviceId, $devicePayload);
-            $this->toast(t(self::DEVICES_I18N_PREFIX . 'device_updated'), 'success');
+            $this->toast(t(self::DEVICES_I18N_PREFIX.'device_updated'), 'success');
         } else {
             $this->deviceService->createDevice($devicePayload);
-            $this->toast(t(self::DEVICES_I18N_PREFIX . 'device_created'), 'success');
+            $this->toast(t(self::DEVICES_I18N_PREFIX.'device_created'), 'success');
         }
 
         $this->devices_table->refresh();
@@ -243,7 +253,7 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onSubmitApproveDevicePairing(array $params): void
     {
@@ -251,13 +261,15 @@ trait ManagesDevicesSection
         $pin = trim($this->stringParamOrDefault($params, 'input_pin', $this->stringParamOrDefault($params, 'pin', '')));
 
         if (strlen($pin) !== 4) {
-            $this->toast(t(self::DEVICES_I18N_PREFIX . 'device_pin_length_error'), 'error');
+            $this->toast(t(self::DEVICES_I18N_PREFIX.'device_pin_length_error'), 'error');
+
             return;
         }
 
         $deviceId = is_numeric($pairingIdRaw) ? (int) $pairingIdRaw : null;
         if ($deviceId === null || $deviceId <= 0) {
-            $this->toast(t(self::DEVICES_I18N_PREFIX . 'device_select_label'), 'error');
+            $this->toast(t(self::DEVICES_I18N_PREFIX.'device_select_label'), 'error');
+
             return;
         }
 
@@ -272,63 +284,67 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onUnpairDevice(array $params): void
     {
         $deviceId = $this->optionalIntParam($params, 'device_id');
         if ($deviceId === null) {
             $this->toast(t('Device ID is required'), 'error');
+
             return;
         }
 
         $this->deviceService->unpairDevice($deviceId);
-        $this->toast(t(self::DEVICES_I18N_PREFIX . 'device_unpaired'), 'success');
+        $this->toast(t(self::DEVICES_I18N_PREFIX.'device_unpaired'), 'success');
         $this->devices_table->refresh();
         $this->closeModal();
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeleteDevice(array $params): void
     {
         $deviceId = $this->optionalIntParam($params, 'device_id');
         if ($deviceId === null) {
             $this->toast(t('Device ID is required'), 'error');
+
             return;
         }
 
         $device = $this->deviceService->getDevice($deviceId);
-        if (!$device) {
+        if (! $device) {
             $this->toast(t('Device not found'), 'error');
+
             return;
         }
 
         ConfirmDialog::open(
             caller: $this,
             type: DialogType::WARNING,
-            title: t(self::DEVICES_I18N_PREFIX . 'device_delete_confirm_title'),
-            message: t(self::DEVICES_I18N_PREFIX . 'device_delete_confirm_msg', ['name' => $device->name]),
+            title: t(self::DEVICES_I18N_PREFIX.'device_delete_confirm_title'),
+            message: t(self::DEVICES_I18N_PREFIX.'device_delete_confirm_msg', ['name' => $device->name]),
             confirmAction: 'confirm_delete_device',
             confirmParams: ['device_id' => $deviceId],
         );
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onConfirmDeleteDevice(array $params): void
     {
         $deviceId = $this->optionalIntParam($params, 'device_id');
         if ($deviceId === null) {
             $this->toast(t('Device ID is required for deletion'), 'error');
+
             return;
         }
 
         $deleted = $this->deviceService->deleteDevice($deviceId);
         if ($deleted) {
-            $this->toast(t(self::DEVICES_I18N_PREFIX . 'device_deleted'), 'success');
+            $this->toast(t(self::DEVICES_I18N_PREFIX.'device_deleted'), 'success');
         }
 
         $this->devices_table->refresh();
@@ -336,7 +352,7 @@ trait ManagesDevicesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onUnitChanged(array $params): void
     {
@@ -346,7 +362,7 @@ trait ManagesDevicesSection
     /**
      * Handles the 'device_created' event, fired by: EditDevice::class.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeviceCreated(array $params): void
     {
@@ -359,7 +375,7 @@ trait ManagesDevicesSection
     /**
      * Handles the 'device_updated' event, fired by: EditDevice::class.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeviceUpdated(array $params): void
     {
@@ -372,7 +388,7 @@ trait ManagesDevicesSection
     /**
      * Handles the 'device_deleted' event, fired by: EditDevice::class.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeviceDeleted(array $params): void
     {
@@ -385,7 +401,7 @@ trait ManagesDevicesSection
     /**
      * Handles the 'device_paired' event, fired by: Link::class.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDevicePaired(array $params): void
     {
@@ -395,7 +411,7 @@ trait ManagesDevicesSection
     /**
      * Handles the 'device_unpaired' event, fired by: EditDevice::class.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeviceUnpaired(array $params): void
     {

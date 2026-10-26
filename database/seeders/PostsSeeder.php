@@ -2,13 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Contracts\PostServiceInterface;
+use Illuminate\Database\Seeder;
 
 class PostsSeeder extends Seeder
 {
-
     public function __construct(
         protected PostServiceInterface $postService
     ) {}

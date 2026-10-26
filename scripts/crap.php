@@ -9,12 +9,11 @@ declare(strict_types=1);
  *   composer crap
  *   php scripts/crap.php [--skip-tests] [--threshold=30] [--top=15]
  */
-
 $options = getopt('', ['skip-tests', 'threshold:', 'top:', 'clover:']);
 $skipTests = array_key_exists('skip-tests', $options);
 $threshold = isset($options['threshold']) ? (float) $options['threshold'] : 30.0;
 $topLimit = isset($options['top']) ? max(1, (int) $options['top']) : 15;
-$cloverPath = $options['clover'] ?? __DIR__ . '/../build/logs/clover.xml';
+$cloverPath = $options['clover'] ?? __DIR__.'/../build/logs/clover.xml';
 
 if (! $skipTests || ! file_exists($cloverPath)) {
     $cloverDir = dirname($cloverPath);
@@ -82,7 +81,7 @@ $crapMethodCount = 0;
 
 foreach ($xml->xpath('//file') as $fileNode) {
     $filePath = (string) $fileNode['name'];
-    $relativePath = str_replace(realpath(__DIR__ . '/..') . '/', '', $filePath);
+    $relativePath = str_replace(realpath(__DIR__.'/..').'/', '', $filePath);
 
     $classNode = $fileNode->class[0] ?? null;
     $className = $classNode ? (string) $classNode['name'] : $relativePath;
@@ -235,9 +234,9 @@ printf("  {$bold}CRAP Load (deuda técnica){$reset} : %.0f\n", round($totalCrapL
 echo "{$cyan}========================================================================================{$reset}\n\n";
 
 echo "{$bold}TOP {$topLimit} MÉTODOS CON MAYOR ÍNDICE CRAP:{$reset}\n";
-echo str_repeat('-', 105) . "\n";
+echo str_repeat('-', 105)."\n";
 printf("  %-8s | %-5s | %-9s | %-9s | %s\n", 'CRAP', 'CCN', 'Cobertura', 'CRAP Load', 'Método (Archivo:Línea)');
-echo str_repeat('-', 105) . "\n";
+echo str_repeat('-', 105)."\n";
 
 foreach (array_slice($methods, 0, $topLimit) as $m) {
     $color = colorForCrap($m['crap'], $threshold);
@@ -253,12 +252,12 @@ foreach (array_slice($methods, 0, $topLimit) as $m) {
         $m['line']
     );
 }
-echo str_repeat('-', 105) . "\n\n";
+echo str_repeat('-', 105)."\n\n";
 
 echo "{$bold}TOP {$topLimit} CLASES CON MAYOR RIESGO (CRAP):{$reset}\n";
-echo str_repeat('-', 105) . "\n";
-printf("  %-10s | %-10s | %-5s | %-9s | %-11s | %s\n", 'CRAP Clase', 'Σ CRAP Mét', 'CCN', 'Cobertura', 'Mét >= ' . (int) $threshold, 'Clase');
-echo str_repeat('-', 105) . "\n";
+echo str_repeat('-', 105)."\n";
+printf("  %-10s | %-10s | %-5s | %-9s | %-11s | %s\n", 'CRAP Clase', 'Σ CRAP Mét', 'CCN', 'Cobertura', 'Mét >= '.(int) $threshold, 'Clase');
+echo str_repeat('-', 105)."\n";
 
 foreach (array_slice($classes, 0, $topLimit) as $c) {
     $color = colorForCrap($c['maxMethodCrap'], $threshold);
@@ -274,5 +273,4 @@ foreach (array_slice($classes, 0, $topLimit) as $c) {
         $c['class']
     );
 }
-echo str_repeat('-', 105) . "\n";
-
+echo str_repeat('-', 105)."\n";

@@ -20,7 +20,7 @@ class PostAgent implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return <<<PROMPT
+        return <<<'PROMPT'
         Eres un orquestador de contenido visual para cartelería digital universitaria.
         Tu tarea es convertir las notas informales del usuario en un guion estructurado estrictamente en formato JSON válido, o bien modificar un guion JSON existente siguiendo las instrucciones de ajuste del usuario.
 

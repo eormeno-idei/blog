@@ -1,8 +1,11 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Auth;
 
 use App\Services\User\UserService;
+use App\UI\Screens\Home;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\Visibility;
@@ -10,6 +13,7 @@ use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Log;
 
 class EmailVerified extends Screen
 {
@@ -17,14 +21,34 @@ class EmailVerified extends Screen
 
     public function __construct(
         protected UserService $userService
-    ) {
-    }
+    ) {}
 
     protected string $verificationStatus = 'loading';
+
     protected string $errorMessage = '';
+
+    protected int $state_id = 0;
+
+    protected string $state_hash = '';
+
+    protected int $state_expires = 0;
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
+        $id = $params['id'] ?? request()->integer('id', 0);
+        $hash = $params['hash'] ?? request()->input('hash', '');
+        $expires = $params['expires'] ?? request()->integer('expires', 0);
+
+        if (is_numeric($id) && (int) $id > 0) {
+            $this->state_id = (int) $id;
+        }
+        if (is_string($hash) && $hash !== '') {
+            $this->state_hash = $hash;
+        }
+        if (is_numeric($expires) && (int) $expires > 0) {
+            $this->state_expires = (int) $expires;
+        }
+
         $container
             ->layout(LayoutType::VERTICAL)
             ->plain()
@@ -47,9 +71,8 @@ class EmailVerified extends Screen
             case 'error':
                 $this->buildErrorUI($container);
                 break;
-    }
         }
-
+    }
 
     protected function postLoadUI(): void
     {
@@ -59,8 +82,8 @@ class EmailVerified extends Screen
         }
 
         // Obtener parámetros de la URL (id y hash)
-        $id = request()->integer('id', 0);
-        $hashInput = request()->input('hash', '');
+        $id = $this->state_id > 0 ? $this->state_id : request()->integer('id', 0);
+        $hashInput = $this->state_hash !== '' ? $this->state_hash : request()->input('hash', '');
         $hash = is_string($hashInput) ? $hashInput : '';
 
         if ($id <= 0 || $hash === '') {
@@ -68,16 +91,18 @@ class EmailVerified extends Screen
             $this->verificationStatus = 'error';
             $this->container->clear();
             $this->buildBaseUI($this->container);
+
             return;
         }
 
         // Enforce link expiration using signed URL expires timestamp.
-        $expires = request()->integer('expires', 0);
+        $expires = $this->state_expires > 0 ? $this->state_expires : request()->integer('expires', 0);
         if ($expires > 0 && now()->timestamp > $expires) {
             $this->errorMessage = t('screens.auth.email_verified.errors.expired');
             $this->verificationStatus = 'error';
             $this->container->clear();
             $this->buildBaseUI($this->container);
+
             return;
         }
 
@@ -85,7 +110,7 @@ class EmailVerified extends Screen
         try {
             $result = $this->userService->verifyEmail($id, $hash);
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 $this->errorMessage = $result['message'];
                 $this->verificationStatus = $result['status'] === 'invalid' ? 'error' : $result['status'];
             } else {
@@ -93,7 +118,7 @@ class EmailVerified extends Screen
             }
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Email verification failed', [
+            Log::error('Email verification failed', [
                 'message' => $e->getMessage(),
                 'exception' => get_class($e),
             ]);
@@ -243,7 +268,7 @@ class EmailVerified extends Screen
     /** @param array<string, mixed> $params */
     public function onGoToLogin(array $params): void
     {
-        $this->showInto(Login::class, updateBrowserUrl: true);
+        $this->navigate(Login::class);
     }
 
     /**
@@ -252,7 +277,7 @@ class EmailVerified extends Screen
     /** @param array<string, mixed> $params */
     public function onGoToHome(array $params): void
     {
-        $this->showInto(\App\UI\Screens\Home::class, updateBrowserUrl: true);
+        $this->navigate(Home::class);
     }
 
     /**
@@ -262,6 +287,6 @@ class EmailVerified extends Screen
     public function onResendVerification(array $params): void
     {
         $this->toast(t('screens.auth.email_verified.toast.redirect_to_login'), 'info');
-        $this->showInto(Login::class, updateBrowserUrl: true);
+        $this->navigate(Login::class);
     }
 }

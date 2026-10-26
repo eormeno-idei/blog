@@ -1,4 +1,5 @@
 <?php
+
 // @usim: feature="auth", type="request"
 
 namespace App\Http\Requests\Auth;
@@ -34,7 +35,7 @@ class LoginRequest extends FormRequest
     /**
      * Normalize credentials from screen parameters or HTTP request data.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array{email: mixed, password: mixed, remember: bool}
      */
     public static function normalize(array $data): array
@@ -49,7 +50,7 @@ class LoginRequest extends FormRequest
     /**
      * Validate an arbitrary array (e.g., from UI Screen actions) against these rules.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array{email: string, password: string, remember: bool}
      *
      * @throws ValidationException
@@ -59,6 +60,6 @@ class LoginRequest extends FormRequest
         $normalized = self::normalize($data);
 
         /** @var array{email: string, password: string, remember: bool} */
-        return Validator::make($normalized, (new self())->rules())->validate();
+        return Validator::make($normalized, (new self)->rules())->validate();
     }
 }

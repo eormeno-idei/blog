@@ -76,5 +76,5 @@ Estas acciones podrán realizarse con el objetivo de mantener el correcto funcio
 
 Al registrarse en la plataforma, el usuario declara haber leído y aceptar los presentes Términos de Uso y Privacidad.
 El uso continuado de la plataforma implica la aceptación de cualquier modificación futura de estos términos, por lo que se recomienda revisar esta sección periódicamente.
-'
+',
 ];

@@ -123,4 +123,3 @@ it('formats active unit using translated display name or capitalized slug fallba
         'name' => 'Unidad Operativa',
     ]);
 });
-

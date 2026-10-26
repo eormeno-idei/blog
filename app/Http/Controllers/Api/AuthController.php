@@ -1,24 +1,26 @@
 <?php
+
 // @usim: feature="admin", type="controller"
+
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Services\Auth\LoginService;
-use App\Services\Auth\RegisterService;
 use App\Services\Auth\PasswordService;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
+use App\Services\Auth\RegisterService;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
     public function __construct(
         protected PasswordService $passwordService
-    ) {
-    }
+    ) {}
+
     public function register(Request $request, RegisterService $registerService): JsonResponse
     {
         $response = $registerService->register(
@@ -65,7 +67,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => null,
-            'message' => 'Sesión cerrada exitosamente'
+            'message' => 'Sesión cerrada exitosamente',
         ]);
     }
 
@@ -75,11 +77,11 @@ class AuthController extends Controller
         $userId = (int) $request->route('id');
         $user = User::query()->find($userId);
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'User not found',
-                'errors' => null
+                'errors' => null,
             ], 404);
         }
 
@@ -92,7 +94,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid verification link',
-                'errors' => null
+                'errors' => null,
             ], 400);
         }
 
@@ -103,7 +105,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'success',
                 'data' => null,
-                'message' => 'Email already verified'
+                'message' => 'Email already verified',
             ], 200);
         }
 
@@ -114,7 +116,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => null,
-            'message' => 'Email verified successfully'
+            'message' => 'Email verified successfully',
         ], 200);
     }
 
@@ -127,7 +129,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'success',
                 'data' => null,
-                'message' => 'Email already verified'
+                'message' => 'Email already verified',
             ], 200);
         }
 
@@ -136,7 +138,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => null,
-            'message' => 'Verification email sent'
+            'message' => 'Verification email sent',
         ], 200);
 
     }
@@ -163,7 +165,7 @@ class AuthController extends Controller
                     'roles' => $roles,
                     'permissions' => $permissions,
                 ],
-            ]
+            ],
         ]);
     }
 
@@ -177,6 +179,7 @@ class AuthController extends Controller
         );
 
         $httpStatus = $response['status'] === 'success' ? 200 : 400;
+
         return response()->json($response, $httpStatus);
     }
 
@@ -193,11 +196,11 @@ class AuthController extends Controller
         );
 
         $httpStatus = $response['status'] === 'success' ? 200 : 422;
+
         return response()->json($response, $httpStatus);
     }
 
     /**
-     * @param mixed $roles
      * @return list<string>
      */
     private function normalizeRoles(mixed $roles): array
@@ -206,7 +209,7 @@ class AuthController extends Controller
             return [$roles];
         }
 
-        if (!is_array($roles)) {
+        if (! is_array($roles)) {
             return ['user'];
         }
 

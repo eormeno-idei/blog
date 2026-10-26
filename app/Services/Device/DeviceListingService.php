@@ -1,10 +1,13 @@
 <?php
+
 // @usim: feature="admin", type="service"
+
 namespace App\Services\Device;
 
 use App\Models\Device;
 use Idei\Usim\Models\UsimUnit;
 use Idei\Usim\Support\EloquentListingService;
+use Idei\Usim\Support\UIStateManager;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -26,6 +29,7 @@ class DeviceListingService extends EloquentListingService
     public function setUnitContext(?int $unitId): self
     {
         $this->unitContextId = $unitId;
+
         return $this;
     }
 
@@ -43,7 +47,7 @@ class DeviceListingService extends EloquentListingService
             return $this->unitContextId;
         }
 
-        $cachedUnit = \Idei\Usim\Support\UIStateManager::getActiveUnit();
+        $cachedUnit = UIStateManager::getActiveUnit();
         if ($cachedUnit !== null) {
             $rawId = UsimUnit::where('slug', $cachedUnit)->value('id');
             if (is_numeric($rawId)) {
@@ -56,6 +60,7 @@ class DeviceListingService extends EloquentListingService
         }
 
         $rawMainId = UsimUnit::where('slug', 'main')->value('id');
+
         return is_numeric($rawMainId) ? (int) $rawMainId : null;
     }
 
@@ -78,9 +83,9 @@ class DeviceListingService extends EloquentListingService
                             $aq->whereHas('usimUnits', static function (Builder $uq) use ($activeUnitId): void {
                                 $uq->where('usim_units.id', $activeUnitId);
                             })
-                            ->orWhereHas('roles', static function (Builder $rq) use ($activeUnitId): void {
-                                $rq->wherePivot('usim_unit_id', $activeUnitId);
-                            });
+                                ->orWhereHas('roles', static function (Builder $rq) use ($activeUnitId): void {
+                                    $rq->wherePivot('usim_unit_id', $activeUnitId);
+                                });
                         });
 
                         if ($mainUnitId !== null && $mainUnitId !== $activeUnitId) {
@@ -88,9 +93,9 @@ class DeviceListingService extends EloquentListingService
                                 $mq->whereHas('usimUnits', static function (Builder $uq) use ($mainUnitId): void {
                                     $uq->where('usim_units.id', $mainUnitId);
                                 })
-                                ->orWhereHas('roles', static function (Builder $rq) use ($mainUnitId): void {
-                                    $rq->wherePivot('usim_unit_id', $mainUnitId);
-                                });
+                                    ->orWhereHas('roles', static function (Builder $rq) use ($mainUnitId): void {
+                                        $rq->wherePivot('usim_unit_id', $mainUnitId);
+                                    });
                             });
                         }
                     } elseif ($mainUnitId !== null) {
@@ -98,9 +103,9 @@ class DeviceListingService extends EloquentListingService
                             $mq->whereHas('usimUnits', static function (Builder $uq) use ($mainUnitId): void {
                                 $uq->where('usim_units.id', $mainUnitId);
                             })
-                            ->orWhereHas('roles', static function (Builder $rq) use ($mainUnitId): void {
-                                $rq->wherePivot('usim_unit_id', $mainUnitId);
-                            });
+                                ->orWhereHas('roles', static function (Builder $rq) use ($mainUnitId): void {
+                                    $rq->wherePivot('usim_unit_id', $mainUnitId);
+                                });
                         });
                     }
 

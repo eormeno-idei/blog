@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="service"
+
 namespace App\Services\Auth;
 
 use App\Models\User;
@@ -14,21 +16,20 @@ class PasswordService
     /**
      * Send password reset link
      *
-     * @param string $email
-        * @return array{
-        *     status: 'error',
-        *     message: string,
-        *     errors: array<string, list<string>>
-        * }|array{
-        *     status: 'success',
-        *     data: null,
-        *     message: string
-        * }
+     * @return array{
+     *     status: 'error',
+     *     message: string,
+     *     errors: array<string, list<string>>
+     * }|array{
+     *     status: 'success',
+     *     data: null,
+     *     message: string
+     * }
      */
     public function sendResetLink(string $email): array
     {
         $validator = Validator::make(['email' => $email], [
-            'email' => 'required|email'
+            'email' => 'required|email',
         ]);
 
         if ($validator->fails()) {
@@ -42,7 +43,7 @@ class PasswordService
         // Verificar que el usuario existe
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return [
                 'status' => 'error',
                 'message' => t('service.auth.password.user_not_found'),
@@ -70,10 +71,6 @@ class PasswordService
     /**
      * Reset password
      *
-     * @param string $token
-     * @param string $email
-     * @param string $password
-     * @param string $passwordConfirmation
      * @return array{
      *     status: 'error',
      *     message: string,
@@ -118,7 +115,7 @@ class PasswordService
             ],
             function (User $user, string $password) {
                 $user->forceFill([
-                    'password' => Hash::make($password)
+                    'password' => Hash::make($password),
                 ])->setRememberToken(Str::random(60));
 
                 $user->save();

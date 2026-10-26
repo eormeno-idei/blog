@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin;
 
 use App\Models\Device; // Tu modelo polimórfico de dispositivo
@@ -8,16 +10,19 @@ use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Screen;
+use Idei\Usim\Support\DevicePairingManager;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use Idei\Usim\Support\DevicePairingManager;
 
 class AdminDevicePairingScreen extends Screen
 {
     protected Label $lbl_instruction;
+
     protected Input $input_pin;
+
     protected Button $btn_submit;
+
     protected Label $lbl_result;
 
     protected function buildBaseUI(Container $container, ...$params): void
@@ -62,7 +67,7 @@ class AdminDevicePairingScreen extends Screen
     /**
      * Handler que recibe el PIN enviado por el administrador
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onApprovePairing(array $params): void
     {
@@ -73,6 +78,7 @@ class AdminDevicePairingScreen extends Screen
 
         if (empty($pin) || strlen($pin) !== 4) {
             $this->input_pin->error('El PIN debe tener exactamente 4 dígitos.');
+
             return;
         }
 
@@ -81,8 +87,9 @@ class AdminDevicePairingScreen extends Screen
         // Por ahora, para la prueba, tomamos el primer dispositivo disponible (ej: el Smart TV de la DB)
         $device = Device::first();
 
-        if (!$device) {
+        if (! $device) {
             $this->toast('No hay dispositivos registrados en la base de datos.', 'error');
+
             return;
         }
 

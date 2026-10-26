@@ -1,7 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LogViewerController;
+use Idei\Usim\Support\UsimConfig;
+use Illuminate\Support\Facades\Route;
 
 if (config('app.env') === 'local') {
     // Rutas para el visor de logs - Solo en entorno local
@@ -22,8 +23,8 @@ Route::get('/{screen?}', function (?string $screen = 'home') {
         return abort(404);
     }
 
-    /** @var \Idei\Usim\Support\UsimConfig $usimConfig */
-    $usimConfig = app(\Idei\Usim\Support\UsimConfig::class);
+    /** @var UsimConfig $usimConfig */
+    $usimConfig = app(UsimConfig::class);
 
     // Check if headless mode is enabled.
     if ($usimConfig->headlessMode) {
@@ -36,6 +37,7 @@ Route::get('/{screen?}', function (?string $screen = 'home') {
 
     $screenRoute = $screen ?? 'home';
     $reset = (bool) request()->query('reset', false);
+
     return view('usim::app', [
         'screen' => $screenRoute,
         'reset' => $reset,

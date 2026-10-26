@@ -1,4 +1,5 @@
 <?php
+
 // @usim: feature="core", type="test"
 
 use App\Models\User;
@@ -9,11 +10,13 @@ use App\UI\Screens\Auth\Profile;
 use App\UI\Screens\Auth\Register;
 use App\UI\Screens\Home;
 use App\UI\Screens\Menu;
+use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
 use Illuminate\Support\Facades\Auth;
+use Tests\TestCase;
 
 beforeEach(function () {
-    app(\Idei\Usim\Support\RoleAndPermissionSyncService::class)->sync();
+    app(RoleAndPermissionSyncService::class)->sync();
 });
 
 it('renders home screen with expected core components for guests', function () {
@@ -81,8 +84,7 @@ it('opens Login and Register modals from Home guest buttons', function () {
 it('returns menu screen for guests with settings trigger and register option', function () {
     Auth::logout();
 
-    /** @var \Tests\TestCase $this */
-
+    /** @var TestCase $this */
     $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
 
     $mainMenu = $ui->component('main_menu')->data();
@@ -102,7 +104,7 @@ it('returns menu screen for guests with settings trigger and register option', f
 });
 
 it('returns menu screen for authenticated users with user trigger and logout option', function () {
-    /** @var \Tests\TestCase $this */
+    /** @var TestCase $this */
     /** @var User $user */
     $user = User::factory()->create([
         'name' => 'Menu Tester',
@@ -125,7 +127,7 @@ it('returns menu screen for authenticated users with user trigger and logout opt
 });
 
 it('shows profile, logout and admin dashboard items after admin login', function () {
-    /** @var \Tests\TestCase $this */
+    /** @var TestCase $this */
     $this->loginAs('root');
 
     $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);
@@ -141,7 +143,7 @@ it('shows profile, logout and admin dashboard items after admin login', function
 
 it('shows profile/logout and hides admin dashboard after regular user login', function () {
     $defaultRegisteringRole = config('usim.default_registering_role', 'registered');
-    /** @var \Tests\TestCase $this */
+    /** @var TestCase $this */
     $this->loginAs($defaultRegisteringRole);
 
     $ui = uiScenario($this, Menu::class, ['parent' => 'menu']);

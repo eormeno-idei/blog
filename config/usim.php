@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Device;
+use App\Models\User;
 use App\UI\Screens\Home;
 
 return [
@@ -49,8 +51,8 @@ return [
     |--------------------------------------------------------------------------
     */
     'models' => [
-        'user' => \App\Models\User::class,
-        'device' => \App\Models\Device::class,
+        'user' => User::class,
+        'device' => Device::class,
     ],
 
     /*

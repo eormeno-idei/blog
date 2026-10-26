@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin\Presenters;
 
 use Idei\Usim\Models\UsimUnit;
@@ -12,8 +14,7 @@ class UserEditDialogPresenter
     /**
      * Format and normalize user array structure for EditUserDialog.
      *
-     * @param array<string, mixed> $user
-     * @param UsimUnit|null $activeUnit
+     * @param  array<string, mixed>  $user
      * @return array{
      *     id: int|string,
      *     name: string,
@@ -78,8 +79,8 @@ class UserEditDialogPresenter
     /**
      * Copy optional verification and unit status flags when present.
      *
-     * @param array<string, mixed> $modalUser
-     * @param array<string, mixed> $user
+     * @param  array<string, mixed>  $modalUser
+     * @param  array<string, mixed>  $user
      */
     private function applyOptionalFlags(array &$modalUser, array $user): void
     {
@@ -97,7 +98,7 @@ class UserEditDialogPresenter
     /**
      * Normalize role entries supporting string names and associative arrays.
      *
-     * @param array<mixed> $rawRoles
+     * @param  array<mixed>  $rawRoles
      * @return list<array{name: string}|string>
      */
     private function normalizeRoles(array $rawRoles): array
@@ -118,7 +119,7 @@ class UserEditDialogPresenter
     /**
      * Normalize operational units list.
      *
-     * @param array<mixed> $rawUnits
+     * @param  array<mixed>  $rawUnits
      * @return list<array{id: int|string, slug: string, name: string}>
      */
     private function normalizeOperationalUnits(array $rawUnits): array
@@ -142,7 +143,7 @@ class UserEditDialogPresenter
     /**
      * Check whether an operational unit array entry contains valid id, slug, and name.
      *
-     * @param array<mixed> $unit
+     * @param  array<mixed>  $unit
      */
     private function isValidUnitEntry(array $unit): bool
     {
@@ -156,7 +157,7 @@ class UserEditDialogPresenter
     /**
      * Normalize map of unit slugs to role name lists.
      *
-     * @param array<mixed> $rawUnitsWithRoles
+     * @param  array<mixed>  $rawUnitsWithRoles
      * @return array<string, list<string>>
      */
     private function normalizeUnitsWithRoles(array $rawUnitsWithRoles): array

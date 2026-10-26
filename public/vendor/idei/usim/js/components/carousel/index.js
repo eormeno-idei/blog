@@ -8,6 +8,7 @@ class CarouselComponent extends UIComponent {
         super(id, config);
         this.timer = null;
         this.mediaElement = null;
+        this.frameElement = null;
         this.slideElement = null;
         this.indicatorsElement = null;
     }
@@ -20,6 +21,7 @@ class CarouselComponent extends UIComponent {
         }
 
         this.applyFullscreenState();
+        this.applyMediaLayoutStyles();
         this.updateMedia();
         this.updateControls();
         this.updateIndicators();
@@ -38,6 +40,9 @@ class CarouselComponent extends UIComponent {
 
         const frame = document.createElement('div');
         frame.className = 'usim-carousel-frame';
+        this.frameElement = frame;
+
+        this.applyMediaLayoutStyles();
 
         const slide = document.createElement('div');
         slide.className = 'usim-carousel-slide';
@@ -220,6 +225,24 @@ class CarouselComponent extends UIComponent {
         }
 
         this.element.classList.toggle('is-fullscreen', Boolean(this.config.fullscreen));
+    }
+
+    applyMediaLayoutStyles() {
+        if (!this.element) {
+            return;
+        }
+
+        if (this.config.aspect_ratio) {
+            const normalizedAspect = String(this.config.aspect_ratio).replace(':', ' / ');
+            this.element.style.setProperty('--usim-carousel-aspect-ratio', normalizedAspect);
+            if (this.frameElement) {
+                this.frameElement.style.aspectRatio = normalizedAspect;
+            }
+        }
+
+        if (this.config.object_fit) {
+            this.element.style.setProperty('--usim-carousel-object-fit', String(this.config.object_fit));
+        }
     }
 
     scheduleAutoplay() {

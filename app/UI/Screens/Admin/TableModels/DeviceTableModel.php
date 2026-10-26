@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin\TableModels;
 
 use App\Models\Device;
@@ -31,6 +33,7 @@ class DeviceTableModel extends AbstractListingTableModel
     public function getColumns(): array
     {
         $prefix = 'screens.admin.users_manager';
+
         return [
             'name' => [
                 'label' => t("{$prefix}.devices_column_name"),
@@ -58,7 +61,7 @@ class DeviceTableModel extends AbstractListingTableModel
     }
 
     /**
-     * @param Device $item
+     * @param  Device  $item
      * @return array{
      *     _model_id: int|string,
      *     name: string,
@@ -72,7 +75,7 @@ class DeviceTableModel extends AbstractListingTableModel
     {
         /** @var Device $device */
         $device = $item;
-        $isPaired = $device->tokens->isNotEmpty() || !empty($device->device_token);
+        $isPaired = $device->tokens->isNotEmpty() || ! empty($device->device_token);
 
         $statusText = $isPaired
             ? t('screens.admin.users_manager.devices_status_paired')
@@ -95,7 +98,7 @@ class DeviceTableModel extends AbstractListingTableModel
         $units = $device->relationLoaded('usimUnits') ? $device->usimUnits : $device->usimUnits()->get();
 
         $operationalUnits = $units->filter(static function ($unit): bool {
-            return $unit->type !== 'system' && !in_array($unit->slug, ['main', 'lobby'], true);
+            return $unit->type !== 'system' && ! in_array($unit->slug, ['main', 'lobby'], true);
         })->values();
 
         $isPublic = $units->isEmpty() || $units->contains('slug', 'main');
@@ -106,7 +109,7 @@ class DeviceTableModel extends AbstractListingTableModel
             : 'Institucional';
 
         if ($isPublic && $operationalUnits->isEmpty()) {
-            return '🏛️ ' . t('screens.admin.users_manager.device_unit_institutional', [], "{$mainLabel} (Todos)");
+            return '🏛️ '.t('screens.admin.users_manager.device_unit_institutional', [], "{$mainLabel} (Todos)");
         }
 
         if ($operationalUnits->isNotEmpty()) {

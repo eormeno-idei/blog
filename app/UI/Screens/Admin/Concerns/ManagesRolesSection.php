@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin\Concerns;
 
 use App\Services\Role\RoleService;
@@ -24,7 +26,9 @@ trait ManagesRolesSection
     protected const string ROLES_I18N_PREFIX = 'screens.admin.users_manager.';
 
     protected Table $roles_table;
+
     protected Table $permissions_table;
+
     protected Split $roles_split;
 
     protected function buildRolesContainer(): Container
@@ -62,7 +66,7 @@ trait ManagesRolesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onRolesTableColumnClicked(array $params): void
     {
@@ -70,7 +74,7 @@ trait ManagesRolesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onPermissionsTableColumnClicked(array $params): void
     {
@@ -78,18 +82,20 @@ trait ManagesRolesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onRolesTableRowClicked(array $params): void
     {
-        if (!$this->userCan('manage.roles')) {
+        if (! $this->userCan('manage.roles')) {
             $this->toast(t('You don\'t have permission to manage roles'), 'error');
+
             return;
         }
 
         $roleId = $this->selectableId($params, 'model_id');
         if ($roleId === null) {
             $this->toast(t('Role ID is required'), 'error');
+
             return;
         }
 
@@ -100,12 +106,13 @@ trait ManagesRolesSection
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onPermissionsTableRowClicked(array $params): void
     {
-        if (!$this->userCan('manage.roles')) {
+        if (! $this->userCan('manage.roles')) {
             $this->toast(t('You don\'t have permission to manage roles'), 'error');
+
             return;
         }
 
@@ -113,13 +120,15 @@ trait ManagesRolesSection
         $roleId = is_array($selectedRole) ? ($selectedRole[0] ?? null) : $selectedRole;
 
         if ($roleId instanceof Table || $roleId === null || $roleId === '') {
-            $this->toast(t(self::ROLES_I18N_PREFIX . 'role_selection_warning'), 'warning');
+            $this->toast(t(self::ROLES_I18N_PREFIX.'role_selection_warning'), 'warning');
+
             return;
         }
 
         $permissionId = $this->selectableId($params, 'model_id');
         if ($permissionId === null) {
             $this->toast(t('Permission ID is required'), 'error');
+
             return;
         }
 

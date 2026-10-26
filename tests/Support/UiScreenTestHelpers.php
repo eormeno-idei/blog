@@ -1,38 +1,42 @@
 <?php
+
 // @usim: feature="core", type="test"
+use Idei\Usim\Layout\AbstractLayout;
+use Idei\Usim\Support\UIIdGenerator;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
-if (!function_exists('screenApiUrl')) {
+if (! function_exists('screenApiUrl')) {
     function screenApiUrl(string $screenClass, array $query = []): string
     {
-        $path = '/api/ui' . $screenClass::getRoutePath();
+        $path = '/api/ui'.$screenClass::getRoutePath();
 
         if (empty($query)) {
             return $path;
         }
 
-        return $path . '?' . http_build_query($query);
+        return $path.'?'.http_build_query($query);
     }
 }
 
-if (!function_exists('getScreenJson')) {
+if (! function_exists('getScreenJson')) {
     function getScreenJson(TestCase $test, string $screenClass, array $query = []): TestResponse
     {
         return $test->getJson(screenApiUrl($screenClass, $query));
     }
 }
 
-if (!function_exists('findComponentByName')) {
+if (! function_exists('findComponentByName')) {
     function findComponentByName(array $payload, string $name): ?array
     {
         foreach ($payload as $key => $component) {
-            if (!is_array($component)) {
+            if (! is_array($component)) {
                 continue;
             }
 
             if (($component['name'] ?? null) === $name) {
                 $component['_json_key'] = (string) $key;
+
                 return $component;
             }
         }
@@ -41,7 +45,7 @@ if (!function_exists('findComponentByName')) {
     }
 }
 
-if (!function_exists('firstUiComponentFromPayload')) {
+if (! function_exists('firstUiComponentFromPayload')) {
     function firstUiComponentFromPayload(array $payload): ?array
     {
         $reservedKeys = ['storage', 'action', 'redirect', 'toast', 'abort', 'modal', 'update_modal'];
@@ -53,6 +57,7 @@ if (!function_exists('firstUiComponentFromPayload')) {
 
             if (is_array($value) && isset($value['type'], $value['parent'])) {
                 $value['_json_key'] = (string) $key;
+
                 return $value;
             }
         }
@@ -61,15 +66,15 @@ if (!function_exists('firstUiComponentFromPayload')) {
     }
 }
 
-if (!function_exists('serviceRootComponentId')) {
+if (! function_exists('serviceRootComponentId')) {
     function serviceRootComponentId(array $payload, ?string $screenClass = null): int
     {
         if ($screenClass !== null) {
             foreach ($payload as $id => $component) {
-                if (!is_array($component) || !is_numeric($id)) {
+                if (! is_array($component) || ! is_numeric($id)) {
                     continue;
                 }
-                $context = \Idei\Usim\Support\UIIdGenerator::getContextFromId((int) $id);
+                $context = UIIdGenerator::getContextFromId((int) $id);
                 if ($context === $screenClass && ($component['type'] ?? null) === 'container') {
                     return (int) $id;
                 }
@@ -78,17 +83,17 @@ if (!function_exists('serviceRootComponentId')) {
 
         // Prefer container belonging to the host screen, skipping layout screens and Menu
         foreach ($payload as $id => $component) {
-            if (!is_array($component) || !is_numeric($id)) {
+            if (! is_array($component) || ! is_numeric($id)) {
                 continue;
             }
 
             if (($component['type'] ?? null) === 'container') {
-                $context = \Idei\Usim\Support\UIIdGenerator::getContextFromId((int) $id);
+                $context = UIIdGenerator::getContextFromId((int) $id);
                 if (
                     $context !== null
-                    && !is_subclass_of($context, \Idei\Usim\Layout\AbstractLayout::class)
+                    && ! is_subclass_of($context, AbstractLayout::class)
                     && $context !== 'App\\UI\\Screens\\Menu'
-                    && !is_subclass_of($context, 'App\\UI\\Screens\\Menu')
+                    && ! is_subclass_of($context, 'App\\UI\\Screens\\Menu')
                 ) {
                     return (int) $id;
                 }
@@ -96,7 +101,7 @@ if (!function_exists('serviceRootComponentId')) {
         }
 
         foreach ($payload as $id => $component) {
-            if (!is_array($component)) {
+            if (! is_array($component)) {
                 continue;
             }
 

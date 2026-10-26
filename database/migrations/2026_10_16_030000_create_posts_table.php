@@ -1,9 +1,9 @@
 <?php
 
+use Idei\Usim\Enums\AspectRatio;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Idei\Usim\Enums\AspectRatio;
 
 return new class extends Migration
 {
@@ -12,7 +12,7 @@ return new class extends Migration
         $aspects = AspectRatio::all();
         $defaultAspect = AspectRatio::default();
 
-        Schema::create('posts', function (Blueprint $table,) use ($aspects, $defaultAspect) {
+        Schema::create('posts', function (Blueprint $table) use ($aspects, $defaultAspect) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('title');
@@ -44,4 +44,3 @@ return new class extends Migration
         Schema::dropIfExists('posts');
     }
 };
-

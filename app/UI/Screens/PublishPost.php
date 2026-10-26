@@ -26,12 +26,19 @@ class PublishPost extends Screen
     use InteractsWithReelStudio;
 
     protected Input $post_id;
+
     protected Input $post_title;
+
     protected Textarea $post_content;
+
     protected Input $post_from;
+
     protected Input $post_to;
+
     protected Uploader $post_image;
+
     protected Button $btn_ask_ai;
+
     protected Button $btn_save_post;
 
     protected int $state_post_id = 0;
@@ -59,13 +66,19 @@ class PublishPost extends Screen
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
-        /** @var array<string, mixed> $params */
-        $explicitPostId = $this->resolveExplicitPostId($params);
+        $rawPostId = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? null;
+        $explicitPostId = isset($rawPostId) && is_numeric($rawPostId)
+            ? (int) $rawPostId
+            : 0;
 
-        $post = $this->resolveOrCreatePost($params);
+        if ($explicitPostId > 0) {
+            $this->state_post_id = $explicitPostId;
+        }
+
+        $post = $this->resolveOrCreatePost($explicitPostId > 0);
         if ($explicitPostId > 0 && $post === null) {
             $this->toast('Post no encontrado.', 'error');
-            $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+            $this->navigate(Home::class);
 
             return;
         }
@@ -92,54 +105,32 @@ class PublishPost extends Screen
         }
     }
 
-    /**
-     * @param array<string, mixed> $params
-     */
-    private function resolveExplicitPostId(array $params): int
+    private function resolveOrCreatePost(bool $isExplicit = false): ?object
     {
-        $rawId = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? request()->query('post_id');
-
-        return is_numeric($rawId) && (int) $rawId > 0 ? (int) $rawId : 0;
-    }
-
-    /**
-     * @param array<string, mixed> $params
-     */
-    private function resolveOrCreatePost(array $params): ?object
-    {
-        $candidateId = $this->resolveCandidatePostId($params);
-        if ($candidateId > 0) {
-            $existing = $this->postService->findById($candidateId);
-            if ($existing !== null || $this->resolveExplicitPostId($params) > 0) {
-                $this->state_post_id = $candidateId;
-
+        if ($this->state_post_id > 0) {
+            $existing = $this->postService->findById($this->state_post_id);
+            if ($existing !== null || $isExplicit) {
                 return $existing;
             }
+        }
+
+        $emptyDraft = $this->postService->findEmptyDraftPostByUserId(Auth::id());
+        if ($emptyDraft !== null) {
+            $this->state_post_id = $emptyDraft->id;
+            return $emptyDraft;
         }
 
         return $this->createInitialDraftPost();
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     private function resolveCandidatePostId(array $params = []): int
     {
-        $candidates = [
-            $params['post_id'] ?? null,
-            $this->getQueryParams()['post_id'] ?? null,
-            request()->query('post_id'),
-            request()->input('parameters.post_id'),
-            $this->state_post_id,
-        ];
+        $candidate = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? $this->state_post_id;
 
-        foreach ($candidates as $candidate) {
-            if (is_numeric($candidate) && (int) $candidate > 0) {
-                return (int) $candidate;
-            }
-        }
-
-        return 0;
+        return is_numeric($candidate) && (int) $candidate > 0 ? (int) $candidate : 0;
     }
 
     private function createInitialDraftPost(): ?object
@@ -152,7 +143,7 @@ class PublishPost extends Screen
         $this->state_post_id = $this->postService->createPost([
             'user_id' => (int) $user->id,
             'title' => 'Borrador sin título',
-            'content' => self::defaultNotesTemplate(),
+            'content' => '',
             'status' => 'draft',
             'from' => now()->format('Y-m-d'),
             'to' => now()->addDays(14)->format('Y-m-d'),
@@ -400,11 +391,11 @@ class PublishPost extends Screen
         }
 
         $this->toast('¡Propuesta enviada a revisión correctamente!', 'success');
-        $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+        $this->navigate(Home::class);
     }
 
     /**
-     * @param array<string, mixed> $requestData
+     * @param  array<string, mixed>  $requestData
      */
     private function resolveUploadedImageFilename(array $requestData): ?string
     {
@@ -422,16 +413,16 @@ class PublishPost extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCancelPost(array $params): void
     {
         $this->stopActiveReelJobPolling();
-        $this->showInto(Home::class, force: true, updateBrowserUrl: true);
+        $this->navigate(Home::class);
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onTitleSaved(array $params): void
     {
@@ -449,7 +440,7 @@ class PublishPost extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onPlainSaved(array $params): void
     {
@@ -466,24 +457,29 @@ class PublishPost extends Screen
         }
     }
 
-    private function defaultNotesValue(): string
+    private function defaultTitleValue(): string
     {
-        return self::defaultNotesTemplate();
+        return self::defaultPostTemplate()['title'];
     }
 
-    public static function defaultNotesTemplate(): string
+    private function defaultNotesValue(): string
     {
-        return <<<'EOT'
-Proyecto de Desarrollo Tecnológico y Social (PDTS)
-Universidad Nacional de San Juan
-Secretaría de Ciencia, Tecnología e Innovación – Gobierno de San Juan
-Convocatoria 2025
+        return self::defaultPostTemplate()['content'];
+    }
 
-1. DENOMINACIÓN DEL PROYECTO
-Innovación en Desarrollo de Software: Validación de Arquitectura Backend-Driven UI en la aplicación "+65 Agenda Salud"
-
-2. RESUMEN
-El presente proyecto tiene por objeto la validación científica y transferencia al sector productivo de una tecnología de desarrollo de software basada en arquitectura Backend-Driven. Esta herramienta, resultado de un Proyecto de Investigación (PIC) previo del Instituto de Informática, propone centralizar la lógica de interfaz en el servidor para acelerar los tiempos de desarrollo de software. La propuesta intentará validar el framework en dos fases de ejecución: primero, se utilizará el framework para construir y desplegar "+65 Agenda Salud", una aplicación móvil de autogestión sanitaria para adultos mayores. Segundo, se ejecutará un experimento controlado en dos empresas de Cuyo: Aconcagua Software Factory y Nodos Hub, en las cuales se comparará la productividad de este enfoque frente al desarrollo tradicional, consolidando la transferencia de la tecnología a la industria de software regional.
-EOT;
+    public static function defaultPostTemplate(): array
+    {
+        return [
+            'title' => 'Borrador sin título',
+            'content' => <<<'EOT'
+Escribe aquí las notas o información del evento/proyecto que quieres publicar. La IA usará estas notas para estructurar el guion del Reel. Puedes incluir detalles como:
+- Nombre del evento o proyecto
+- Fecha y hora
+- Ubicación
+- Descripción breve
+- Enlaces relevantes
+- Cualquier otro detalle que consideres importante para la publicación y el Reel.
+EOT,
+        ];
     }
 }

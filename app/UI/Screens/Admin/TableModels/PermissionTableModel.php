@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin\TableModels;
 
 use App\Services\Permissions\PermissionListingService;
@@ -34,7 +36,7 @@ class PermissionTableModel extends AbstractListingTableModel
     }
 
     /**
-     * @param Permission $item
+     * @param  Permission  $item
      * @return array{_model_id: int|string, name: string, description: string}
      */
     protected function formatRow(object $item): array

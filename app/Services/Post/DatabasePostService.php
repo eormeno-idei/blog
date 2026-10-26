@@ -5,6 +5,7 @@ namespace App\Services\Post;
 use App\Contracts\PostServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\UI\Screens\PublishPost;
 
 class DatabasePostService implements PostServiceInterface
 {
@@ -53,6 +54,20 @@ class DatabasePostService implements PostServiceInterface
                 'reviewers.name as reviewer_name'
             )
             ->where('posts.id', $id)
+            ->first();
+    }
+
+    public function findEmptyDraftPostByUserId(int $userId): ?object
+    {
+        return DB::table('posts')
+            ->where('user_id', $userId)
+            ->where('status', 'draft')
+            ->where(function ($query) {
+                $query->whereNull('title')
+                    ->orWhere('title', PublishPost::defaultPostTemplate()['title'])
+                    ->orWhereNull('content')
+                    ->orWhere('content', PublishPost::defaultPostTemplate()['content']);
+            })
             ->first();
     }
 

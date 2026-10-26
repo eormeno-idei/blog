@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Auth;
 
 use Idei\Usim\Components\Container;
@@ -50,7 +52,7 @@ class LegalTerms extends Screen
                 ->action('close_legal_terms')
         );
 
-        //$card->add($buttons);
+        // $card->add($buttons);
         $wrapper->add($buttons)->add($card);
         $container->add($wrapper);
     }
@@ -60,11 +62,12 @@ class LegalTerms extends Screen
         $document = t('screens.auth.legal_terms.document');
         $markdownHtml = Str::markdown($document);
         $scrollableDocumentHtml = "<div class='usim-markdown-content'>$markdownHtml</div>";
+
         return $scrollableDocumentHtml;
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCloseLegalTerms(array $params = []): void
     {

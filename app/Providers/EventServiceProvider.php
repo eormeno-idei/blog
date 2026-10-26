@@ -1,11 +1,13 @@
 <?php
+
 // @usim: feature="admin", type="provider"
+
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider

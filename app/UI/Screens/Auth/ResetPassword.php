@@ -23,16 +23,33 @@ class ResetPassword extends Screen
         protected PasswordResetActionInterface $passwordResetAction
     ) {}
 
+    protected string $state_token = '';
+
+    protected string $state_email = '';
+
+    protected int $state_expires = 0;
+
     protected Label $lbl_result;
 
     protected Input $password;
 
     protected Input $password_confirmation;
 
-    public function buildBaseUI(Container $container, ...$params): void
+    protected function buildBaseUI(Container $container, ...$params): void
     {
-        $token = request()->query('token');
-        $email = request()->query('email');
+        $token = $params['token'] ?? request()->query('token');
+        $email = $params['email'] ?? request()->query('email');
+        $expires = $params['expires'] ?? request()->query('expires', 0);
+
+        if (is_string($token) && $token !== '') {
+            $this->state_token = $token;
+        }
+        if (is_string($email) && $email !== '') {
+            $this->state_email = $email;
+        }
+        if (is_numeric($expires) && (int) $expires > 0) {
+            $this->state_expires = (int) $expires;
+        }
 
         $container
             ->layout(LayoutType::VERTICAL)
@@ -147,11 +164,11 @@ class ResetPassword extends Screen
     /** @param array<string, mixed> $params */
     public function onResetPassword(array $params): void
     {
-        $tokenRaw = $params['reset_token'] ?? $params['token'] ?? '';
+        $tokenRaw = $params['reset_token'] ?? $params['token'] ?? $this->state_token;
         $token = is_scalar($tokenRaw) ? (string) $tokenRaw : '';
-        $emailRaw = $params['reset_email'] ?? $params['email'] ?? '';
+        $emailRaw = $params['reset_email'] ?? $params['email'] ?? $this->state_email;
         $email = is_scalar($emailRaw) ? (string) $emailRaw : '';
-        $expiresRaw = $params['expires'] ?? request()->query('expires', 0);
+        $expiresRaw = $params['expires'] ?? $this->state_expires;
         $expires = is_numeric($expiresRaw) ? (int) $expiresRaw : 0;
         $passwordRaw = $params['password'] ?? '';
         $password = is_scalar($passwordRaw) ? (string) $passwordRaw : '';
@@ -201,7 +218,7 @@ class ResetPassword extends Screen
                 $this->toast(t('screens.auth.reset_password.toast.success'), 'success');
 
                 // Navigate to login via SPA
-                $this->showInto(Login::class, updateBrowserUrl: true);
+                $this->navigate(Login::class);
             } else {
                 // Extract validation errors if any
                 $errors = $result->errors;

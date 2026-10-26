@@ -76,5 +76,5 @@ These actions may be taken to maintain the proper functioning, security, and aca
 
 By registering on the platform, the user acknowledges that they have read and agree to these Terms of Use and Privacy.
 Continued use of the platform implies acceptance of any future modifications to these terms, so it is recommended to review this section periodically.
-    '
+    ',
 ];

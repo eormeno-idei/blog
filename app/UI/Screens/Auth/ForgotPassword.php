@@ -27,7 +27,7 @@ class ForgotPassword extends Screen
 
     protected Input $email;
 
-    public function buildBaseUI(Container $container, ...$params): void
+    protected function buildBaseUI(Container $container, ...$params): void
     {
         $container
             ->layout(LayoutType::VERTICAL)
@@ -138,7 +138,7 @@ class ForgotPassword extends Screen
     /** @param array<string, mixed> $params */
     public function onNavigateToLogin(array $params): void
     {
-        $this->showInto(Login::class, updateBrowserUrl: true);
+        $this->navigate(Login::class);
     }
 
     /** @param array<string, mixed> $params */

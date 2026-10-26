@@ -12,12 +12,13 @@ use App\UI\Screens\Home;
 use Idei\Usim\DTOs\RegistrationResult;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Screen;
+use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
-    app(\Idei\Usim\Support\RoleAndPermissionSyncService::class)->sync();
+    app(RoleAndPermissionSyncService::class)->sync();
 });
 
 it('renders guest register screen with terms components and without role selector', function () {

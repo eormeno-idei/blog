@@ -1,27 +1,33 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Auth;
 
+use App\Models\User;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Uploader;
+use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\AspectRatio;
+use Idei\Usim\Enums\JustifyContent;
+use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\Upload\UploadService;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\AspectRatio;
-use Idei\Usim\Enums\JustifyContent;
-use Idei\Usim\Enums\LayoutType;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 
 class Profile extends Screen
 {
     protected ?Input $input_email = null;
+
     protected ?Input $input_name = null;
+
     protected ?Uploader $uploader_profile = null;
 
     public static function authorize(): bool
@@ -44,7 +50,7 @@ class Profile extends Screen
     {
         $user = Auth::user();
 
-        if (!$user instanceof \App\Models\User) {
+        if (! $user instanceof User) {
             $wrapper = UI::container('profile_wrapper')
                 ->maxWidth(Size::px(600))
                 ->centerHorizontal()
@@ -68,7 +74,7 @@ class Profile extends Screen
 
                 $header->add(
                     UI::label('lbl_title')
-                        ->text("👤 Configuración de Perfil")
+                        ->text('👤 Configuración de Perfil')
                         ->style('h3')
                 );
 
@@ -91,6 +97,7 @@ class Profile extends Screen
             );
 
             $container->add($wrapper);
+
             return;
         }
 
@@ -118,7 +125,7 @@ class Profile extends Screen
 
             $header->add(
                 UI::label('lbl_title')
-                    ->text("👤 Configuración de Perfil")
+                    ->text('👤 Configuración de Perfil')
                     ->style('h3')
             );
 
@@ -136,7 +143,7 @@ class Profile extends Screen
             // Título estándar
             $wrapper->add(
                 UI::label('lbl_title')
-                    ->text("👤 Configuración de Perfil")
+                    ->text('👤 Configuración de Perfil')
                     ->style('primary')
                     ->fontSize('20px')
                     ->fontWeight('bold')
@@ -199,7 +206,7 @@ class Profile extends Screen
     {
         $user = Auth::user();
 
-        if (!$user instanceof \App\Models\User || $this->input_email === null || $this->input_name === null || $this->uploader_profile === null) {
+        if (! $user instanceof User || $this->input_email === null || $this->input_name === null || $this->uploader_profile === null) {
             return;
         }
 
@@ -209,7 +216,7 @@ class Profile extends Screen
         $this->input_email->value((string) $user->email);
         $this->input_name->value($user->name ?? '');
 
-        if (!$user->email_verified_at) {
+        if (! $user->email_verified_at) {
             $this->input_email->error(t('screens.auth.profile.email.not_verified'));
         } else {
             $this->input_email->error(null);
@@ -219,7 +226,7 @@ class Profile extends Screen
 
         // Actualizar uploader con imagen actual (si existe)
         if (\is_string($profileImage) && $profileImage !== '') {
-            $imageUrl = UploadService::fileUrl("uploads/images/{$profileImage}") . '?t=' . time();
+            $imageUrl = UploadService::fileUrl("uploads/images/{$profileImage}").'?t='.time();
         }
 
         $this->uploader_profile->existingFile($imageUrl);
@@ -232,11 +239,12 @@ class Profile extends Screen
     public function onSaveProfile(array $params): void
     {
         try {
-            /** @var \App\Models\User|null $user */
+            /** @var User|null $user */
             $user = Auth::user();
 
-            if (!$user instanceof \App\Models\User || $this->input_name === null || $this->uploader_profile === null) {
+            if (! $user instanceof User || $this->input_name === null || $this->uploader_profile === null) {
                 $this->toast(t('screens.auth.profile.toast.unauthenticated'), 'error');
+
                 return;
             }
 
@@ -246,6 +254,7 @@ class Profile extends Screen
 
             if (empty($name)) {
                 $this->input_name->error(t('screens.auth.profile.validation.name_required'));
+
                 return;
             }
 
@@ -266,7 +275,7 @@ class Profile extends Screen
             $this->input_name->error(null);
 
             event(new UsimEvent('updated_profile', [
-                'user' => $user
+                'user' => $user,
             ]));
 
             $this->closeModal(); // Cerrar modal después de guardar
@@ -274,7 +283,7 @@ class Profile extends Screen
             // Mostrar éxito
             $this->toast(t('screens.auth.profile.toast.updated'), 'success');
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Error saving profile: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            Log::error('Error saving profile: '.$e->getMessage()."\n".$e->getTraceAsString());
             $this->toast(t('screens.auth.profile.toast.save_error', ['message' => $e->getMessage()]), 'error');
         }
     }
@@ -285,11 +294,12 @@ class Profile extends Screen
     /** @param array<string, mixed> $params */
     public function onResendVerification(array $params): void
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         if ($user->email_verified_at) {
             $this->toast(t('screens.auth.profile.toast.already_verified'), 'info');
+
             return;
         }
 
@@ -307,13 +317,13 @@ class Profile extends Screen
     {
         $user = Auth::user();
 
-        if (!$user instanceof \App\Models\User) {
+        if (! $user instanceof User) {
             return;
         }
 
         // Enviar email de reset de contraseña
         $status = Password::sendResetLink([
-            'email' => (string) $user->email
+            'email' => (string) $user->email,
         ]);
 
         if ($status === Password::RESET_LINK_SENT) {

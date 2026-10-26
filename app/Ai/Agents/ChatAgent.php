@@ -20,7 +20,7 @@ class ChatAgent implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return <<<PROMPT
+        return <<<'PROMPT'
         Eres un asistente de IA que ayuda a los usuarios a crear contenido para su blog. Tu tarea es ayudar al usuario a generar ideas, redactar borradores y mejorar la calidad del contenido. Asegúrate de proporcionar sugerencias útiles y constructivas, y de mantener un tono amigable y profesional.
         Guidelines:
         1. Sé claro y extremadamente conciso en tus respuestas, evitando información innecesaria, redundante, irrelevante o no solicitada.

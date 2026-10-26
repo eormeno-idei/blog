@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Admin\TableModels;
 
 use App\Services\Role\RoleListingService;
@@ -21,6 +23,7 @@ class RoleTableModel extends AbstractListingTableModel
     public function getColumns(): array
     {
         $prefix = 'screens.admin.users_manager';
+
         return [
             'name' => ['label' => t("{$prefix}.roles_column_name"), 'sort_by' => 'name'],
             'guard_name' => ['label' => t("{$prefix}.roles_column_guard"), 'sort_by' => 'guard_name', 'width' => 100],
@@ -30,7 +33,7 @@ class RoleTableModel extends AbstractListingTableModel
     }
 
     /**
-     * @param UsimRole $item
+     * @param  UsimRole  $item
      * @return array{_model_id: int|string, name: string, guard_name: string, home_screen: string, priority: mixed}
      */
     protected function formatRow(object $item): array

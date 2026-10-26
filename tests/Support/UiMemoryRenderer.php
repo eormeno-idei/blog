@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="core", type="test"
+
 namespace Tests\Support;
 
 final class UiMemoryRenderer
@@ -49,6 +51,7 @@ final class UiMemoryRenderer
 
         if ($resolvedMode === 'initial') {
             $this->applyInitial($payload);
+
             return;
         }
 
@@ -118,7 +121,7 @@ final class UiMemoryRenderer
         $this->captureMeta($payload);
 
         foreach ($payload as $key => $value) {
-            if ($this->isReservedKey((string) $key) || !is_array($value)) {
+            if ($this->isReservedKey((string) $key) || ! is_array($value)) {
                 continue;
             }
 
@@ -135,7 +138,7 @@ final class UiMemoryRenderer
         foreach ($payload as $key => $value) {
             $jsonKey = $this->resolveComponentKey((string) $key);
 
-            if ($this->isReservedKey($jsonKey) || !is_array($value)) {
+            if ($this->isReservedKey($jsonKey) || ! is_array($value)) {
                 continue;
             }
 
@@ -145,11 +148,13 @@ final class UiMemoryRenderer
                     $value
                 );
                 $this->syncInternalId($jsonKey, $this->componentsByKey[$jsonKey]);
+
                 continue;
             }
 
             if ($this->looksLikeComponent($value)) {
                 $this->setComponent($jsonKey, $value);
+
                 continue;
             }
 
@@ -230,7 +235,7 @@ final class UiMemoryRenderer
     {
         $component['_json_key'] = $jsonKey;
 
-        if (is_numeric($jsonKey) && !isset($component['_id'])) {
+        if (is_numeric($jsonKey) && ! isset($component['_id'])) {
             $component['_id'] = (int) $jsonKey;
         }
 
@@ -241,7 +246,7 @@ final class UiMemoryRenderer
     /** @param array<string, mixed> $component */
     private function syncInternalId(string $jsonKey, array $component): void
     {
-        if (!is_numeric($jsonKey)) {
+        if (! is_numeric($jsonKey)) {
             return;
         }
 
@@ -251,8 +256,8 @@ final class UiMemoryRenderer
     /**
      * Merge a partial delta into the current component snapshot.
      *
-     * @param array<string, mixed> $current
-     * @param array<string, mixed> $delta
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $delta
      * @return array<string, mixed>
      */
     private function mergeComponent(array $current, array $delta): array

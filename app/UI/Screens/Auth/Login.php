@@ -5,6 +5,7 @@
 namespace App\UI\Screens\Auth;
 
 use App\Http\Requests\Auth\LoginRequest;
+use App\UI\Screens\Home;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Contracts\LoginActionInterface;
@@ -151,7 +152,7 @@ class Login extends Screen
         if ($this->isOpenedAsModal()) {
             $this->closeModal();
         }
-        $this->showInto(ForgotPassword::class, updateBrowserUrl: true);
+        $this->navigate(ForgotPassword::class);
     }
 
     /** @param array<string, mixed> $params */
@@ -246,6 +247,6 @@ class Login extends Screen
             return;
         }
 
-        $this->showInto(\App\UI\Screens\Home::class, force: true, updateBrowserUrl: true);
+        $this->navigate(Home::class);
     }
 }

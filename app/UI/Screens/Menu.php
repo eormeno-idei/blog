@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens;
 
 use App\Models\User;
@@ -38,18 +40,22 @@ use Illuminate\Support\Facades\Auth;
 class Menu extends Screen
 {
     public static Visibility $visibility = Visibility::PUBLIC;
+
     public static ?string $layout = null;
 
     public function __construct(
         protected AuthSessionService $authSessionService,
         protected UsimUnitsService $usimUnitsService
-    ) {
-    }
+    ) {}
 
     protected MenuDropdown $main_menu;
+
     protected MenuDropdown $user_menu;
+
     protected Button $theme_toggle;
+
     protected string $store_theme = 'dark';
+
     protected string $store_token = '';
 
     protected function buildBaseUI(Container $container, ...$params): void
@@ -102,7 +108,7 @@ class Menu extends Screen
     /**
      * Alterna entre modo claro y oscuro sin recargar la página.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onToggleTheme(array $params): void
     {
@@ -118,6 +124,7 @@ class Menu extends Screen
         $units = $this->usimUnitsService->getAvailableUnits();
         if ($units->isEmpty()) {
             UIStateManager::setActiveUnit('lobby');
+
             return;
         }
 
@@ -127,6 +134,7 @@ class Menu extends Screen
             if ($unit instanceof UsimUnit) {
                 setPermissionsTeamId($unit->id);
             }
+
             return;
         }
 
@@ -147,12 +155,12 @@ class Menu extends Screen
                 $this->updateUserMenuTrigger($user);
                 $this->initActiveUnit();
             } else {
-                $this->user_menu->trigger("⚙️");
+                $this->user_menu->trigger('⚙️');
             }
             $this->populateMainMenu($this->main_menu);
             $this->populateUserMenu($this->user_menu);
         } else {
-            $this->user_menu->trigger("⚙️");
+            $this->user_menu->trigger('⚙️');
             $this->populateMainMenu($this->main_menu);
             $this->populateUserMenu($this->user_menu);
         }
@@ -182,10 +190,9 @@ class Menu extends Screen
         $user = Auth::user();
         $isRegisteredOnly = $user instanceof User && $user->isRegisteredInLobby();
 
-
         $builder->screenShow(
             Home::class,
-            when: !$isRegisteredOnly
+            when: ! $isRegisteredOnly
         );
 
         $builder->screenShow(
@@ -218,7 +225,8 @@ class Menu extends Screen
     {
         $builder = $this->getUserMenuBuilder();
         $menu = $builder->render('user_menu');
-        $menu->trigger("⚙️");
+        $menu->trigger('⚙️');
+
         return $menu;
     }
 
@@ -234,8 +242,8 @@ class Menu extends Screen
             ->position('bottom-right')
             ->width(Size::px(180));
 
-        $builder->screenShow(Login::class, modal: true, when: !Auth::check());
-        $builder->screenShow(Register::class, modal: true, when: !Auth::check());
+        $builder->screenShow(Login::class, modal: true, when: ! Auth::check());
+        $builder->screenShow(Register::class, modal: true, when: ! Auth::check());
         $builder->screenShow(Profile::class, modal: true, when: Auth::check());
 
         $builder->action(
@@ -250,7 +258,7 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onShowScreen(array $params): void
     {
@@ -264,6 +272,7 @@ class Menu extends Screen
 
             if ($modal) {
                 $this->openModal($screen);
+
                 return;
             }
 
@@ -272,7 +281,7 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onLoggedUser(array $params): void
     {
@@ -306,7 +315,7 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onUpdatedProfile(array $params): void
     {
@@ -317,7 +326,7 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onConfirmLogout(array $params): void
     {
@@ -332,11 +341,11 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onUserLoggedOut(array $params): void
     {
-        if ($this->store_token === '' && !Auth::check()) {
+        if ($this->store_token === '' && ! Auth::check()) {
             return;
         }
 
@@ -353,7 +362,7 @@ class Menu extends Screen
     {
         $this->store_token = '';
 
-        $this->user_menu->trigger("⚙️");
+        $this->user_menu->trigger('⚙️');
         $this->populateUserMenu($this->user_menu);
         $this->populateMainMenu($this->main_menu);
 
@@ -361,11 +370,11 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onShowAboutInfo(array $params): void
     {
-        $version = "0.7.0";
+        $version = '0.7.0';
         $aboutMessage = t('screens.menu.about.message', [
             'version' => $version,
         ]);
@@ -379,7 +388,7 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCloseProfileDialog(array $params): void
     {
@@ -387,7 +396,7 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onLogoutUser(array $params): void
     {
@@ -402,7 +411,7 @@ class Menu extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCancelLogout(array $params): void
     {

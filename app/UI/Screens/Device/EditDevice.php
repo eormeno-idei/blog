@@ -1,5 +1,7 @@
 <?php
+
 // @usim: feature="admin", type="screen"
+
 namespace App\UI\Screens\Device;
 
 use App\Models\Device;
@@ -30,22 +32,33 @@ use Idei\Usim\ValueObjects\Spacing;
 class EditDevice extends Screen
 {
     public const DEFAULT_SUBMIT_ACTION = 'submit_save_device';
+
     public const DEFAULT_CANCEL_ACTION = 'close_edit_device';
+
     public const DELETE_ACTION = 'delete_device';
+
     public const PAIR_UNPAIR_ACTION = 'pair_unpair_device';
+
     private const DEVICES_I18N_PREFIX = 'screens.admin.users_manager.';
+
     private const CONTAINER_PADDING = 5;
+
     private const BUTTONS_GAP = 5;
 
     public static Visibility $visibility = Visibility::AUTHENTICATED;
 
     protected Label $lbl_edit_device_result;
+
     protected ?Label $device_status_banner = null;
+
     protected ?Button $btn_pair_unpair_device = null;
+
     protected ?Button $btn_delete_device = null;
 
     protected DeviceService $deviceService;
+
     protected RoleService $roleService;
+
     protected UsimUnitsService $unitsService;
 
     public function __construct(
@@ -61,7 +74,7 @@ class EditDevice extends Screen
     protected function buildBaseUI(Container $container, ...$params): void
     {
         $rawDevice = $params['device'] ?? null;
-        $rawDeviceId = $params['device_id'] ?? $params['id'] ?? request()->query('id') ?? request()->query('device_id');
+        $rawDeviceId = $params['device_id'] ?? $params['id'] ?? null;
 
         $device = $this->resolveDevice($rawDevice, $rawDeviceId);
         $isEditing = $device !== null;
@@ -87,7 +100,7 @@ class EditDevice extends Screen
 
         $header->add(
             UI::label('dialog_title')
-                ->text(t(self::DEVICES_I18N_PREFIX . ($isEditing ? 'edit_device_title' : 'create_device_title')))
+                ->text(t(self::DEVICES_I18N_PREFIX.($isEditing ? 'edit_device_title' : 'create_device_title')))
                 ->style('h2')
         );
 
@@ -112,7 +125,7 @@ class EditDevice extends Screen
         // Name input
         $card->add(
             UI::input('device_name')
-                ->label(t(self::DEVICES_I18N_PREFIX . 'device_name_label'))
+                ->label(t(self::DEVICES_I18N_PREFIX.'device_name_label'))
                 ->placeholder('Ej: Smart TV Sala Principal')
                 ->value($isEditing ? $device->name : '')
                 ->required(true)
@@ -122,10 +135,10 @@ class EditDevice extends Screen
 
         // Status banner if editing
         if ($isEditing) {
-            $isPaired = $device->tokens->isNotEmpty() || !empty($device->device_token);
+            $isPaired = $device->tokens->isNotEmpty() || ! empty($device->device_token);
             $statusText = $isPaired
-                ? '✅ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_paired')
-                : '⚠️ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_unpaired');
+                ? '✅ '.t(self::DEVICES_I18N_PREFIX.'devices_status_paired')
+                : '⚠️ '.t(self::DEVICES_I18N_PREFIX.'devices_status_unpaired');
 
             $card->add(
                 UI::label('device_status_banner')
@@ -162,7 +175,7 @@ class EditDevice extends Screen
     {
         $units = $this->unitsService->getAvailableUnits();
         $mainUnit = UsimUnit::where('slug', 'main')->first();
-        if ($mainUnit && !$units->contains('id', $mainUnit->id)) {
+        if ($mainUnit && ! $units->contains('id', $mainUnit->id)) {
             $units = $units->prepend($mainUnit);
         }
 
@@ -187,7 +200,7 @@ class EditDevice extends Screen
             $selectedUnitIds = array_values(
                 $device->usimUnits->pluck('id')->map(static function (mixed $id): string {
                     return is_int($id) || is_string($id) ? (string) $id : '';
-                })->filter(static fn(string $id): bool => $id !== '')->all()
+                })->filter(static fn (string $id): bool => $id !== '')->all()
             );
         } elseif ($activeUnitId) {
             $selectedUnitIds = [(string) $activeUnitId];
@@ -197,7 +210,7 @@ class EditDevice extends Screen
 
         $card->add(
             UI::checkbox('device_units')
-                ->label(t(self::DEVICES_I18N_PREFIX . 'device_units_label'))
+                ->label(t(self::DEVICES_I18N_PREFIX.'device_units_label'))
                 ->options($unitOptions)
                 ->selectedValues($selectedUnitIds)
                 ->vertical()
@@ -209,7 +222,7 @@ class EditDevice extends Screen
         $roles = $this->roleService->getRolesForActor(Device::class);
 
         /** @var list<array{value: string, label: string}> $roleOptions */
-        $roleOptions = array_map(static fn(UsimRole $role): array => [
+        $roleOptions = array_map(static fn (UsimRole $role): array => [
             'value' => $role->name,
             'label' => t("role.{$role->name}.name"),
         ], $roles);
@@ -225,15 +238,15 @@ class EditDevice extends Screen
 
             $selectedRoles = array_values(array_filter(
                 $rolesCollection->pluck('name')->all(),
-                static fn(mixed $name): bool => is_string($name) && $name !== ''
+                static fn (mixed $name): bool => is_string($name) && $name !== ''
             ));
-        } elseif (!empty($roles)) {
+        } elseif (! empty($roles)) {
             $selectedRoles = [$roles[0]->name];
         }
 
         $card->add(
             UI::checkbox('device_roles')
-                ->label(t(self::DEVICES_I18N_PREFIX . 'device_roles_label'))
+                ->label(t(self::DEVICES_I18N_PREFIX.'device_roles_label'))
                 ->options($roleOptions)
                 ->selectedValues($selectedRoles)
                 ->required(true)
@@ -258,11 +271,11 @@ class EditDevice extends Screen
             ->gap(Spacing::px(self::BUTTONS_GAP));
 
         if ($isEditing) {
-            $isPaired = $device->tokens->isNotEmpty() || !empty($device->device_token);
+            $isPaired = $device->tokens->isNotEmpty() || ! empty($device->device_token);
             $label = $isPaired ?
-                t(self::DEVICES_I18N_PREFIX . 'device_unpair_button') :
-                t(self::DEVICES_I18N_PREFIX . 'pair_device');
-            $style = $isPaired ? "success" : "warning";
+                t(self::DEVICES_I18N_PREFIX.'device_unpair_button') :
+                t(self::DEVICES_I18N_PREFIX.'pair_device');
+            $style = $isPaired ? 'success' : 'warning';
 
             $leftButtons->add(
                 UI::button('btn_pair_unpair_device')
@@ -276,9 +289,9 @@ class EditDevice extends Screen
 
             $leftButtons->add(
                 UI::button('btn_delete_device')
-                    ->label(t(self::DEVICES_I18N_PREFIX . 'device_delete_button'))
+                    ->label(t(self::DEVICES_I18N_PREFIX.'device_delete_button'))
                     ->style('danger')
-                    ->enabled(!$isPaired)
+                    ->enabled(! $isPaired)
                     ->action(self::DELETE_ACTION, [
                         'device_id' => $device->id,
                     ])
@@ -299,7 +312,7 @@ class EditDevice extends Screen
 
         $rightButtons->add(
             UI::button('btn_save_device')
-                ->label(t(self::DEVICES_I18N_PREFIX . ($isEditing ? 'edit_button' : 'add_device')))
+                ->label(t(self::DEVICES_I18N_PREFIX.($isEditing ? 'edit_button' : 'add_device')))
                 ->style('primary')
                 ->action(self::DEFAULT_SUBMIT_ACTION)
         );
@@ -312,7 +325,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onSubmitSaveDevice(array $params): void
     {
@@ -321,8 +334,9 @@ class EditDevice extends Screen
         $name = $this->extractDeviceName($params);
 
         if ($name === '') {
-            $message = t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX . 'device_name_label')]);
+            $message = t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX.'device_name_label')]);
             $this->showValidationError($message);
+
             return;
         }
 
@@ -330,8 +344,9 @@ class EditDevice extends Screen
         $roles = $this->extractDeviceRoles($params);
 
         if (empty($roles)) {
-            $message = t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX . 'device_roles_label')]);
+            $message = t('validation.required', ['attribute' => t(self::DEVICES_I18N_PREFIX.'device_roles_label')]);
             $this->showValidationError($message);
+
             return;
         }
 
@@ -346,11 +361,11 @@ class EditDevice extends Screen
 
         if ($deviceId) {
             $this->deviceService->updateDevice($deviceId, $devicePayload);
-            $message = t(self::DEVICES_I18N_PREFIX . 'device_updated');
+            $message = t(self::DEVICES_I18N_PREFIX.'device_updated');
             event(new UsimEvent('device_updated', ['device_id' => $deviceId, 'data' => $devicePayload, 'message' => $message]));
         } else {
             $createdDevice = $this->deviceService->createDevice($devicePayload);
-            $message = t(self::DEVICES_I18N_PREFIX . 'device_created');
+            $message = t(self::DEVICES_I18N_PREFIX.'device_created');
             event(new UsimEvent('device_created', ['device_id' => $createdDevice->id, 'data' => $devicePayload, 'message' => $message]));
         }
 
@@ -358,7 +373,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     private function extractDeviceName(array $params): string
     {
@@ -368,7 +383,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      * @return list<int>|null
      */
     private function extractDeviceUnitIds(array $params): ?array
@@ -376,8 +391,8 @@ class EditDevice extends Screen
         $rawUnits = $params['device_units'] ?? $params['unit_ids'] ?? null;
         if (is_array($rawUnits)) {
             return array_values(array_filter(
-                array_map(static fn(mixed $u): ?int => is_numeric($u) ? (int) $u : null, $rawUnits),
-                static fn(?int $id): bool => $id !== null && $id > 0
+                array_map(static fn (mixed $u): ?int => is_numeric($u) ? (int) $u : null, $rawUnits),
+                static fn (?int $id): bool => $id !== null && $id > 0
             ));
         }
 
@@ -390,7 +405,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      * @return list<string>
      */
     private function extractDeviceRoles(array $params): array
@@ -401,7 +416,7 @@ class EditDevice extends Screen
         }
 
         if (is_array($rawRoles)) {
-            return array_values(array_filter($rawRoles, static fn(mixed $r): bool => is_string($r) && $r !== ''));
+            return array_values(array_filter($rawRoles, static fn (mixed $r): bool => is_string($r) && $r !== ''));
         }
 
         return [];
@@ -416,7 +431,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeleteDevice(array $params): void
     {
@@ -425,27 +440,29 @@ class EditDevice extends Screen
 
         if ($deviceId === null) {
             $this->toast(t('Device ID is required'), 'error');
+
             return;
         }
 
         $device = $this->deviceService->getDevice($deviceId);
-        if (!$device) {
+        if (! $device) {
             $this->toast(t('Device not found'), 'error');
+
             return;
         }
 
         ConfirmDialog::open(
             caller: $this,
             type: DialogType::WARNING,
-            title: t(self::DEVICES_I18N_PREFIX . 'device_delete_confirm_title'),
-            message: t(self::DEVICES_I18N_PREFIX . 'device_delete_confirm_msg', ['name' => $device->name]),
+            title: t(self::DEVICES_I18N_PREFIX.'device_delete_confirm_title'),
+            message: t(self::DEVICES_I18N_PREFIX.'device_delete_confirm_msg', ['name' => $device->name]),
             confirmAction: 'confirm_delete_device',
             confirmParams: ['device_id' => $deviceId],
         );
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onConfirmDeleteDevice(array $params): void
     {
@@ -454,12 +471,13 @@ class EditDevice extends Screen
 
         if ($deviceId === null) {
             $this->toast(t('Device ID is required for deletion'), 'error');
+
             return;
         }
 
         $deleted = $this->deviceService->deleteDevice($deviceId);
         if ($deleted) {
-            $message = t(self::DEVICES_I18N_PREFIX . 'device_deleted');
+            $message = t(self::DEVICES_I18N_PREFIX.'device_deleted');
             event(new UsimEvent('device_deleted', ['device_id' => $deviceId, 'message' => $message]));
         }
 
@@ -469,7 +487,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onPairUnpairDevice(array $params): void
     {
@@ -483,7 +501,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onUnpairDevice(array $params): void
     {
@@ -492,6 +510,7 @@ class EditDevice extends Screen
 
         if ($deviceId === null) {
             $this->toast(t('Device ID is required'), 'error');
+
             return;
         }
 
@@ -503,7 +522,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onPairDeviceClicked(array $params): void
     {
@@ -518,7 +537,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCloseEditDevice(array $params = []): void
     {
@@ -526,7 +545,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onCloseModal(array $params = []): void
     {
@@ -554,7 +573,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDevicePaired(array $params): void
     {
@@ -562,12 +581,12 @@ class EditDevice extends Screen
         $device = $this->resolveDevice($params['device'] ?? null, $params['device_id'] ?? null);
         $isPaired = $device !== null && $device->isPaired();
         $statusText = $isPaired
-            ? '✅ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_paired')
-            : '⚠️ ' . t(self::DEVICES_I18N_PREFIX . 'devices_status_unpaired');
+            ? '✅ '.t(self::DEVICES_I18N_PREFIX.'devices_status_paired')
+            : '⚠️ '.t(self::DEVICES_I18N_PREFIX.'devices_status_unpaired');
 
         $label = $isPaired
-            ? t(self::DEVICES_I18N_PREFIX . 'device_unpair_button')
-            : t(self::DEVICES_I18N_PREFIX . 'pair_device');
+            ? t(self::DEVICES_I18N_PREFIX.'device_unpair_button')
+            : t(self::DEVICES_I18N_PREFIX.'pair_device');
         $style = $isPaired ? 'success' : 'warning';
 
         $this->device_status_banner
@@ -579,7 +598,7 @@ class EditDevice extends Screen
             ?->style($style);
 
         $this->btn_delete_device
-            ?->enabled(!$isPaired);
+            ?->enabled(! $isPaired);
 
         if (\is_string($message)) {
             $this->toast($message, $style);
@@ -587,7 +606,7 @@ class EditDevice extends Screen
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function onDeviceUnpaired(array $params): void
     {

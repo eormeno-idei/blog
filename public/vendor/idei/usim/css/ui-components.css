@@ -239,6 +239,13 @@ body {
     border: 1px solid var(--usim-label-info-border, rgba(52, 152, 219, 0.34));
 }
 
+.ui-label.secondary,
+.ui-label.muted {
+    background: var(--usim-label-secondary-bg, rgba(148, 163, 184, 0.18));
+    color: var(--usim-label-secondary-text, var(--ui-text-muted));
+    border: 1px solid var(--usim-label-secondary-border, rgba(148, 163, 184, 0.38));
+}
+
 /* Typography Styles for Labels */
 .ui-label.h1 {
     font-size: 1.8rem;

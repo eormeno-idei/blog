@@ -4,6 +4,7 @@
 
 use App\Services\Device\DeviceService;
 use App\Services\User\UsimUserService;
+use App\UI\Screens\Admin\AdminDevicePairingScreen;
 use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Device\EditDevice;
 use Idei\Usim\Events\UsimEvent;
@@ -203,7 +204,7 @@ it('renders EditDevice in create and edit modes and handles save, pair/unpair, a
 
     // Pair / Unpair and UI refresh callbacks
     $editModal->onPairUnpairDevice(['is_paired' => false, 'device_id' => $device->id]);
-    $editHarness->assertModal(\App\UI\Screens\Admin\AdminDevicePairingScreen::class);
+    $editHarness->assertModal(AdminDevicePairingScreen::class);
 
     $editModal->onUnpairDevice(['device_id' => null]);
     $editModal->onPairUnpairDevice(['is_paired' => true, 'device_id' => $device->id]);
