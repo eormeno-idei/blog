@@ -25,7 +25,7 @@ class Home extends Screen
 {
     public static Visibility $visibility = Visibility::PUBLIC;
 
-    protected ?Container $posts_list_container = null;
+    protected Container $posts_list_container;
 
     protected Label $lbl_registered_message;
 
@@ -206,12 +206,12 @@ class Home extends Screen
 
     private function renderPostsList(): void
     {
-        $this->posts_list_container?->clear();
+        $this->posts_list_container->clear();
 
         $posts = $this->postService->getLatestPosts();
 
         if ($posts->isEmpty()) {
-            $this->posts_list_container?->add($this->buildEmptyPostsCard());
+            $this->posts_list_container->add($this->buildEmptyPostsCard());
 
             return;
         }
@@ -221,8 +221,9 @@ class Home extends Screen
         $dim = AspectRatio::_16_9->dimensionsFor(width: 480);
         $height = Size::px($dim[1] + 40);
 
+        /** @var \stdClass $post */
         foreach ($posts as $post) {
-            $this->posts_list_container?->add(
+            $this->posts_list_container->add(
                 $this->buildPostCard($post, $height, $isAdmin, $isReviewer)
             );
         }
@@ -245,7 +246,7 @@ class Home extends Screen
         return $emptyCard;
     }
 
-    private function buildPostCard(object $post, Size $imageHeight, bool $isAdmin, bool $isReviewer): Container
+    private function buildPostCard(\stdClass $post, Size $imageHeight, bool $isAdmin, bool $isReviewer): Container
     {
         $isOwner = Auth::check() && Auth::id() === (int) $post->author_id;
         $backgroundColor = $post->background_color ?? '#7c3aed';
@@ -299,7 +300,7 @@ class Home extends Screen
         return $postCard;
     }
 
-    private function buildPostCardHeader(object $post): Container
+    private function buildPostCardHeader(\stdClass $post): Container
     {
         $postHeader = UI::container("post_header_{$post->id}")
             ->layout(LayoutType::HORIZONTAL)
@@ -332,7 +333,7 @@ class Home extends Screen
     /**
      * @return array{0: string, 1: string}
      */
-    private function resolveStatusBadge(object $post): array
+    private function resolveStatusBadge(\stdClass $post): array
     {
         $status = (string) ($post->status ?? 'draft');
         $jobStatus = (string) ($post->ai_job_status ?? 'idle');
@@ -350,7 +351,7 @@ class Home extends Screen
         };
     }
 
-    private function buildPostCardActions(object $post, bool $isOwner, bool $isAdmin, bool $isReviewer): Container
+    private function buildPostCardActions(\stdClass $post, bool $isOwner, bool $isAdmin, bool $isReviewer): Container
     {
         $postActionBox = UI::container("post_action_box_{$post->id}")
             ->layout(LayoutType::HORIZONTAL)
@@ -505,7 +506,7 @@ class Home extends Screen
 
     private function removePostCardFromContainer(int $postId): void
     {
-        if ($this->posts_list_container === null) {
+        if (! isset($this->posts_list_container)) {
             return;
         }
 

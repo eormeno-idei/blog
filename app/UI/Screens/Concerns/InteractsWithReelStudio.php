@@ -2,6 +2,7 @@
 
 namespace App\UI\Screens\Concerns;
 
+use App\DTOs\ReelGenerationStatus;
 use App\Jobs\GenerateReelPreviewJob;
 use App\Services\Post\ReelStoryboardFormatter;
 use Idei\Usim\Components\Button;
@@ -19,7 +20,6 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
 
 trait InteractsWithReelStudio
 {
@@ -348,11 +348,11 @@ trait InteractsWithReelStudio
      */
     protected function restoreReelStudioFromPost(object $post): void
     {
-        $statusData = isset($post->id) && is_numeric($post->id)
+        $status = isset($post->id) && is_numeric($post->id)
             ? GenerateReelPreviewJob::getStatus((int) $post->id)
             : null;
 
-        $savedVersions = is_array($statusData['versions'] ?? null) ? $statusData['versions'] : [];
+        $savedVersions = $status !== null ? $status->versions : [];
         if ($savedVersions !== []) {
             $this->hydrateSavedVersions($savedVersions);
         } else {
@@ -362,24 +362,26 @@ trait InteractsWithReelStudio
             );
         }
 
-        $jobStatus = (string) ($statusData['status'] ?? ($post->ai_job_status ?? 'idle'));
+        $jobStatus = $status !== null ? $status->status : (is_string($post->ai_job_status ?? null) ? $post->ai_job_status : 'idle');
         if (in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
             $this->state_active_job_id = (string) ($post->id ?? '');
-            $versionNumber = (int) ($statusData['version'] ?? (count($this->state_reel_versions) + 1));
+            $versionNumber = $status !== null && $status->version !== null ? $status->version : (count($this->state_reel_versions) + 1);
             $this->updateUiForJobStart($versionNumber, false, null);
 
-            if ($jobStatus === 'rendering_video') {
-                $this->handleRenderingVideoStatus($statusData ?? []);
-            } else {
-                $this->handleGeneratingScriptStatus($statusData ?? []);
+            if ($status !== null) {
+                if ($jobStatus === 'rendering_video') {
+                    $this->handleRenderingVideoStatus($status);
+                } else {
+                    $this->handleGeneratingScriptStatus($status);
+                }
             }
 
             return;
         }
 
-        if ($jobStatus === 'failed' && is_array($statusData)) {
+        if ($jobStatus === 'failed' && $status !== null) {
             $this->enableReelStudioTab(activate: false);
-            $this->handleFailedStatus($statusData);
+            $this->handleFailedStatus($status);
         }
     }
 
@@ -392,18 +394,23 @@ trait InteractsWithReelStudio
         $this->state_reel_versions = [];
 
         foreach ($savedVersions as $idx => $ver) {
-            $jsonScript = (string) ($ver['json_script'] ?? '');
+            $jsonScript = isset($ver['json_script']) && is_string($ver['json_script']) ? $ver['json_script'] : '';
             $feedback = isset($ver['feedback_applied']) && is_string($ver['feedback_applied'])
                 ? $ver['feedback_applied']
                 : null;
+            $verNum = isset($ver['version']) && is_numeric($ver['version']) ? (int) $ver['version'] : ($idx + 1);
+            $videoUrl = isset($ver['video_url']) && is_string($ver['video_url']) ? $ver['video_url'] : '';
+            $videoFile = isset($ver['video_filename']) && is_string($ver['video_filename']) ? $ver['video_filename'] : '';
+            $scenes = isset($ver['scene_count']) && is_numeric($ver['scene_count']) ? (int) $ver['scene_count'] : 0;
+            $duration = isset($ver['duration_seconds']) && is_numeric($ver['duration_seconds']) ? (int) $ver['duration_seconds'] : 10;
 
             $this->state_reel_versions[] = [
-                'version' => (int) ($ver['version'] ?? ($idx + 1)),
-                'video_url' => (string) ($ver['video_url'] ?? ''),
-                'video_filename' => (string) ($ver['video_filename'] ?? ''),
+                'version' => $verNum,
+                'video_url' => $videoUrl,
+                'video_filename' => $videoFile,
                 'json_script' => $jsonScript,
-                'scene_count' => (int) ($ver['scene_count'] ?? 0),
-                'duration_seconds' => (int) ($ver['duration_seconds'] ?? 10),
+                'scene_count' => $scenes,
+                'duration_seconds' => $duration,
                 'storyboard_markdown' => $formatter->format($jsonScript, $feedback),
                 'feedback_applied' => $feedback,
             ];
@@ -426,7 +433,8 @@ trait InteractsWithReelStudio
             return;
         }
 
-        $decoded = $script !== '' ? (json_decode($script, true) ?: []) : [];
+        $rawDecoded = $script !== '' ? json_decode($script, true) : [];
+        $decoded = is_array($rawDecoded) ? $rawDecoded : [];
         $scenes = is_array($decoded['scenes'] ?? null) ? $decoded['scenes'] : [];
 
         $this->hydrateSavedVersions([[
@@ -445,7 +453,8 @@ trait InteractsWithReelStudio
      */
     public function onAskAI(array $params): void
     {
-        $notes = trim((string) ($params['post_content'] ?? $this->post_content->getValue()));
+        $rawNotes = $params['post_content'] ?? $this->post_content->getValue();
+        $notes = is_string($rawNotes) ? trim($rawNotes) : '';
         if ($notes === '') {
             $this->toast('Escribe las notas del post antes de generar el Reel con IA.', 'warning');
 
@@ -461,14 +470,16 @@ trait InteractsWithReelStudio
      */
     public function onRefineAi(array $params): void
     {
-        $feedback = trim((string) ($params['ai_feedback'] ?? $this->ai_feedback->getValue()));
+        $rawFeedback = $params['ai_feedback'] ?? $this->ai_feedback->getValue();
+        $feedback = is_string($rawFeedback) ? trim($rawFeedback) : '';
         if ($feedback === '') {
             $this->toast('Por favor escribe qué cambios deseas aplicar al video.', 'warning');
 
             return;
         }
 
-        $notes = trim((string) ($params['post_content'] ?? $this->post_content->getValue()));
+        $rawNotes = $params['post_content'] ?? $this->post_content->getValue();
+        $notes = is_string($rawNotes) ? trim($rawNotes) : '';
         $previousJson = $this->resolveCurrentJsonScript();
 
         $this->startReelGenerationJob($notes, $previousJson, $feedback);
@@ -479,13 +490,15 @@ trait InteractsWithReelStudio
      */
     public function onQuickRefine(array $params): void
     {
-        $presetPrompt = trim((string) ($params['prompt'] ?? ''));
+        $rawPrompt = $params['prompt'] ?? '';
+        $presetPrompt = is_string($rawPrompt) ? trim($rawPrompt) : '';
         if ($presetPrompt === '') {
             return;
         }
 
         $this->ai_feedback->value($presetPrompt);
-        $notes = trim((string) ($params['post_content'] ?? $this->post_content->getValue()));
+        $rawNotes = $params['post_content'] ?? $this->post_content->getValue();
+        $notes = is_string($rawNotes) ? trim($rawNotes) : '';
         $previousJson = $this->resolveCurrentJsonScript();
 
         $this->startReelGenerationJob($notes, $previousJson, $presetPrompt);
@@ -494,9 +507,10 @@ trait InteractsWithReelStudio
     private function resolveCurrentJsonScript(): ?string
     {
         $currentVersion = $this->getCurrentVersionData();
-        $script = (string) ($currentVersion['json_script'] ?? $this->ai_response->get('value') ?? '');
+        $rawScript = $currentVersion['json_script'] ?? $this->ai_response->get('value') ?? '';
+        $script = is_string($rawScript) ? trim($rawScript) : '';
 
-        return trim($script) !== '' ? $script : null;
+        return $script !== '' ? $script : null;
     }
 
     protected function startReelGenerationJob(string $notes, ?string $previousJson, ?string $userFeedback): void
@@ -507,27 +521,21 @@ trait InteractsWithReelStudio
             return;
         }
 
-        $jobId = isset($this->state_post_id) && $this->state_post_id > 0
-            ? (string) $this->state_post_id
-            : Str::uuid()->toString();
+        if ($this->state_post_id <= 0) {
+            return;
+        }
+
+        $postId = (int) $this->state_post_id;
         $nextVersionNumber = count($this->state_reel_versions) + 1;
-        $this->state_active_job_id = $jobId;
+        $this->state_active_job_id = (string) $postId;
         $isRefinement = $previousJson !== null && $userFeedback !== null;
 
-        GenerateReelPreviewJob::putStatus($jobId, [
-            'status' => 'generating_script',
-            'step' => 1,
-            'total_steps' => 2,
-            'version' => $nextVersionNumber,
-            'message' => $isRefinement
-                ? "Paso 1/2: Ajustando el guion (Versión {$nextVersionNumber}) según tus indicaciones..."
-                : 'Paso 1/2: Analizando tus notas y creando el guion con IA...',
-            'detail' => $isRefinement
-                ? "Modificación solicitada: \"{$userFeedback}\""
-                : 'Conectando con el agente de IA para diseñar las escenas del Reel.',
-        ]);
+        GenerateReelPreviewJob::putStatus(
+            $postId,
+            ReelGenerationStatus::generatingScript($nextVersionNumber, $isRefinement, $userFeedback),
+        );
 
-        GenerateReelPreviewJob::dispatch($jobId, $notes, $previousJson, $userFeedback, $nextVersionNumber);
+        GenerateReelPreviewJob::dispatch($postId, $notes, $previousJson, $userFeedback, $nextVersionNumber);
 
         $this->updateUiForJobStart($nextVersionNumber, $isRefinement, $userFeedback);
     }
@@ -568,81 +576,62 @@ trait InteractsWithReelStudio
             return;
         }
 
-        $statusData = GenerateReelPreviewJob::getStatus($this->state_active_job_id);
-        if ($statusData === null) {
+        $postId = (int) $this->state_active_job_id;
+        $status = GenerateReelPreviewJob::getStatus($postId);
+        if ($status === null) {
             return;
         }
 
-        $status = (string) ($statusData['status'] ?? '');
-
-        match ($status) {
-            'generating_script' => $this->handleGeneratingScriptStatus($statusData),
-            'rendering_video' => $this->handleRenderingVideoStatus($statusData),
-            'completed' => $this->handleCompletedStatus($statusData),
-            'failed' => $this->handleFailedStatus($statusData),
+        match ($status->status) {
+            'generating_script' => $this->handleGeneratingScriptStatus($status),
+            'rendering_video' => $this->handleRenderingVideoStatus($status),
+            'completed' => $this->handleCompletedStatus($status),
+            'failed' => $this->handleFailedStatus($status),
             default => null,
         };
     }
 
-    /**
-     * @param  array<string, mixed>  $statusData
-     */
-    private function handleGeneratingScriptStatus(array $statusData): void
+    private function handleGeneratingScriptStatus(ReelGenerationStatus $status): void
     {
         $this->lbl_ai_progress_step
-            ->text('🧠 '.(string) ($statusData['message'] ?? 'Paso 1/2: Generando guion con IA...'))
+            ->text('🧠 '.($status->message ?? 'Paso 1/2: Generando guion con IA...'))
             ->style('warning');
         $this->lbl_ai_progress_detail
-            ->text((string) ($statusData['detail'] ?? ''));
+            ->text($status->detail ?? '');
     }
 
-    /**
-     * @param  array<string, mixed>  $statusData
-     */
-    private function handleRenderingVideoStatus(array $statusData): void
+    private function handleRenderingVideoStatus(ReelGenerationStatus $status): void
     {
         $this->lbl_ai_progress_step
-            ->text('🎬 '.(string) ($statusData['message'] ?? 'Paso 2/2: Renderizando video con Remotion...'))
+            ->text('🎬 '.($status->message ?? 'Paso 2/2: Renderizando video con Remotion...'))
             ->style('info');
         $this->lbl_ai_progress_detail
-            ->text((string) ($statusData['detail'] ?? 'Codificando fotogramas en MP4...'));
+            ->text($status->detail ?? 'Codificando fotogramas en MP4...');
 
-        if (is_array($statusData['parsed_script'] ?? null)) {
-            $storyboard = app(ReelStoryboardFormatter::class)->format($statusData['parsed_script']);
+        if ($status->parsedScript !== null) {
+            $storyboard = app(ReelStoryboardFormatter::class)->format($status->parsedScript);
             $this->lbl_storyboard_summary->text($storyboard);
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $statusData
-     */
-    private function handleCompletedStatus(array $statusData): void
+    private function handleCompletedStatus(ReelGenerationStatus $status): void
     {
         $this->tmr_reel_poll->stop();
         $this->state_active_job_id = '';
 
-        $versionNumber = (int) ($statusData['version'] ?? (count($this->state_reel_versions) + 1));
-        $jsonScript = (string) ($statusData['json_script'] ?? '');
-        $feedbackApplied = isset($statusData['feedback_applied']) && is_string($statusData['feedback_applied'])
-            ? $statusData['feedback_applied']
-            : null;
+        $versionNumber = $status->version ?? (count($this->state_reel_versions) + 1);
+        $jsonScript = $status->jsonScript ?? '';
+        $feedbackApplied = $status->feedbackApplied;
 
         $storyboardMarkdown = app(ReelStoryboardFormatter::class)->format(
-            $statusData['parsed_script'] ?? $jsonScript,
+            $status->parsedScript ?? $jsonScript,
             $feedbackApplied
         );
 
-        $this->state_reel_versions[] = [
-            'version' => $versionNumber,
-            'video_url' => (string) ($statusData['video_url'] ?? ''),
-            'video_filename' => (string) ($statusData['video_filename'] ?? ''),
-            'json_script' => $jsonScript,
-            'scene_count' => (int) ($statusData['scene_count'] ?? 0),
-            'duration_seconds' => (int) ($statusData['duration_seconds'] ?? 0),
-            'storyboard_markdown' => $storyboardMarkdown,
-            'feedback_applied' => $feedbackApplied,
-        ];
+        $versionEntry = $status->toVersionEntry($versionNumber);
+        $versionEntry['storyboard_markdown'] = $storyboardMarkdown;
 
+        $this->state_reel_versions[] = $versionEntry;
         $this->state_current_version_index = count($this->state_reel_versions) - 1;
 
         $this->btn_ask_ai->loading(false)->label('🔄 Regenerar desde Notas')->enabled(true);
@@ -653,19 +642,16 @@ trait InteractsWithReelStudio
         $this->toast("¡Previsualización v{$versionNumber} lista!", 'success');
     }
 
-    /**
-     * @param  array<string, mixed>  $statusData
-     */
-    private function handleFailedStatus(array $statusData): void
+    private function handleFailedStatus(ReelGenerationStatus $status): void
     {
         $this->tmr_reel_poll->stop();
         $this->state_active_job_id = '';
 
         $this->lbl_ai_progress_step
-            ->text('❌ '.(string) ($statusData['message'] ?? 'Error al generar el video.'))
+            ->text('❌ '.($status->message ?? 'Error al generar el video.'))
             ->style('danger');
         $this->lbl_ai_progress_detail
-            ->text((string) ($statusData['detail'] ?? 'Intenta nuevamente o ajusta tus notas.'));
+            ->text($status->detail ?? 'Intenta nuevamente o ajusta tus notas.');
 
         $this->lbl_version_badge->text('Error en generación')->style('danger');
         $this->btn_ask_ai->loading(false)->label('✨ Reintentar con IA')->enabled(true);
@@ -704,12 +690,18 @@ trait InteractsWithReelStudio
         }
 
         $totalVersions = count($this->state_reel_versions);
-        $versionNum = (int) ($versionData['version'] ?? ($this->state_current_version_index + 1));
-        $sceneCount = (int) ($versionData['scene_count'] ?? 0);
-        $durationSec = (int) ($versionData['duration_seconds'] ?? 0);
-        $videoUrl = (string) ($versionData['video_url'] ?? '');
-        $jsonScript = (string) ($versionData['json_script'] ?? '');
-        $storyboard = (string) ($versionData['storyboard_markdown'] ?? '');
+        $rawVersion = $versionData['version'] ?? null;
+        $versionNum = is_numeric($rawVersion) ? (int) $rawVersion : ($this->state_current_version_index + 1);
+        $rawScenes = $versionData['scene_count'] ?? null;
+        $sceneCount = is_numeric($rawScenes) ? (int) $rawScenes : 0;
+        $rawDuration = $versionData['duration_seconds'] ?? null;
+        $durationSec = is_numeric($rawDuration) ? (int) $rawDuration : 0;
+        $rawVideoUrl = $versionData['video_url'] ?? null;
+        $videoUrl = is_string($rawVideoUrl) ? $rawVideoUrl : '';
+        $rawJsonScript = $versionData['json_script'] ?? null;
+        $jsonScript = is_string($rawJsonScript) ? $rawJsonScript : '';
+        $rawStoryboard = $versionData['storyboard_markdown'] ?? null;
+        $storyboard = is_string($rawStoryboard) ? $rawStoryboard : '';
 
         $this->ai_response->value($jsonScript);
 
@@ -745,8 +737,9 @@ trait InteractsWithReelStudio
 
         $this->lbl_storyboard_summary->text($storyboard);
 
-        if (isset($this->state_post_id, $this->postService) && $this->state_post_id > 0) {
-            $videoFilename = (string) ($versionData['video_filename'] ?? '');
+        if (isset($this->postService) && $this->state_post_id > 0) {
+            $rawVideoFilename = $versionData['video_filename'] ?? null;
+            $videoFilename = is_string($rawVideoFilename) ? $rawVideoFilename : '';
             $this->postService->updatePost($this->state_post_id, [
                 'ai_script' => $jsonScript !== '' ? $jsonScript : null,
                 'reel_video' => $videoFilename !== '' ? $videoFilename : null,
@@ -775,7 +768,8 @@ trait InteractsWithReelStudio
     protected function cleanupDiscardedReelFiles(?string $keptVideoFilename): void
     {
         foreach ($this->state_reel_versions as $version) {
-            $filename = (string) ($version['video_filename'] ?? '');
+            $rawFilename = $version['video_filename'] ?? null;
+            $filename = is_string($rawFilename) ? $rawFilename : '';
             if ($filename === '' || $filename === $keptVideoFilename) {
                 continue;
             }

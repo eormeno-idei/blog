@@ -3,12 +3,12 @@
 namespace App\Jobs;
 
 use App\Ai\Agents\PostAgent;
+use App\DTOs\ReelGenerationStatus;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -23,7 +23,7 @@ class GenerateReelPreviewJob implements ShouldQueue
     public int $tries = 1;
 
     public function __construct(
-        public int|string $jobId,
+        public int $postId,
         public string $notes,
         public ?string $previousJson = null,
         public ?string $userFeedback = null,
@@ -32,91 +32,63 @@ class GenerateReelPreviewJob implements ShouldQueue
         $this->onQueue('videos');
     }
 
-    public static function cacheKey(int|string $jobId): string
-    {
-        return "reel_preview_job:{$jobId}";
-    }
-
     /**
-     * Persiste el estado del procesamiento en la tabla `posts` (o en caché si no hay post numérico).
-     *
-     * @param  array<string, mixed>  $payload
+     * Persiste el estado del procesamiento en la tabla `posts`.
      */
-    public static function putStatus(int|string $jobId, array $payload): void
+    public static function putStatus(int $postId, ReelGenerationStatus $payload): void
     {
-        $enriched = array_merge($payload, ['updated_at' => now()->toIso8601String()]);
-        $status = (string) ($enriched['status'] ?? 'idle');
-
-        if (is_numeric($jobId) && (int) $jobId > 0) {
-            $postId = (int) $jobId;
-            $existing = self::getStatus($postId);
-            $versions = is_array($existing['versions'] ?? null) ? $existing['versions'] : [];
-
-            if ($status === 'completed') {
-                $versions[] = [
-                    'version' => (int) ($enriched['version'] ?? (count($versions) + 1)),
-                    'video_url' => (string) ($enriched['video_url'] ?? ''),
-                    'video_filename' => (string) ($enriched['video_filename'] ?? ''),
-                    'json_script' => (string) ($enriched['json_script'] ?? ''),
-                    'scene_count' => (int) ($enriched['scene_count'] ?? 0),
-                    'duration_seconds' => (int) ($enriched['duration_seconds'] ?? 0),
-                    'feedback_applied' => $enriched['feedback_applied'] ?? null,
-                ];
-            }
-
-            $enriched['versions'] = $versions;
-
-            $dbUpdate = [
-                'ai_job_status' => $status,
-                'ai_job_payload' => json_encode($enriched, JSON_UNESCAPED_UNICODE),
-                'updated_at' => now(),
-            ];
-
-            if ($status === 'completed') {
-                $dbUpdate['ai_script'] = $enriched['json_script'] ?? null;
-                $dbUpdate['reel_video'] = $enriched['video_filename'] ?? null;
-            }
-
-            DB::table('posts')->where('id', $postId)->update($dbUpdate);
-
+        if ($postId <= 0) {
             return;
         }
 
-        Cache::put(self::cacheKey($jobId), $enriched, now()->addHours(2));
+        $currentStatus = self::getStatus($postId);
+        $versions = $currentStatus !== null ? $currentStatus->versions : [];
+
+        if ($payload->isCompleted()) {
+            $versions[] = $payload->toVersionEntry(count($versions) + 1);
+        }
+
+        $status = $payload->persisted($versions);
+
+        $dbUpdate = [
+            'ai_job_status' => $status->status,
+            'ai_job_payload' => json_encode($status->toArray(), JSON_UNESCAPED_UNICODE),
+            'updated_at' => now(),
+        ];
+
+        if ($status->isCompleted()) {
+            $dbUpdate['ai_script'] = $status->jsonScript;
+            $dbUpdate['reel_video'] = $status->videoFilename;
+        }
+
+        DB::table('posts')->where('id', $postId)->update($dbUpdate);
     }
 
     /**
-     * Obtiene el estado del procesamiento desde la tabla `posts` (o caché como fallback).
-     *
-     * @return array<string, mixed>|null
+     * Obtiene el estado del procesamiento desde la tabla `posts`.
      */
-    public static function getStatus(int|string $jobId): ?array
+    public static function getStatus(int $postId): ?ReelGenerationStatus
     {
-        if (is_numeric($jobId) && (int) $jobId > 0) {
-            $row = DB::table('posts')
-                ->where('id', (int) $jobId)
-                ->first(['ai_job_status', 'ai_job_payload', 'ai_script', 'reel_video']);
-
-            if (! $row) {
-                return null;
-            }
-
-            $decoded = is_string($row->ai_job_payload ?? null) && $row->ai_job_payload !== ''
-                ? json_decode($row->ai_job_payload, true)
-                : [];
-
-            if (! is_array($decoded)) {
-                $decoded = [];
-            }
-
-            $decoded['status'] = (string) ($row->ai_job_status ?? ($decoded['status'] ?? 'idle'));
-
-            return $decoded;
+        if ($postId <= 0) {
+            return null;
         }
 
-        $data = Cache::get(self::cacheKey($jobId));
+        $row = DB::table('posts')
+            ->where('id', $postId)
+            ->first(['ai_job_status', 'ai_job_payload', 'ai_script', 'reel_video']);
 
-        return is_array($data) ? $data : null;
+        if (! $row) {
+            return null;
+        }
+
+        $decoded = is_string($row->ai_job_payload ?? null) && $row->ai_job_payload !== ''
+            ? json_decode($row->ai_job_payload, true)
+            : [];
+
+        return ReelGenerationStatus::fromArray(
+            is_array($decoded) ? $decoded : [],
+            is_string($row->ai_job_status ?? null) ? $row->ai_job_status : null
+        );
     }
 
     public function handle(): void
@@ -152,18 +124,17 @@ class GenerateReelPreviewJob implements ShouldQueue
 
     private function reportGeneratingScriptStatus(bool $isRefinement): void
     {
-        self::putStatus($this->jobId, [
-            'status' => 'generating_script',
-            'step' => 1,
-            'total_steps' => 2,
-            'version' => $this->versionNumber,
-            'message' => $isRefinement
+        self::putStatus($this->postId, ReelGenerationStatus::generatingScript(
+            version: $this->versionNumber,
+            isRefinement: $isRefinement,
+            userFeedback: $this->userFeedback,
+            message: $isRefinement
                 ? 'Paso 1/2: Aplicando tus correcciones al guion con IA...'
                 : 'Paso 1/2: Analizando tus notas y estructurando el guion con IA...',
-            'detail' => $isRefinement
+            detail: $isRefinement
                 ? "Ajuste solicitado: \"{$this->userFeedback}\""
                 : 'Diseñando escenas, textos clave y transiciones para cartelería digital.',
-        ]);
+        ));
     }
 
     private function generateJsonScript(bool $isRefinement): string
@@ -201,10 +172,13 @@ class GenerateReelPreviewJob implements ShouldQueue
         $totalSeconds = 0;
 
         foreach ($scenes as $scene) {
-            $totalSeconds += (int) ($scene['duration_seconds'] ?? 0);
+            $duration = $scene['duration_seconds'] ?? 0;
+            $totalSeconds += is_numeric($duration) ? (int) $duration : 0;
         }
 
-        $fallbackSeconds = (int) ($decoded['metadata']['duracion_total_segundos'] ?? 30);
+        $metadata = isset($decoded['metadata']) && is_array($decoded['metadata']) ? $decoded['metadata'] : [];
+        $metaDuration = $metadata['duracion_total_segundos'] ?? 30;
+        $fallbackSeconds = is_numeric($metaDuration) ? (int) $metaDuration : 30;
 
         return [$sceneCount, $totalSeconds > 0 ? $totalSeconds : $fallbackSeconds];
     }
@@ -214,18 +188,13 @@ class GenerateReelPreviewJob implements ShouldQueue
      */
     private function reportRenderingStatus(int $sceneCount, int $totalSeconds, string $jsonString, array $decoded): void
     {
-        self::putStatus($this->jobId, [
-            'status' => 'rendering_video',
-            'step' => 2,
-            'total_steps' => 2,
-            'version' => $this->versionNumber,
-            'scene_count' => $sceneCount,
-            'duration_seconds' => $totalSeconds,
-            'json_script' => $jsonString,
-            'parsed_script' => $decoded,
-            'message' => "Paso 2/2: Renderizando video con Remotion ({$sceneCount} escenas, {$totalSeconds}s)...",
-            'detail' => 'Generando animaciones y codificando el archivo MP4. Esto puede tomar entre 20 y 60 segundos.',
-        ]);
+        self::putStatus($this->postId, ReelGenerationStatus::renderingVideo(
+            $this->versionNumber,
+            $sceneCount,
+            $totalSeconds,
+            $jsonString,
+            $decoded,
+        ));
     }
 
     /**
@@ -236,10 +205,10 @@ class GenerateReelPreviewJob implements ShouldQueue
         $tempDir = storage_path('app/temp');
         File::ensureDirectoryExists($tempDir);
 
-        $jsonPath = $tempDir."/reel_{$this->jobId}_v{$this->versionNumber}.json";
+        $jsonPath = $tempDir."/reel_{$this->postId}_v{$this->versionNumber}.json";
         File::put($jsonPath, $jsonString);
 
-        $videoFilename = "preview_{$this->jobId}_v{$this->versionNumber}.mp4";
+        $videoFilename = "preview_{$this->postId}_v{$this->versionNumber}.mp4";
         $reelsDir = storage_path('app/public/reels');
         File::ensureDirectoryExists($reelsDir);
         $videoPath = "{$reelsDir}/{$videoFilename}";
@@ -269,30 +238,20 @@ class GenerateReelPreviewJob implements ShouldQueue
         string $videoFilename,
         bool $isRefinement
     ): void {
-        self::putStatus($this->jobId, [
-            'status' => 'completed',
-            'step' => 2,
-            'total_steps' => 2,
-            'version' => $this->versionNumber,
-            'scene_count' => $sceneCount,
-            'duration_seconds' => $totalSeconds,
-            'json_script' => $jsonString,
-            'parsed_script' => $decoded,
-            'video_filename' => $videoFilename,
-            'video_url' => "/storage/reels/{$videoFilename}?v=".time(),
-            'feedback_applied' => $isRefinement ? $this->userFeedback : null,
-            'message' => "¡Previsualización v{$this->versionNumber} generada con éxito!",
-        ]);
+        self::putStatus($this->postId, ReelGenerationStatus::completed(
+            $this->versionNumber,
+            $sceneCount,
+            $totalSeconds,
+            $jsonString,
+            $decoded,
+            $videoFilename,
+            $isRefinement ? $this->userFeedback : null,
+        ));
     }
 
     private function reportFailedStatus(string $errorDetail): void
     {
-        self::putStatus($this->jobId, [
-            'status' => 'failed',
-            'version' => $this->versionNumber,
-            'message' => 'No se pudo completar la generación del video.',
-            'detail' => $errorDetail,
-        ]);
+        self::putStatus($this->postId, ReelGenerationStatus::failed($this->versionNumber, $errorDetail));
     }
 
     private function deleteTempJsonFile(?string $jsonPath): void

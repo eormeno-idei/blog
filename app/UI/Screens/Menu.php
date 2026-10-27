@@ -46,7 +46,8 @@ class Menu extends Screen
     public function __construct(
         protected AuthSessionService $authSessionService,
         protected UsimUnitsService $usimUnitsService
-    ) {}
+    ) {
+    }
 
     protected MenuDropdown $main_menu;
 
@@ -139,10 +140,8 @@ class Menu extends Screen
         }
 
         $first = $units->first();
-        if ($first instanceof UsimUnit) {
-            UIStateManager::setActiveUnit($first->slug);
-            setPermissionsTeamId($first->id);
-        }
+        UIStateManager::setActiveUnit($first->slug);
+        setPermissionsTeamId($first->id);
     }
 
     protected function postLoadUI(): void
@@ -192,7 +191,7 @@ class Menu extends Screen
 
         $builder->screenShow(
             Home::class,
-            when: ! $isRegisteredOnly
+            when: !$isRegisteredOnly
         );
 
         $builder->screenShow(
@@ -242,8 +241,8 @@ class Menu extends Screen
             ->position('bottom-right')
             ->width(Size::px(180));
 
-        $builder->screenShow(Login::class, modal: true, when: ! Auth::check());
-        $builder->screenShow(Register::class, modal: true, when: ! Auth::check());
+        $builder->screenShow(Login::class, modal: true, when: !Auth::check());
+        $builder->screenShow(Register::class, modal: true, when: !Auth::check());
         $builder->screenShow(Profile::class, modal: true, when: Auth::check());
 
         $builder->action(
@@ -345,7 +344,7 @@ class Menu extends Screen
      */
     public function onUserLoggedOut(array $params): void
     {
-        if ($this->store_token === '' && ! Auth::check()) {
+        if ($this->store_token === '' && !Auth::check()) {
             return;
         }
 

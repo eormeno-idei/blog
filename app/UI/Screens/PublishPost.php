@@ -75,6 +75,7 @@ class PublishPost extends Screen
             $this->state_post_id = $explicitPostId;
         }
 
+        /** @var \stdClass|null $post */
         $post = $this->resolveOrCreatePost($explicitPostId > 0);
         if ($explicitPostId > 0 && $post === null) {
             $this->toast('Post no encontrado.', 'error');
@@ -114,9 +115,13 @@ class PublishPost extends Screen
             }
         }
 
-        $emptyDraft = $this->postService->findEmptyDraftPostByUserId(Auth::id());
+        $authId = Auth::id();
+        $userId = is_numeric($authId) ? (int) $authId : 0;
+        /** @var \stdClass|null $emptyDraft */
+        $emptyDraft = $this->postService->findEmptyDraftPostByUserId($userId);
         if ($emptyDraft !== null) {
-            $this->state_post_id = $emptyDraft->id;
+            $this->state_post_id = (int) $emptyDraft->id;
+
             return $emptyDraft;
         }
 
@@ -209,7 +214,7 @@ class PublishPost extends Screen
         return $header;
     }
 
-    private function buildFormColumn(?object $post = null): Container
+    private function buildFormColumn(?\stdClass $post = null): Container
     {
         $formCard = UI::container('publish_form_card')
             ->card()
@@ -360,9 +365,11 @@ class PublishPost extends Screen
         $videoFilename = is_string($currentVersion['video_filename'] ?? null)
             ? $currentVersion['video_filename']
             : null;
+        $aiResponseVal = $this->ai_response->get('value');
+        $fallbackAiScript = is_string($aiResponseVal) && trim($aiResponseVal) !== '' ? trim($aiResponseVal) : null;
         $aiScript = is_string($currentVersion['json_script'] ?? null)
             ? $currentVersion['json_script']
-            : ((string) ($this->ai_response->get('value') ?? '') ?: null);
+            : $fallbackAiScript;
 
         $this->cleanupDiscardedReelFiles($videoFilename);
 
@@ -405,8 +412,10 @@ class PublishPost extends Screen
             return $confirmedImage;
         }
 
-        if (is_array($confirmedImage) && isset($confirmedImage[0]) && is_string($confirmedImage[0])) {
-            return $confirmedImage[0];
+        if (is_array($confirmedImage)) {
+            $first = reset($confirmedImage);
+
+            return is_string($first) && $first !== '' ? $first : null;
         }
 
         return null;
@@ -457,16 +466,14 @@ class PublishPost extends Screen
         }
     }
 
-    private function defaultTitleValue(): string
-    {
-        return self::defaultPostTemplate()['title'];
-    }
-
     private function defaultNotesValue(): string
     {
         return self::defaultPostTemplate()['content'];
     }
 
+    /**
+     * @return array{title: string, content: string}
+     */
     public static function defaultPostTemplate(): array
     {
         return [

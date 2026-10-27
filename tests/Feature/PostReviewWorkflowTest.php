@@ -2,6 +2,7 @@
 
 use App\Ai\Agents\PostAgent;
 use App\Contracts\PostServiceInterface;
+use App\DTOs\ReelGenerationStatus;
 use App\Jobs\GenerateReelPreviewJob;
 use App\Services\Post\ReelStoryboardFormatter;
 use App\Services\User\UsimUserService;
@@ -124,7 +125,7 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         ->and($tabsRawAfter['tabs_active'] ?? null)->toBe('reel_studio_tab');
 
     // Simular que el usuario cierra la ventana mientras está en rendering_video y vuelve a abrir el post más tarde
-    $jobId = (string) $draftPost->id;
+    $postId = (int) $draftPost->id;
 
     $sampleJson = (string) json_encode([
         'metadata' => ['autor' => 'UNSJ', 'tema' => 'TFG', 'duracion_total_segundos' => 12],
@@ -142,19 +143,19 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         ],
     ]);
 
-    GenerateReelPreviewJob::putStatus($jobId, [
-        'status' => 'generating_script',
-        'message' => 'Generando guion...',
-        'detail' => 'Analizando...',
-    ]);
+    GenerateReelPreviewJob::putStatus($postId, new ReelGenerationStatus(
+        status: 'generating_script',
+        message: 'Generando guion...',
+        detail: 'Analizando...',
+    ));
     $publishHarness->call('check_reel_status');
 
-    GenerateReelPreviewJob::putStatus($jobId, [
-        'status' => 'rendering_video',
-        'message' => 'Renderizando...',
-        'detail' => 'Codificando...',
-        'parsed_script' => json_decode($sampleJson, true),
-    ]);
+    GenerateReelPreviewJob::putStatus($postId, new ReelGenerationStatus(
+        status: 'rendering_video',
+        message: 'Renderizando...',
+        detail: 'Codificando...',
+        parsedScript: json_decode($sampleJson, true),
+    ));
 
     // Si el usuario reabre PublishPost mientras está en rendering_video, retoma el estado desde la BBDD
     /** @var PublishPost $reopenedScreen */
@@ -166,16 +167,16 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
 
     $publishHarness->call('check_reel_status');
 
-    GenerateReelPreviewJob::putStatus($jobId, [
-        'status' => 'completed',
-        'version' => 1,
-        'scene_count' => 1,
-        'duration_seconds' => 12,
-        'json_script' => $sampleJson,
-        'parsed_script' => json_decode($sampleJson, true),
-        'video_filename' => 'preview_v1.mp4',
-        'video_url' => '/storage/reels/preview_v1.mp4',
-    ]);
+    GenerateReelPreviewJob::putStatus($postId, new ReelGenerationStatus(
+        status: 'completed',
+        version: 1,
+        sceneCount: 1,
+        durationSeconds: 12,
+        jsonScript: $sampleJson,
+        parsedScript: json_decode($sampleJson, true),
+        videoFilename: 'preview_v1.mp4',
+        videoUrl: '/storage/reels/preview_v1.mp4',
+    ));
     $publishHarness->call('check_reel_status');
 
     // Una vez completada al menos una generación de IA, el botón "Enviar a Revisión" queda habilitado
@@ -189,17 +190,17 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
         'post_content' => 'Notas de propuesta de trabajo final',
     ]);
 
-    GenerateReelPreviewJob::putStatus($jobId, [
-        'status' => 'completed',
-        'version' => 2,
-        'scene_count' => 1,
-        'duration_seconds' => 8,
-        'json_script' => $sampleJson,
-        'parsed_script' => json_decode((string) $sampleJson, true),
-        'video_filename' => 'preview_v2.mp4',
-        'video_url' => '/storage/reels/preview_v2.mp4',
-        'feedback_applied' => 'Más corto',
-    ]);
+    GenerateReelPreviewJob::putStatus($postId, new ReelGenerationStatus(
+        status: 'completed',
+        version: 2,
+        sceneCount: 1,
+        durationSeconds: 8,
+        jsonScript: $sampleJson,
+        parsedScript: json_decode((string) $sampleJson, true),
+        videoFilename: 'preview_v2.mp4',
+        videoUrl: '/storage/reels/preview_v2.mp4',
+        feedbackApplied: 'Más corto',
+    ));
     $publishHarness->call('check_reel_status');
 
     $publishHarness->call('select_prev_version');
@@ -318,8 +319,23 @@ it('executes GenerateReelPreviewJob handle for initial generation, refinement, a
         'no-es-json',
     ]);
 
+    $userService = app(UsimUserService::class);
+    $user = $userService->provisionFromConfig('publisher');
+
+    $postService = app(PostServiceInterface::class);
+    $testPostId = $postService->createPost([
+        'user_id' => $user->id,
+        'title' => 'Test Post',
+        'content' => 'Notas de prueba',
+    ]);
+    $failPostId = $postService->createPost([
+        'user_id' => $user->id,
+        'title' => 'Test Post Fail',
+        'content' => 'Notas',
+    ]);
+
     $job = new GenerateReelPreviewJob(
-        jobId: 'test-job-1',
+        postId: $testPostId,
         notes: 'Notas de prueba',
         previousJson: $validJson,
         userFeedback: 'Hazlo más corto',
@@ -328,19 +344,19 @@ it('executes GenerateReelPreviewJob handle for initial generation, refinement, a
 
     $job->handle();
 
-    $status = GenerateReelPreviewJob::getStatus('test-job-1');
+    $status = GenerateReelPreviewJob::getStatus($testPostId);
     expect($status)->not->toBeNull()
-        ->and($status['status'])->toBe('completed')
-        ->and($status['version'])->toBe(2)
-        ->and($status['feedback_applied'])->toBe('Hazlo más corto');
+        ->and($status?->status)->toBe('completed')
+        ->and($status?->version)->toBe(2)
+        ->and($status?->feedbackApplied)->toBe('Hazlo más corto');
 
     // Caso de fallo por JSON inválido
     $badJob = new GenerateReelPreviewJob(
-        jobId: 'test-job-fail',
+        postId: $failPostId,
         notes: 'Notas',
     );
     $badJob->handle();
 
-    $failStatus = GenerateReelPreviewJob::getStatus('test-job-fail');
-    expect($failStatus['status'] ?? null)->toBe('failed');
+    $failStatus = GenerateReelPreviewJob::getStatus($failPostId);
+    expect($failStatus?->status)->toBe('failed');
 });

@@ -63,6 +63,7 @@ class ReviewPost extends Screen
             return;
         }
 
+        /** @var \stdClass|null $post */
         $post = $this->postService->findById($this->state_post_id);
         if (! $post) {
             $this->toast('Propuesta no encontrada.', 'error');
@@ -125,7 +126,7 @@ class ReviewPost extends Screen
         return $header;
     }
 
-    private function buildProposalDetailsColumn(object $post): Container
+    private function buildProposalDetailsColumn(\stdClass $post): Container
     {
         $detailsCard = UI::container('review_details_card')
             ->card()
@@ -187,7 +188,7 @@ class ReviewPost extends Screen
         return $detailsCard;
     }
 
-    private function buildModerationColumn(object $post): Container
+    private function buildModerationColumn(\stdClass $post): Container
     {
         $modCard = UI::container('review_moderation_card')
             ->card()
@@ -281,7 +282,8 @@ class ReviewPost extends Screen
             return;
         }
 
-        $comment = trim((string) ($params['reviewer_comment'] ?? $this->reviewer_comment->getValue()));
+        $rawComment = $params['reviewer_comment'] ?? $this->reviewer_comment->getValue();
+        $comment = is_string($rawComment) ? trim($rawComment) : '';
         if ($comment === '') {
             $this->reviewer_comment->error('Debes ingresar un comentario explicando las modificaciones solicitadas.');
             $this->toast('Escribe un comentario para el autor antes de solicitar cambios.', 'warning');
