@@ -471,7 +471,7 @@ class UserService implements UserMutationServiceInterface
     {
         $perPage = $params['per_page'] ?? 15;
         $sortBy = $params['sort_by'] ?? 'updated_at';
-        $sortDirection = $params['sort_direction'] ?? 'desc';
+        $sortDirection = strtolower($params['sort_direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
         $search = $params['search'] ?? null;
         $page = $params['page'] ?? 1;
 

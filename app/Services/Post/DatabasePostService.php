@@ -9,6 +9,9 @@ use App\UI\Screens\PublishPost;
 
 class DatabasePostService implements PostServiceInterface
 {
+    /**
+     * @return Collection<int, \stdClass>
+     */
     public function getLatestPosts(int $ownerId = 0, string $filter = ''): Collection
     {
         $this->archiveExpiredPosts();

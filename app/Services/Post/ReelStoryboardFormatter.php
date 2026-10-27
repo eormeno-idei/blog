@@ -21,9 +21,8 @@ class ReelStoryboardFormatter
         $lines = $this->buildFeedbackHeader($feedbackApplied);
 
         foreach ($scenes as $idx => $scene) {
-            if (is_array($scene)) {
-                $lines = array_merge($lines, $this->formatSceneLines($scene, (int) $idx));
-            }
+            /** @var array<string, mixed> $scene */
+            $lines = array_merge($lines, $this->formatSceneLines($scene, (int) $idx));
         }
 
         return implode("\n", $lines);
@@ -63,18 +62,28 @@ class ReelStoryboardFormatter
         ];
     }
 
+    private function toInt(mixed $value, int $default): int
+    {
+        return is_numeric($value) ? (int) $value : $default;
+    }
+
+    private function toString(mixed $value, string $default): string
+    {
+        return is_scalar($value) ? (string) $value : $default;
+    }
+
     /**
      * @param  array<string, mixed>  $scene
      * @return list<string>
      */
     private function formatSceneLines(array $scene, int $fallbackIndex): array
     {
-        $num = (int) ($scene['scene_index'] ?? ($fallbackIndex + 1));
-        $duration = (int) ($scene['duration_seconds'] ?? 0);
-        $template = (string) ($scene['layout_template'] ?? 'escena');
+        $num = $this->toInt($scene['scene_index'] ?? null, $fallbackIndex + 1);
+        $duration = $this->toInt($scene['duration_seconds'] ?? null, 0);
+        $template = $this->toString($scene['layout_template'] ?? null, 'escena');
         $textContent = is_array($scene['text_content'] ?? null) ? $scene['text_content'] : [];
-        $headline = (string) ($textContent['headline'] ?? 'Sin título');
-        $subheadline = (string) ($textContent['subheadline'] ?? '');
+        $headline = $this->toString($textContent['headline'] ?? null, 'Sin título');
+        $subheadline = $this->toString($textContent['subheadline'] ?? null, '');
         $bodyItems = is_array($textContent['body'] ?? null) ? $textContent['body'] : [];
 
         $templateBadge = $this->resolveTemplateLabel($template);

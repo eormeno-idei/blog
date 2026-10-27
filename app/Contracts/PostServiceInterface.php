@@ -11,7 +11,7 @@ interface PostServiceInterface
      *
      * @param  int  $ownerId  El ID del propietario de los posts. Si es 0, se obtienen todos los posts.
      * @param  string  $filter  Un filtro para buscar posts específicos.
-     * @return Collection<int, object> Una colección de objetos que representan los posts.
+     * @return Collection<int, \stdClass> Una colección de objetos que representan los posts.
      */
     public function getLatestPosts(int $ownerId = 0, string $filter = ''): Collection;
 

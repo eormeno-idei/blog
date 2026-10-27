@@ -193,7 +193,7 @@ class EditUser extends Screen
             return;
         }
 
-        $userId = (int) $user->getKey();
+        $userId = $this->resolveUserId($user);
         $updateData = $params;
         if (isset($updateData['roles'])) {
             $updateData['roles'] = (array) $updateData['roles'];
@@ -239,7 +239,7 @@ class EditUser extends Screen
             return;
         }
 
-        $userId = (int) $user->getKey();
+        $userId = $this->resolveUserId($user);
         $rawName = $user instanceof UsimUserInterface
             ? $user->getDisplayName()
             : $user->getAttribute('name');
@@ -265,7 +265,7 @@ class EditUser extends Screen
             return;
         }
 
-        $userId = (int) $user->getKey();
+        $userId = $this->resolveUserId($user);
         $response = $this->userService->deleteUser($user);
         $status = $response['status'];
         $message = $response['message'];
@@ -280,6 +280,13 @@ class EditUser extends Screen
         ));
 
         $this->closeModal();
+    }
+
+    private function resolveUserId(Model $user): int
+    {
+        $key = $user->getKey();
+
+        return (is_int($key) || is_string($key)) ? (int) $key : 0;
     }
 
     /**

@@ -36,7 +36,7 @@ class PasswordService
             return [
                 'status' => 'error',
                 'message' => t('service.auth.password.validation_errors'),
-                'errors' => $validator->errors()->toArray(),
+                'errors' => array_map(array_values(...), $validator->errors()->toArray()),
             ];
         }
 
@@ -102,7 +102,7 @@ class PasswordService
             return [
                 'status' => 'error',
                 'message' => t('service.auth.password.validation_errors'),
-                'errors' => $validator->errors()->toArray(),
+                'errors' => array_map(array_values(...), $validator->errors()->toArray()),
             ];
         }
 

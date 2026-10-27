@@ -47,7 +47,15 @@ class UserEditDialogPresenter
             'email' => $email,
         ];
 
-        $this->applyOptionalFlags($modalUser, $user);
+        if (array_key_exists('email_verified_at', $user)) {
+            $modalUser['email_verified_at'] = $user['email_verified_at'];
+        }
+
+        foreach (['is_in_lobby', 'has_operational_units'] as $key) {
+            if (isset($user[$key]) && is_bool($user[$key])) {
+                $modalUser[$key] = $user[$key];
+            }
+        }
 
         if (isset($user['roles']) && is_array($user['roles'])) {
             $modalUser['roles'] = $this->normalizeRoles($user['roles']);
@@ -74,25 +82,6 @@ class UserEditDialogPresenter
     private function hasValidIdentity(mixed $id, mixed $name, mixed $email): bool
     {
         return (is_int($id) || is_string($id)) && is_string($name) && is_string($email);
-    }
-
-    /**
-     * Copy optional verification and unit status flags when present.
-     *
-     * @param  array<string, mixed>  $modalUser
-     * @param  array<string, mixed>  $user
-     */
-    private function applyOptionalFlags(array &$modalUser, array $user): void
-    {
-        if (array_key_exists('email_verified_at', $user)) {
-            $modalUser['email_verified_at'] = $user['email_verified_at'];
-        }
-
-        foreach (['is_in_lobby', 'has_operational_units'] as $key) {
-            if (isset($user[$key]) && is_bool($user[$key])) {
-                $modalUser[$key] = $user[$key];
-            }
-        }
     }
 
     /**
