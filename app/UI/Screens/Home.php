@@ -3,6 +3,7 @@
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
+use App\Http\Requests\PostIdRequest;
 use App\Models\User;
 use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\Login;
@@ -20,6 +21,7 @@ use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
+use App\Services\User\UserService;
 
 class Home extends Screen
 {
@@ -30,19 +32,9 @@ class Home extends Screen
     protected Label $lbl_registered_message;
 
     public function __construct(
+        protected UserService $userService,
         protected PostServiceInterface $postService
     ) {}
-
-    // public static function getMenuLabel(): string
-    // {
-    //     return 'Inicio';
-    // }
-
-    // public static function getMenuIcon(): ?string
-    // {
-    //     return '🏠';
-    // }
-
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
@@ -143,7 +135,7 @@ class Home extends Screen
             return $actionsBox;
         }
 
-        if ($this->currentUserHasRole(['publisher', 'admin'])) {
+        if ($this->userService->currentUserHasRole(['publisher', 'admin'])) {
             $actionsBox->add(
                 UI::button('btn_go_publish')
                     ->label('✍️ Publicar Post')
@@ -152,7 +144,7 @@ class Home extends Screen
             );
         }
 
-        if ($this->currentUserHasRole('admin')) {
+        if ($this->userService->currentUserHasRole('admin')) {
             $actionsBox->add(
                 UI::button('btn_go_users')
                     ->label('👥 Gestionar Usuarios')
@@ -164,40 +156,21 @@ class Home extends Screen
         return $actionsBox;
     }
 
-    /**
-     * @param  string|list<string>  $roles
-     */
-    private function currentUserHasRole(string|array $roles): bool
-    {
-        $user = Auth::user();
-        if (! $user instanceof User) {
-            return false;
-        }
-
-        if ($user->isRoot()) {
-            return true;
-        }
-
-        $roleList = is_array($roles) ? $roles : [$roles];
-
-        return $user->globalRoles()->whereIn('name', $roleList)->exists();
-    }
-
     private function resolveRoleSubtitle(?User $user): string
     {
         if ($user === null) {
             return 'Modo invitado (guest): visualiza las publicaciones recientes o inicia sesión para participar.';
         }
 
-        if ($this->currentUserHasRole('admin')) {
+        if ($this->userService->currentUserHasRole('admin')) {
             return "Conectado como {$user->name} (Administrador): puedes publicar posts, revisarlos, eliminarlos y gestionar usuarios.";
         }
 
-        if ($this->currentUserHasRole('reviewer')) {
+        if ($this->userService->currentUserHasRole('reviewer')) {
             return "Conectado como {$user->name} (Revisor): puedes inspeccionar propuestas de posts, dejar observaciones o aprobar su publicación.";
         }
 
-        if ($this->currentUserHasRole('publisher')) {
+        if ($this->userService->currentUserHasRole('publisher')) {
             return "Conectado como {$user->name} (Publicador): puedes proponer nuevos posts y reels para revisión institucional.";
         }
 
@@ -216,9 +189,9 @@ class Home extends Screen
             return;
         }
 
-        $isAdmin = $this->currentUserHasRole('admin');
-        $isReviewer = $this->currentUserHasRole(['reviewer', 'admin']);
-        $dim = AspectRatio::_16_9->dimensionsFor(width: 480);
+        $isAdmin = $this->userService->currentUserHasRole('admin');
+        $isReviewer = $this->userService->currentUserHasRole(['reviewer', 'admin']);
+        $dim = AspectRatio::_16_9->dimensionsFor(width: 240);
         $height = Size::px($dim[1] + 40);
 
         /** @var \stdClass $post */
@@ -248,15 +221,15 @@ class Home extends Screen
 
     private function buildPostCard(\stdClass $post, Size $imageHeight, bool $isAdmin, bool $isReviewer): Container
     {
-        $isOwner = Auth::check() && Auth::id() === (int) $post->author_id;
+        $isOwner = $this->postService->isCurrentUserOwner($post);
         $backgroundColor = $post->background_color ?? '#7c3aed';
         $textColor = $post->text_color ?? '#ffffff';
 
         $postCard = UI::container("post_card_{$post->id}")
             ->card()
             ->layout(LayoutType::VERTICAL)
-            ->minWidth(Size::px(350))->maxWidth(Size::px(350))
-            ->minHeight(Size::px(390))->maxHeight(Size::px(430))
+            ->minWidth(Size::px(320))->maxWidth(Size::px(320))
+            ->minHeight(Size::px(360))->maxHeight(Size::px(360))
             ->padding(Spacing::px(8))
             ->gap(Spacing::px(6));
 
@@ -360,7 +333,7 @@ class Home extends Screen
             ->gap(Spacing::px(6))
             ->padding(Spacing::zero());
 
-        if ($isReviewer) {
+        if ($isReviewer && ($post->status ?? '') === 'pending_review' && ! $isOwner) {
             $postActionBox->add(
                 UI::button("btn_review_post_{$post->id}")
                     ->label('🔍 Revisar')
@@ -416,21 +389,24 @@ class Home extends Screen
     public function onGoToPublish(array $params): void
     {
         $user = Auth::user();
-        $screenParams = [];
+        $draftId = $this->postService->createPost([
+            'user_id' => (int) $user->id,
+            'title' => PublishPost::defaultPostTemplate()['title'],
+            'content' => PublishPost::defaultPostTemplate()['content'],
+            'status' => 'draft',
+            'from' => now()->format('Y-m-d'),
+            'to' => now()->addDays(14)->format('Y-m-d'),
+        ]);
+        $post = $this->postService->findById($draftId);
 
-        if ($user instanceof User) {
-            $draftId = $this->postService->createPost([
-                'user_id' => (int) $user->id,
-                'title' => PublishPost::defaultPostTemplate()['title'],
-                'content' => PublishPost::defaultPostTemplate()['content'],
-                'status' => 'draft',
-                'from' => now()->format('Y-m-d'),
-                'to' => now()->addDays(14)->format('Y-m-d'),
-            ]);
-            $screenParams['post_id'] = $draftId;
-        }
+        $isAdmin = $this->userService->currentUserHasRole('admin');
+        $isReviewer = $this->userService->currentUserHasRole(['reviewer', 'admin']);
+        $dim = AspectRatio::_16_9->dimensionsFor(width: 240);
+        $height = Size::px($dim[1] + 40);
 
-        $this->navigate(PublishPost::class, params: $screenParams);
+        $this->posts_list_container->add(
+            $this->buildPostCard($post, $height, $isAdmin, $isReviewer)
+        );
     }
 
     /**
@@ -474,34 +450,23 @@ class Home extends Screen
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param  PostIdRequest  $request
      */
-    public function onDeletePost(array $params): void
+    public function onDeletePost(PostIdRequest $request): void
     {
-        if (! $this->currentUserHasRole('admin')) {
-            $this->toast('No tienes permisos para eliminar posts.', 'error');
+        $post = $request->getPost();
+        $postId = $request->getPostId();
 
+        if (
+            $this->userService->currentUserHasRole('admin') ||
+            $this->postService->isCurrentUserOwner($post)
+        ) {
+            $deleted = $this->postService->deletePost($postId);
+            $this->toast('Post eliminado correctamente.', 'success');
+            $this->removePostCardFromContainer($postId);
             return;
         }
-
-        $postId = isset($params['post_id']) && is_numeric($params['post_id'])
-            ? (int) $params['post_id']
-            : 0;
-
-        if ($postId <= 0) {
-            return;
-        }
-
-        $deleted = $this->postService->deletePost($postId);
-
-        if (! $deleted) {
-            $this->toast('No se encontró el post a eliminar.', 'warning');
-
-            return;
-        }
-
-        $this->toast('Post eliminado correctamente.', 'success');
-        $this->removePostCardFromContainer($postId);
+        $this->toast('No tienes permisos para eliminar posts.', 'error');
     }
 
     private function removePostCardFromContainer(int $postId): void

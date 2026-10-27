@@ -115,16 +115,6 @@ class PublishPost extends Screen
             }
         }
 
-        $authId = Auth::id();
-        $userId = is_numeric($authId) ? (int) $authId : 0;
-        /** @var \stdClass|null $emptyDraft */
-        $emptyDraft = $this->postService->findEmptyDraftPostByUserId($userId);
-        if ($emptyDraft !== null) {
-            $this->state_post_id = (int) $emptyDraft->id;
-
-            return $emptyDraft;
-        }
-
         return $this->createInitialDraftPost();
     }
 

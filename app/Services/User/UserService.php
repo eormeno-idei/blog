@@ -68,7 +68,7 @@ class UserService implements UserMutationServiceInterface
                 })
                 ->whereNotIn('slug', ['main', 'lobby'])
                 ->get()
-                ->map(static fn (UsimUnit $u): array => [
+                ->map(static fn(UsimUnit $u): array => [
                     'id' => $u->id,
                     'slug' => $u->slug,
                     'name' => ($u->display_name !== $u->translation_key) ? $u->display_name : ucfirst($u->slug),
@@ -396,7 +396,7 @@ class UserService implements UserMutationServiceInterface
         }
 
         if (! empty($invalidRoles)) {
-            return $this->validationError('roles', 'The role '.implode(', ', $invalidRoles).' does not exist.');
+            return $this->validationError('roles', 'The role ' . implode(', ', $invalidRoles) . ' does not exist.');
         }
 
         $user->syncRoles($roles);
@@ -643,5 +643,26 @@ class UserService implements UserMutationServiceInterface
             'status' => 'verified',
             'message' => 'Su email ha sido verificado satisfactoriamente.',
         ];
+    }
+
+    /**
+     * Check if the currently authenticated user has any of the specified roles.
+     * 
+     * @param  string|list<string>  $roles
+     */
+    public function currentUserHasRole(string|array $roles): bool
+    {
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        if ($user->isRoot()) {
+            return true;
+        }
+
+        $roleList = is_array($roles) ? $roles : [$roles];
+
+        return $user->globalRoles()->whereIn('name', $roleList)->exists();
     }
 }

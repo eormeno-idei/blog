@@ -5,7 +5,7 @@ namespace App\Services\Post;
 use App\Contracts\PostServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use App\UI\Screens\PublishPost;
+use Illuminate\Support\Facades\Auth;
 
 class DatabasePostService implements PostServiceInterface
 {
@@ -60,20 +60,6 @@ class DatabasePostService implements PostServiceInterface
             ->first();
     }
 
-    public function findEmptyDraftPostByUserId(int $userId): ?object
-    {
-        return DB::table('posts')
-            ->where('user_id', $userId)
-            ->where('status', 'draft')
-            ->where(function ($query) {
-                $query->whereNull('title')
-                    ->orWhere('title', PublishPost::defaultPostTemplate()['title'])
-                    ->orWhereNull('content')
-                    ->orWhere('content', PublishPost::defaultPostTemplate()['content']);
-            })
-            ->first();
-    }
-
     public function createPost(array $data): int
     {
         return DB::table('posts')->insertGetId([
@@ -100,6 +86,18 @@ class DatabasePostService implements PostServiceInterface
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function isCurrentUserOwner(\stdClass $post): bool
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+        return (int) $post->author_id === (int) $user->id;
     }
 
     public function updatePost(int $id, array $data): bool

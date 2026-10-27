@@ -28,12 +28,12 @@ interface PostServiceInterface
     public function createPost(array $data): int;
 
     /**
-     * Busca un post en estado "draft" sin contenido para un usuario específico.
+     * Verifica si el usuario actual es el propietario del post.
      * 
-     * @param  int  $userId  El ID del usuario.
-     * @return object|null  El post encontrado o null si no existe.
+     * @param  \stdClass  $post  El objeto del post a verificar.
+     * @return bool  Verdadero si el usuario actual es el propietario del post, falso en caso contrario.
      */
-    public function findEmptyDraftPostByUserId(int $userId): ?object;
+    public function isCurrentUserOwner(\stdClass $post): bool;
 
     /**
      * Actualiza un post existente.
