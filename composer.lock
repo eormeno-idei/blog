@@ -4262,22 +4262,22 @@
         },
         {
             "name": "spiral/core",
-            "version": "3.17.2",
+            "version": "3.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spiral/core.git",
-                "reference": "ca5b8483610aed0c82d4f06bc7907e191d88aca0"
+                "reference": "5eb2b08717848c485ad75fa0aad73a487d023207"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spiral/core/zipball/ca5b8483610aed0c82d4f06bc7907e191d88aca0",
-                "reference": "ca5b8483610aed0c82d4f06bc7907e191d88aca0",
+                "url": "https://api.github.com/repos/spiral/core/zipball/5eb2b08717848c485ad75fa0aad73a487d023207",
+                "reference": "5eb2b08717848c485ad75fa0aad73a487d023207",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.1",
                 "psr/container": "^1.1|^2.0",
-                "spiral/security": "^3.17.2"
+                "spiral/security": "^3.18.0"
             },
             "provide": {
                 "psr/container-implementation": "^1.1|^2.0"
@@ -4288,11 +4288,6 @@
                 "vimeo/psalm": "^6.0"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.17.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Spiral\\Core\\": "src"
@@ -4332,27 +4327,27 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-05T12:07:26+00:00"
+            "time": "2026-10-27T11:21:54+00:00"
         },
         {
             "name": "spiral/hmvc",
-            "version": "3.17.2",
+            "version": "3.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spiral/hmvc.git",
-                "reference": "11111aac577f3d7ccc9bbe8b79dc6441fd21b9c5"
+                "reference": "9a4ec34fc2aafdea47dc17546e27018041ff38db"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spiral/hmvc/zipball/11111aac577f3d7ccc9bbe8b79dc6441fd21b9c5",
-                "reference": "11111aac577f3d7ccc9bbe8b79dc6441fd21b9c5",
+                "url": "https://api.github.com/repos/spiral/hmvc/zipball/9a4ec34fc2aafdea47dc17546e27018041ff38db",
+                "reference": "9a4ec34fc2aafdea47dc17546e27018041ff38db",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.1",
                 "psr/event-dispatcher": "^1.0",
-                "spiral/core": "^3.17.2",
-                "spiral/interceptors": "^3.17.2"
+                "spiral/core": "^3.18.0",
+                "spiral/interceptors": "^3.18.0"
             },
             "require-dev": {
                 "phpunit/phpunit": "^10.5.41",
@@ -4360,11 +4355,6 @@
                 "vimeo/psalm": "^6.0"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.17.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Spiral\\Core\\": "src"
@@ -4406,26 +4396,26 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-05T12:00:27+00:00"
+            "time": "2026-10-27T11:22:05+00:00"
         },
         {
             "name": "spiral/interceptors",
-            "version": "3.17.2",
+            "version": "3.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spiral/interceptors.git",
-                "reference": "ea0e10ecb2c6058541a2b097a660fd2b532a5ffa"
+                "reference": "8aebaffe39cbb0d05e7000dbc299c6d6b2513721"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spiral/interceptors/zipball/ea0e10ecb2c6058541a2b097a660fd2b532a5ffa",
-                "reference": "ea0e10ecb2c6058541a2b097a660fd2b532a5ffa",
+                "url": "https://api.github.com/repos/spiral/interceptors/zipball/8aebaffe39cbb0d05e7000dbc299c6d6b2513721",
+                "reference": "8aebaffe39cbb0d05e7000dbc299c6d6b2513721",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.1",
                 "psr/event-dispatcher": "^1.0",
-                "spiral/core": "^3.17.2"
+                "spiral/core": "^3.18.0"
             },
             "require-dev": {
                 "phpunit/phpunit": "^10.5.41",
@@ -4433,11 +4423,6 @@
                 "vimeo/psalm": "^6.0"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.17.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Spiral\\Interceptors\\": "src"
@@ -4484,26 +4469,26 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-05T12:00:37+00:00"
+            "time": "2026-10-27T11:21:25+00:00"
         },
         {
             "name": "spiral/logger",
-            "version": "3.17.2",
+            "version": "3.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spiral/logger.git",
-                "reference": "671d91a3427019a14670b614474cc57156d5cd69"
+                "reference": "7dba87303113b894f260b15ec0d4fbad09b3f094"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spiral/logger/zipball/671d91a3427019a14670b614474cc57156d5cd69",
-                "reference": "671d91a3427019a14670b614474cc57156d5cd69",
+                "url": "https://api.github.com/repos/spiral/logger/zipball/7dba87303113b894f260b15ec0d4fbad09b3f094",
+                "reference": "7dba87303113b894f260b15ec0d4fbad09b3f094",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.1",
                 "psr/log": "1 - 3",
-                "spiral/core": "^3.17.2"
+                "spiral/core": "^3.18.0"
             },
             "require-dev": {
                 "mockery/mockery": "^1.6.12",
@@ -4511,11 +4496,6 @@
                 "vimeo/psalm": "^6.0"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.17.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Spiral\\Logger\\": "src"
@@ -4555,7 +4535,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-05T12:05:38+00:00"
+            "time": "2026-10-27T11:22:13+00:00"
         },
         {
             "name": "spiral/roadrunner-cli",
@@ -4730,35 +4710,30 @@
         },
         {
             "name": "spiral/security",
-            "version": "3.17.2",
+            "version": "3.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spiral/security.git",
-                "reference": "aefd664efb3e618d0a57c967546f1ad5d9784580"
+                "reference": "97f7bd7a416d36d25bcfc8186ab0bfa23d77f3d3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spiral/security/zipball/aefd664efb3e618d0a57c967546f1ad5d9784580",
-                "reference": "aefd664efb3e618d0a57c967546f1ad5d9784580",
+                "url": "https://api.github.com/repos/spiral/security/zipball/97f7bd7a416d36d25bcfc8186ab0bfa23d77f3d3",
+                "reference": "97f7bd7a416d36d25bcfc8186ab0bfa23d77f3d3",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.1",
-                "spiral/core": "^3.17.2",
-                "spiral/hmvc": "^3.17.2"
+                "spiral/core": "^3.18.0",
+                "spiral/hmvc": "^3.18.0"
             },
             "require-dev": {
                 "mockery/mockery": "^1.6.12",
                 "phpunit/phpunit": "^10.5.41",
-                "spiral/console": "^3.17.2",
+                "spiral/console": "^3.18.0",
                 "vimeo/psalm": "^6.0"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.17.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Spiral\\Security\\": "src"
@@ -4798,43 +4773,38 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-05T12:07:41+00:00"
+            "time": "2026-10-27T11:22:32+00:00"
         },
         {
             "name": "spiral/tokenizer",
-            "version": "3.17.2",
+            "version": "3.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spiral/tokenizer.git",
-                "reference": "fcb7a36672d7aef900dc36377ff997ba6f8cde0b"
+                "reference": "a189dd7ff89558fc947bdcc37d8228f9b2699917"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spiral/tokenizer/zipball/fcb7a36672d7aef900dc36377ff997ba6f8cde0b",
-                "reference": "fcb7a36672d7aef900dc36377ff997ba6f8cde0b",
+                "url": "https://api.github.com/repos/spiral/tokenizer/zipball/a189dd7ff89558fc947bdcc37d8228f9b2699917",
+                "reference": "a189dd7ff89558fc947bdcc37d8228f9b2699917",
                 "shasum": ""
             },
             "require": {
                 "ext-tokenizer": "*",
                 "php": ">=8.1",
-                "spiral/core": "^3.17.2",
-                "spiral/logger": "^3.17.2",
+                "spiral/core": "^3.18.0",
+                "spiral/logger": "^3.18.0",
                 "symfony/finder": "^6.4.30 || ^7.4 || ^8.0"
             },
             "require-dev": {
                 "mockery/mockery": "^1.6.12",
                 "phpunit/phpunit": "^10.5.41",
                 "spiral/attributes": "^2.8|^3.0",
-                "spiral/boot": "^3.17.2",
-                "spiral/files": "^3.17.2",
+                "spiral/boot": "^3.18.0",
+                "spiral/files": "^3.18.0",
                 "vimeo/psalm": "^6.0"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.17.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Spiral\\Tokenizer\\": "src"
@@ -4874,7 +4844,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-08-05T12:05:29+00:00"
+            "time": "2026-10-27T11:21:58+00:00"
         },
         {
             "name": "symfony/clock",
