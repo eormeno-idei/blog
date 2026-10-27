@@ -388,11 +388,13 @@ class Home extends Screen
      */
     public function onGoToPublish(array $params): void
     {
+        if ($this->postService->getLatestPosts()->isEmpty()) {
+            $this->posts_list_container->clear();
+        }
+
         $user = Auth::user();
         $draftId = $this->postService->createPost([
             'user_id' => (int) $user->id,
-            'title' => PublishPost::defaultPostTemplate()['title'],
-            'content' => PublishPost::defaultPostTemplate()['content'],
             'status' => 'draft',
             'from' => now()->format('Y-m-d'),
             'to' => now()->addDays(14)->format('Y-m-d'),
@@ -454,19 +456,15 @@ class Home extends Screen
      */
     public function onDeletePost(PostIdRequest $request): void
     {
-        $post = $request->getPost();
-        $postId = $request->getPostId();
-
-        if (
-            $this->userService->currentUserHasRole('admin') ||
-            $this->postService->isCurrentUserOwner($post)
-        ) {
-            $deleted = $this->postService->deletePost($postId);
+        try {
+            $this->postService->deletePost($request->getPostId());
             $this->toast('Post eliminado correctamente.', 'success');
-            $this->removePostCardFromContainer($postId);
-            return;
+            $this->removePostCardFromContainer($request->getPostId());
+        } catch (\RuntimeException $e) {
+            $this->toast($e->getMessage(), 'error');
+        } catch (\Throwable $e) {
+            $this->toast('Ocurrió un error al eliminar el post.', 'error');
         }
-        $this->toast('No tienes permisos para eliminar posts.', 'error');
     }
 
     private function removePostCardFromContainer(int $postId): void

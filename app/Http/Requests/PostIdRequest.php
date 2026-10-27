@@ -13,22 +13,8 @@ class PostIdRequest extends UIRequest
     protected ?object $post = null;
 
     public function __construct(
-        protected UserService $userService,
         protected PostServiceInterface $postService
     ) {}
-
-    /**
-     * Determine if the user is authorized to perform this request.
-     */
-    public function authorize(): bool
-    {
-        $post = $this->getPost();
-        if (! $post) {
-            return false;
-        }
-        return $this->postService->isCurrentUserOwner($post)
-            || $this->userService->currentUserHasRole('admin');
-    }
 
     /**
      * Validation rules that apply to the request.
@@ -45,7 +31,7 @@ class PostIdRequest extends UIRequest
                     if (! $this->getPost()) {
                         $fail('El post con el ID proporcionado no existe.');
                     }
-                },
+                }
             ],
         ];
     }

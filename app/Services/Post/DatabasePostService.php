@@ -3,18 +3,30 @@
 namespace App\Services\Post;
 
 use App\Contracts\PostServiceInterface;
+use App\Services\User\UserService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class DatabasePostService implements PostServiceInterface
 {
+    public function __construct(
+        protected UserService $userService
+    ) {}
+
     /**
      * @return Collection<int, \stdClass>
      */
     public function getLatestPosts(int $ownerId = 0, string $filter = ''): Collection
     {
         $this->archiveExpiredPosts();
+
+        $isPublisher = $this->userService->currentUserHasRole('publisher');
+
+        if ($isPublisher) {
+            $ownerId = Auth::id();
+        }
 
         $query = DB::table('posts')
             ->join('users', 'posts.user_id', '=', 'users.id')
@@ -64,8 +76,8 @@ class DatabasePostService implements PostServiceInterface
     {
         return DB::table('posts')->insertGetId([
             'user_id' => $data['user_id'],
-            'title' => $data['title'],
-            'content' => $data['content'],
+            'title' => $this->nextPostTitle($data['user_id']),
+            'content' => self::defaultPostTemplate()['content'],
             'image' => $data['image'] ?? null,
             'background_color' => $data['background_color'] ?? '#32637b',
             'text_color' => $data['text_color'] ?? '#000000',
@@ -86,6 +98,28 @@ class DatabasePostService implements PostServiceInterface
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    private function nextPostTitle(int $userId): string
+    {
+        $defaultTitle = self::defaultPostTemplate()['title'];
+        $titlesStartingWithDefault = DB::table('posts')
+            ->where('user_id', $userId)
+            ->where('title', 'like', "{$defaultTitle}%")
+            ->pluck('title')
+            ->toArray();
+        // Extract numbers from titles and find the next available number
+        $maxNumber = 0;
+        foreach ($titlesStartingWithDefault as $title) {
+            if (preg_match('/^' . preg_quote($defaultTitle, '/') . ' (\d+)$/', $title, $matches)) {
+                $number = (int) $matches[1];
+                if ($number > $maxNumber) {
+                    $maxNumber = $number;
+                }
+            }
+        }
+        $maxNumber++;
+        return $maxNumber > 0 ? "{$defaultTitle} {$maxNumber}" : $defaultTitle;
     }
 
     /**
@@ -167,6 +201,48 @@ class DatabasePostService implements PostServiceInterface
 
     public function deletePost(int $id): bool
     {
+        $user = Auth::user();
+        if (! $user) {
+            throw new \RuntimeException("No authenticated user found.");
+        }
+
+        $post = $this->findById($id);
+        if (! $post) {
+            throw new \RuntimeException("Post with ID {$id} not found.");
+        }
+
+        if ($post->status === 'published') {
+            throw new \RuntimeException("Cannot delete a published post.");
+        }
+
+        $isOwner = (int) $post->author_id === (int) $user->id;
+        $isAdmin = $this->userService->currentUserHasRole('admin');
+
+        if (! $isOwner && ! $isAdmin) {
+            throw new \RuntimeException("User does not have permission to delete this post.");
+        }
+
         return DB::table('posts')->where('id', $id)->delete() > 0;
+    }
+
+    /**
+     * Get the default template for a new post.
+     * 
+     * @return array{title: string, content: string}
+     */
+    private static function defaultPostTemplate(): array
+    {
+        return [
+            'title' => 'Borrador sin título',
+            'content' => <<<'EOT'
+Escribe aquí las notas o información del evento/proyecto que quieres publicar. La IA usará estas notas para estructurar el guion del Reel. Puedes incluir detalles como:
+- Nombre del evento o proyecto
+- Fecha y hora
+- Ubicación
+- Descripción breve
+- Enlaces relevantes
+- Cualquier otro detalle que consideres importante para la publicación y el Reel.
+EOT,
+        ];
     }
 }

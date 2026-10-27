@@ -645,6 +645,16 @@ class UserService implements UserMutationServiceInterface
         ];
     }
 
+    public function currentUser(): ?User
+    {
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        return $this->freshUserWithRoles($user);
+    }
+
     /**
      * Check if the currently authenticated user has any of the specified roles.
      * 

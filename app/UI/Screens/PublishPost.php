@@ -221,13 +221,9 @@ class PublishPost extends Screen
                 ->style('h3')
         );
 
-        $initialTitle = $post !== null && (string) $post->title !== 'Borrador sin título'
-            ? (string) $post->title
-            : '';
+        $initialTitle = $post !== null && (string) $post->title;
 
-        $initialContent = $post !== null && trim((string) ($post->content ?? '')) !== ''
-            ? (string) $post->content
-            : $this->defaultNotesValue();
+        $initialContent = $post !== null && (string) $post->content;
 
         $this->post_title = UI::input('post_title')
             ->label('Título del Post')
@@ -454,29 +450,5 @@ class PublishPost extends Screen
                 'content' => $value,
             ]);
         }
-    }
-
-    private function defaultNotesValue(): string
-    {
-        return self::defaultPostTemplate()['content'];
-    }
-
-    /**
-     * @return array{title: string, content: string}
-     */
-    public static function defaultPostTemplate(): array
-    {
-        return [
-            'title' => 'Borrador sin título',
-            'content' => <<<'EOT'
-Escribe aquí las notas o información del evento/proyecto que quieres publicar. La IA usará estas notas para estructurar el guion del Reel. Puedes incluir detalles como:
-- Nombre del evento o proyecto
-- Fecha y hora
-- Ubicación
-- Descripción breve
-- Enlaces relevantes
-- Cualquier otro detalle que consideres importante para la publicación y el Reel.
-EOT,
-        ];
     }
 }
