@@ -22,20 +22,38 @@ trait HandlesModalFeedback
         $modalUpdates = [];
 
         foreach ($errors as $fieldName => $messages) {
-            $text = '';
-            if (is_array($messages)) {
-                $stringMessages = array_filter(array_map(static fn (mixed $m): string => is_scalar($m) || (is_object($m) && method_exists($m, '__toString')) ? (string) $m : '', $messages));
-                $text = implode(' ', $stringMessages);
-            } elseif (is_scalar($messages) || (is_object($messages) && method_exists($messages, '__toString'))) {
-                $text = (string) $messages;
-            }
-
             $modalUpdates[$fieldName] = [
-                'error' => $text,
+                'error' => $this->formatModalErrorMessage($messages),
             ];
         }
 
         return $modalUpdates;
+    }
+
+    /**
+     * Format a single or list of error messages into a string.
+     */
+    protected function formatModalErrorMessage(mixed $messages): string
+    {
+        if (is_array($messages)) {
+            $stringMessages = array_filter(array_map($this->stringifyModalMessage(...), $messages));
+
+            return implode(' ', $stringMessages);
+        }
+
+        return $this->stringifyModalMessage($messages);
+    }
+
+    /**
+     * Convert a message value to string if it is scalar or stringable.
+     */
+    protected function stringifyModalMessage(mixed $message): string
+    {
+        if (is_scalar($message) || $message instanceof \Stringable) {
+            return (string) $message;
+        }
+
+        return '';
     }
 
     /**

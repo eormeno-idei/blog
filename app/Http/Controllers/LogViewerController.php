@@ -1,230 +1,75 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Contracts\LogServiceInterface;
+use App\DTOs\LogFile;
+use App\Http\Requests\LogRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Response;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LogViewerController extends Controller
 {
-    private const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-    private const DEFAULT_LINES = 1000;
-
-    /**
-     * Display the log viewer interface
-     */
-    public function index(): View
+    public function index(LogRequest $req, LogServiceInterface $logs): View
     {
-        $logFiles = $this->getLogFiles();
-
         return view('logs.viewer', [
-            'logFiles' => $logFiles,
-            'selectedFile' => request('file', 'laravel.log'),
+            'logFiles' => array_map(static fn (LogFile $f): array => $f->toArray(), $logs->list()),
+            'selectedFile' => $req->dto()->file,
         ]);
     }
 
-    /**
-     * Get log content via API
-     */
-    public function content(Request $request): JsonResponse
+    public function content(LogRequest $req, LogServiceInterface $logs): JsonResponse
     {
-        $fileInput = $request->input('file', 'laravel.log');
-        $fileName = is_string($fileInput) ? $fileInput : 'laravel.log';
+        $res = $logs->read($req->dto());
 
-        $linesInput = $request->input('lines', self::DEFAULT_LINES);
-        if (is_int($linesInput)) {
-            $lines = $linesInput;
-        } elseif (is_numeric($linesInput)) {
-            $lines = (int) $linesInput;
-        } else {
-            $lines = self::DEFAULT_LINES;
-        }
-
-        $searchInput = $request->input('search', '');
-        $search = is_string($searchInput) ? $searchInput : '';
-
-        $logPath = storage_path('logs/'.basename($fileName));
-
-        if (! File::exists($logPath)) {
-            return response()->json([
-                'error' => 'Log file not found',
-            ], 404);
-        }
-
-        $fileSize = File::size($logPath);
-
-        if ($fileSize > self::MAX_FILE_SIZE) {
-            return response()->json([
-                'warning' => 'File is too large. Showing last '.$lines.' lines.',
-                'content' => $this->getLastLines($logPath, $lines, $search),
-                'fileSize' => $this->formatBytes($fileSize),
-            ]);
-        }
-
-        $content = File::get($logPath);
-
-        if ($search) {
-            $content = $this->filterContent($content, $search);
-        }
-
-        $logLines = explode("\n", $content);
-        $logLines = array_slice($logLines, -$lines);
-
-        return response()->json([
-            'content' => implode("\n", $logLines),
-            'fileSize' => $this->formatBytes($fileSize),
-            'totalLines' => count(explode("\n", $content)),
-        ]);
+        return response()->json($res->toArray(), $res->code());
     }
 
-    /**
-     * Download log file
-     */
-    public function download(Request $request): BinaryFileResponse
+    public function download(LogRequest $req, LogServiceInterface $logs): BinaryFileResponse
     {
-        $fileInput = $request->input('file', 'laravel.log');
-        $fileName = is_string($fileInput) ? $fileInput : 'laravel.log';
-        $logPath = storage_path('logs/'.basename($fileName));
+        $dto = $req->dto();
+        $path = $logs->path($dto->file);
 
-        if (! File::exists($logPath)) {
+        if ($path === null) {
             abort(404, 'Log file not found');
         }
 
-        return Response::download($logPath, $fileName);
+        return Response::download($path, $dto->file);
     }
 
-    /**
-     * Clear log file
-     */
-    public function clear(Request $request): JsonResponse|RedirectResponse
+    public function clear(LogRequest $req, LogServiceInterface $logs): JsonResponse|RedirectResponse
     {
+        $dto = $req->dto();
+
         try {
-            // Accept both JSON and form data
-            $fileNameInput = $request->input('file') ?? $request->get('file', 'laravel.log');
-            $fileName = is_string($fileNameInput) && $fileNameInput !== '' ? $fileNameInput : 'laravel.log';
-            $logPath = storage_path('logs/'.basename($fileName));
+            $ok = $logs->clear($dto->file);
+            $msg = $ok ? 'Log file cleared successfully' : 'Log file not found';
+            $code = $ok ? 200 : 404;
 
-            if (! File::exists($logPath)) {
-                if ($request->input('redirect')) {
-                    return redirect()->route('logs.index')->with('error', 'Log file not found');
-                }
+            return $dto->back ? $this->back($ok, $msg) : $this->resp($ok, $msg, $code);
+        } catch (\Throwable $e) {
+            $msg = 'Error clearing log: '.$e->getMessage();
 
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Log file not found',
-                ], 404);
-            }
-
-            File::put($logPath, '');
-
-            // If redirect is requested, redirect back to logs page
-            if ($request->input('redirect')) {
-                return redirect()->route('logs.index')->with('success', 'Log file cleared successfully');
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Log file cleared successfully',
-            ]);
-        } catch (\Exception $e) {
-            if ($request->input('redirect')) {
-                return redirect()->route('logs.index')->with('error', 'Error clearing log: '.$e->getMessage());
-            }
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Error clearing log: '.$e->getMessage(),
-            ], 500);
+            return $dto->back ? $this->back(false, $msg) : $this->resp(false, $msg, 500);
         }
     }
 
-    /**
-     * Get list of log files
-     */
-    /**
-     * @return list<array{name: string, size: string, modified: string}>
-     */
-    private function getLogFiles(): array
+    private function back(bool $ok, string $msg): RedirectResponse
     {
-        $logPath = storage_path('logs');
-        $files = File::files($logPath);
+        $key = $ok ? 'success' : 'error';
 
-        $logFiles = [];
-        foreach ($files as $file) {
-            if ($file->getExtension() === 'log' || str_ends_with($file->getFilename(), '.log')) {
-                $logFiles[] = [
-                    'name' => $file->getFilename(),
-                    'size' => $this->formatBytes($file->getSize()),
-                    'modified' => date('Y-m-d H:i:s', $file->getMTime()),
-                ];
-            }
-        }
-
-        return $logFiles;
+        return redirect()->route('logs.index')->with($key, $msg);
     }
 
-    /**
-     * Get last N lines from file
-     */
-    private function getLastLines(string $filePath, int $lines, string $search = ''): string
+    private function resp(bool $ok, string $msg, int $code = 200): JsonResponse
     {
-        $file = new \SplFileObject($filePath, 'r');
-        $file->seek(PHP_INT_MAX);
-        $lastLine = $file->key();
+        $key = $ok ? 'message' : 'error';
 
-        $startLine = max(0, $lastLine - $lines);
-        $file->seek($startLine);
-
-        $content = [];
-        while (! $file->eof()) {
-            $line = $file->current();
-            if (! is_string($line)) {
-                $file->next();
-
-                continue;
-            }
-
-            if ($search === '' || stripos($line, $search) !== false) {
-                $content[] = $line;
-            }
-            $file->next();
-        }
-
-        return implode('', $content);
-    }
-
-    /**
-     * Filter content by search term
-     */
-    private function filterContent(string $content, string $search): string
-    {
-        $lines = explode("\n", $content);
-        $filtered = array_filter($lines, static function (string $line) use ($search): bool {
-            return stripos($line, $search) !== false;
-        });
-
-        return implode("\n", $filtered);
-    }
-
-    /**
-     * Format bytes to human readable format
-     */
-    private function formatBytes(int $bytes): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $i = 0;
-
-        while ($bytes >= 1024 && $i < count($units) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
-
-        return round($bytes, 2).' '.$units[$i];
+        return response()->json(['success' => $ok, $key => $msg], $code);
     }
 }

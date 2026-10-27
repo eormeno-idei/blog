@@ -4,7 +4,7 @@ use App\Http\Controllers\LogViewerController;
 use Idei\Usim\Support\UsimConfig;
 use Illuminate\Support\Facades\Route;
 
-if (config('app.env') === 'local') {
+if (app()->environment('local', 'testing')) {
     // Rutas para el visor de logs - Solo en entorno local
     Route::prefix('logs')->group(function () {
         Route::get('/', [LogViewerController::class, 'index'])->name('logs.index');
