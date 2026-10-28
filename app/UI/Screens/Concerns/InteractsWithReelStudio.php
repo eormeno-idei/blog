@@ -75,8 +75,7 @@ trait InteractsWithReelStudio
     protected function buildWorkspaceTabs(Container $formCard): Container
     {
         $this->workspace_tabs = UI::container('workspace_tabs')
-            ->plain()
-            ->shadow(false)
+            ->card()
             ->width(Size::full())
             ->tabs([
                 'form_tab' => [

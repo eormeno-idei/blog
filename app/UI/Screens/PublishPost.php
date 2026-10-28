@@ -76,7 +76,7 @@ class PublishPost extends Screen
         }
 
         /** @var \stdClass|null $post */
-        $post = $this->resolveOrCreatePost($explicitPostId > 0);
+        $post = $this->resolvePost($explicitPostId > 0);
         if ($explicitPostId > 0 && $post === null) {
             $this->toast('Post no encontrado.', 'error');
             $this->navigate(Home::class);
@@ -88,25 +88,21 @@ class PublishPost extends Screen
             ->plain()
             ->width(Size::full())
             ->maxWidth(Size::px(980))
-            ->centerHorizontal()
-            ->padding(Spacing::px(24))
-            ->gap(Spacing::px(20));
+            ->centerHorizontal();
 
         $container->add($this->buildReelPollTimer());
         $container->add($this->buildHeader());
 
-        if ($post !== null && ! empty($post->reviewer_comment)) {
+        if (!empty($post->reviewer_comment)) {
             $container->add($this->buildReviewerCommentAlert($post));
         }
 
         $container->add($this->buildWorkspaceTabs($this->buildFormColumn($post)));
 
-        if ($post !== null) {
-            $this->restoreReelStudioFromPost($post);
-        }
+        $this->restoreReelStudioFromPost($post);
     }
 
-    private function resolveOrCreatePost(bool $isExplicit = false): ?object
+    private function resolvePost(bool $isExplicit = false): ?object
     {
         if ($this->state_post_id > 0) {
             $existing = $this->postService->findById($this->state_post_id);
@@ -114,8 +110,7 @@ class PublishPost extends Screen
                 return $existing;
             }
         }
-
-        return $this->createInitialDraftPost();
+        return null;
     }
 
     /**
@@ -126,25 +121,6 @@ class PublishPost extends Screen
         $candidate = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? $this->state_post_id;
 
         return is_numeric($candidate) && (int) $candidate > 0 ? (int) $candidate : 0;
-    }
-
-    private function createInitialDraftPost(): ?object
-    {
-        $user = Auth::user();
-        if (! $user instanceof User) {
-            return null;
-        }
-
-        $this->state_post_id = $this->postService->createPost([
-            'user_id' => (int) $user->id,
-            'title' => 'Borrador sin título',
-            'content' => '',
-            'status' => 'draft',
-            'from' => now()->format('Y-m-d'),
-            'to' => now()->addDays(14)->format('Y-m-d'),
-        ]);
-
-        return $this->postService->findById($this->state_post_id);
     }
 
     private function buildReviewerCommentAlert(object $post): Container
@@ -188,13 +164,6 @@ class PublishPost extends Screen
             ->gap(Spacing::px(16));
 
         $header->add(
-            UI::label('lbl_publish_title')
-                ->text('✍️ Nueva Propuesta de Publicación y Reel')
-                ->style('h2')
-                ->color('primary')
-        );
-
-        $header->add(
             UI::button('btn_back_home')
                 ->label('← Volver al Inicio')
                 ->action('cancel_post')
@@ -204,26 +173,17 @@ class PublishPost extends Screen
         return $header;
     }
 
-    private function buildFormColumn(?\stdClass $post = null): Container
+    private function buildFormColumn(\stdClass $post): Container
     {
         $formCard = UI::container('publish_form_card')
-            ->card()
             ->width(Size::full())
-            ->maxWidth(Size::px(760))
             ->centerHorizontal()
             ->layout(LayoutType::VERTICAL)
-            ->padding(Spacing::px(24))
-            ->gap(Spacing::px(16));
+            ->padding(Spacing::px(12))
+            ->gap(Spacing::px(12));
 
-        $formCard->add(
-            UI::label('lbl_form_section_title')
-                ->text('1. Datos de la Propuesta')
-                ->style('h3')
-        );
-
-        $initialTitle = $post !== null && (string) $post->title;
-
-        $initialContent = $post !== null && (string) $post->content;
+        $initialTitle = $post->title;
+        $initialContent = $post->content;
 
         $this->post_title = UI::input('post_title')
             ->label('Título del Post')
@@ -240,8 +200,8 @@ class PublishPost extends Screen
             ->plainText()
             ->width(Size::full())
             ->height(Size::px(240))
-            ->maxLength(2000)
-            ->helpText('Máximo 2000 caracteres. La IA usará estas notas para estructurar el guion del Reel.')
+            ->maxLength(5000)
+            ->helpText('Máximo 5000 caracteres. La IA usará estas notas para estructurar el guion del Reel.')
             ->onChange('on_plain_saved');
 
         $this->post_id = UI::input('post_id')
@@ -274,31 +234,30 @@ class PublishPost extends Screen
     private function buildDateRangeRow(?object $post = null): Container
     {
         $datesRow = UI::container('publish_dates_row')
-            ->plain()
+            ->card()
             ->shadow(false)
             ->width(Size::full())
             ->layout(LayoutType::HORIZONTAL)
-            ->padding(Spacing::zero())
-            ->gap(Spacing::px(12));
+            ->padding(Spacing::px(8))
+            ->justifyContent(JustifyContent::END)
+            ->gap(Spacing::px(8));
 
-        $fromVal = $post !== null && ! empty($post->from)
+        $fromVal = $post !== null && !empty($post->from)
             ? substr((string) $post->from, 0, 10)
             : now()->format('Y-m-d');
-        $toVal = $post !== null && ! empty($post->to)
+        $toVal = $post !== null && !empty($post->to)
             ? substr((string) $post->to, 0, 10)
             : now()->addDays(14)->format('Y-m-d');
 
         $this->post_from = UI::input('post_from')
             ->type('date')
-            ->label('Fecha de Inicio de Publicación')
-            ->value($fromVal)
-            ->width(Size::full());
+            ->label('Desde')
+            ->value($fromVal);
 
         $this->post_to = UI::input('post_to')
             ->type('date')
-            ->label('Fecha de Finalización')
-            ->value($toVal)
-            ->width(Size::full());
+            ->label('Hasta')
+            ->value($toVal);
 
         $datesRow->add($this->post_from);
         $datesRow->add($this->post_to);
@@ -329,8 +288,8 @@ class PublishPost extends Screen
             ->style('primary')
             ->enabled(false);
 
-        $actionsRow->add($this->btn_ask_ai);
         $actionsRow->add($this->btn_save_post);
+        $actionsRow->add($this->btn_ask_ai);
 
         return $actionsRow;
     }
@@ -338,7 +297,7 @@ class PublishPost extends Screen
     public function onSavePost(PostRequest $request): void
     {
         $user = Auth::user();
-        if (! $user instanceof User) {
+        if (!$user instanceof User) {
             $this->toast('Debes iniciar sesión para publicar.', 'error');
 
             return;

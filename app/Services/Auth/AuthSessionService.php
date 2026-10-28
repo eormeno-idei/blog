@@ -43,6 +43,8 @@ class AuthSessionService
             UIStateManager::setAuthToken($token);
         }
 
+        UIStateManager::clearClientSnapshots();
+
         Auth::login($user);
 
         $activeUnitSlug = $unit;
@@ -104,6 +106,7 @@ class AuthSessionService
         Auth::guard('web')->logout();
         UIStateManager::setAuthToken(null);
         UIStateManager::setActiveUnit(null);
+        UIStateManager::clearClientSnapshots();
 
         if (function_exists('setPermissionsTeamId') && config('permission.teams')) {
             setPermissionsTeamId(null);

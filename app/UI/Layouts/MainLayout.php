@@ -59,7 +59,6 @@ class MainLayout extends AbstractLayout
 
         if ($menuClass !== null) {
             $this->setActiveScreen('top_menu', $menuClass);
-            Screen::embedInto($menuClass, $mainMenuContainer);
         }
 
         // 2. Main content slot container

@@ -156,13 +156,12 @@ class Menu extends Screen
             } else {
                 $this->user_menu->trigger('⚙️');
             }
-            $this->populateMainMenu($this->main_menu);
-            $this->populateUserMenu($this->user_menu);
         } else {
             $this->user_menu->trigger('⚙️');
-            $this->populateMainMenu($this->main_menu);
-            $this->populateUserMenu($this->user_menu);
         }
+
+        $this->populateMainMenu($this->main_menu);
+        $this->populateUserMenu($this->user_menu);
     }
 
     private function updateUserMenuTrigger(User $user): void
