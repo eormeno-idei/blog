@@ -2,6 +2,7 @@
 
 namespace App\DTOs\Posts;
 
+use App\DTOs\User\UserDTO;
 use App\Enums\PostStatus;
 use App\Enums\PostTemplate;
 use Carbon\CarbonImmutable;
@@ -10,8 +11,8 @@ use Idei\Usim\Enums\AspectRatio;
 readonly class PostDTO
 {
     public function __construct(
-        public ?int $id = null,
-        public ?int $userId = null,
+        public int $id,
+        public UserDTO $author,
         public string $title = '',
         public string $content = '',
         public PostTemplate $template = PostTemplate::DEFAULT,
