@@ -26,7 +26,7 @@ readonly class PostDTO
         public string $aiJobStatus = 'idle',
         public ?string $aiJobPayload = null,
         public ?string $reviewerComment = null,
-        public ?int $reviewedBy = null,
+        public ?UserDTO $reviewedBy = null,
         public ?CarbonImmutable $reviewedAt = null,
         public ?CarbonImmutable $createdAt = null,
         public ?CarbonImmutable $updatedAt = null,

@@ -8,21 +8,20 @@ use Illuminate\Support\Collection;
 
 interface PostRepositoryInterface
 {
-    public function findById(int $id, array $with = []): ?PostDTO;
+    public function findById(int $id): ?PostDTO;
     public function delete(int $id): bool;
     public function create(array $data): PostDTO;
+    public function update(int $id, array $data): ?PostDTO;
 
     /**
      * Obtiene una colección de PostDTOs basada en filtros.
-     *
      * @return Collection<int, PostDTO>
      */
-    public function get(array $filters = [], array $with = []): Collection;
+    public function get(array $filters = []): Collection;
 
     /**
      * Obtiene resultados paginados de PostDTOs.
-     *
      * @return LengthAwarePaginator
      */
-    public function paginate(array $filters = [], array $with = [], int $perPage = 15): LengthAwarePaginator;
+    public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator;
 }

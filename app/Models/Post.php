@@ -7,7 +7,7 @@ use App\Enums\PostTemplate;
 use Idei\Usim\Enums\AspectRatio;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 
 /**
  * @property int $id
@@ -17,8 +17,8 @@ use Illuminate\Support\Carbon;
  * @property PostTemplate $template
  * @property AspectRatio $aspect_ratio
  * @property PostStatus $status
- * @property Carbon|null $from
- * @property Carbon|null $to
+ * @property CarbonImmutable|null $from
+ * @property CarbonImmutable|null $to
  * @property string|null $image
  * @property string|null $ai_script
  * @property string|null $reel_video
@@ -26,10 +26,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $ai_job_payload
  * @property string|null $reviewer_comment
  * @property int|null $reviewed_by
- * @property Carbon|null $reviewed_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * @property-read User $user
+ * @property CarbonImmutable|null $reviewed_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read User|null $author
  * @property-read User|null $reviewer
  */
@@ -72,10 +71,11 @@ class Post extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'template' => PostTemplate::DEFAULT,
-        'aspect_ratio' => AspectRatio::_16_9,
-        'status' => PostStatus::DRAFT,
+        'template' => PostTemplate::DEFAULT->value,
+        'aspect_ratio' => AspectRatio::_16_9->value,
+        'status' => PostStatus::DRAFT->value,
         'ai_job_status' => 'idle',
+        'ai_job_payload' => null,
     ];
 
     /**
@@ -89,20 +89,13 @@ class Post extends Model
             'template' => PostTemplate::class,
             'aspect_ratio' => AspectRatio::class,
             'status' => PostStatus::class,
-            'from' => 'datetime',
-            'to' => 'datetime',
-            'reviewed_at' => 'datetime',
+            'from' => 'immutable_datetime',
+            'to' => 'immutable_datetime',
+            'reviewed_at' => 'immutable_datetime',
+            'created_at' => 'immutable_datetime',
+            'updated_at' => 'immutable_datetime',
+            'ai_job_payload' => 'array',
         ];
-    }
-
-    /**
-     * Get the user that authored the post.
-     *
-     * @return BelongsTo<User, $this>
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**

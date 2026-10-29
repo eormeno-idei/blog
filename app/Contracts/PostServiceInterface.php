@@ -2,6 +2,8 @@
 
 namespace App\Contracts;
 
+use App\DTOs\Posts\PostDTO;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
 
 interface PostServiceInterface
@@ -9,58 +11,78 @@ interface PostServiceInterface
     /**
      * Obtiene los últimos posts ordenados por fecha descendente.
      *
-     * @param  int  $ownerId  El ID del propietario de los posts. Si es 0, se obtienen todos los posts.
-     * @param  string  $filter  Un filtro para buscar posts específicos.
-     * @return Collection<int, \stdClass> Una colección de objetos que representan los posts.
+     * @param  ?Authenticatable  $user  El usuario actual, o null si no hay usuario autenticado.
+     * @return Collection<int, PostDTO>
      */
-    public function getLatestPosts(int $ownerId = 0, string $filter = ''): Collection;
+    public function getLatestPosts(?Authenticatable $user): Collection;
 
     /**
-     * Busca un post por su ID.
-     */
-    public function findById(int $id): ?object;
-
-    /**
-     * Crea un nuevo post y devuelve su ID.
+     * Encuentra un post por su ID.
      *
-     * @param  array<string, mixed>  $data
+     * @param  int  $id
+     * @return ?PostDTO
+     */
+    public function findById(int $id): ?PostDTO;
+
+    /**
+     * Crea un nuevo post.
+     *
+     * @param  array  $data
+     * @return int  El ID del post creado.
      */
     public function createPost(array $data): int;
 
     /**
      * Verifica si el usuario actual es el propietario del post.
-     * 
-     * @param  \stdClass  $post  El objeto del post a verificar.
-     * @return bool  Verdadero si el usuario actual es el propietario del post, falso en caso contrario.
+     *
+     * @param  int  $id
+     * @param  Authenticatable  $user
+     * @return bool
      */
-    public function isCurrentUserOwner(\stdClass $post): bool;
+    public function isCurrentUserOwner(int $id, Authenticatable $user): bool;
 
     /**
      * Actualiza un post existente.
      *
-     * @param  array<string, mixed>  $data
+     * @param  int  $id
+     * @param  array  $data
+     * @return bool
      */
     public function updatePost(int $id, array $data): bool;
 
     /**
-     * Solicita modificaciones a un post dejando un comentario del revisor.
+     * Solicita cambios en un post.
+     *
+     * @param  int  $postId
+     * @param  int  $reviewerId
+     * @param  string  $comment
+     * @return bool
      */
     public function requestChanges(int $postId, int $reviewerId, string $comment): bool;
 
     /**
-     * Aprueba y publica un post revisado.
+     * Aprueba un post.
+     *
+     * @param  int  $postId
+     * @param  int  $reviewerId
+     * @return bool
      */
     public function approvePost(int $postId, int $reviewerId): bool;
 
     /**
-     * Archiva todos los posts publicados cuyo período de vigencia (to) ya finalizó.
+     * Archiva los posts que han expirado.
      *
-     * @return int Cantidad de posts archivados.
+     * @return int  El número de posts archivados.
      */
     public function archiveExpiredPosts(): int;
 
     /**
-     * Elimina un post por su ID.
+     * Elimina un post si el usuario actual es el propietario, o tiene permisos
+     * de administrador y el post no está publicado.
+     *
+     * @param  int  $id
+     * @param  Authenticatable  $user
+     * @return bool
      */
-    public function deletePost(int $id): bool;
+    public function deletePost(int $id, Authenticatable $user): bool;
 }
