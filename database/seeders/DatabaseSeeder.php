@@ -38,8 +38,6 @@ class DatabaseSeeder extends Seeder
             'content' => 'En USIM, el componente UI::uploader().',
             'image' => '',
             'aspect_ratio' => '16:9',
-            'background_color' => '#7c3aed',
-            'text_color' => '#ffffff',
             'status' => 'published',
         ]);
 
@@ -49,8 +47,6 @@ class DatabaseSeeder extends Seeder
             'content' => 'Esta aplicación muestra el flujo de roles.',
             'image' => '',
             'aspect_ratio' => '16:9',
-            'background_color' => '#facc15',
-            'text_color' => '#000000',
             'status' => 'published',
         ]);
     }

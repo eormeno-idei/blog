@@ -7,7 +7,6 @@ use App\Services\User\UserService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class DatabasePostService implements PostServiceInterface
 {
@@ -79,9 +78,6 @@ class DatabasePostService implements PostServiceInterface
             'title' => $this->nextPostTitle($data['user_id']),
             'content' => self::defaultPostTemplate()['content'],
             'image' => $data['image'] ?? null,
-            'background_color' => $data['background_color'] ?? '#32637b',
-            'text_color' => $data['text_color'] ?? '#000000',
-            'background_image' => $data['background_image'] ?? null,
             'aspect_ratio' => $data['aspect_ratio'] ?? '16:9',
             'from' => $data['from'] ?? null,
             'to' => $data['to'] ?? null,
@@ -140,9 +136,6 @@ class DatabasePostService implements PostServiceInterface
             'title',
             'content',
             'image',
-            'background_color',
-            'text_color',
-            'background_image',
             'aspect_ratio',
             'from',
             'to',
@@ -227,7 +220,7 @@ class DatabasePostService implements PostServiceInterface
 
     /**
      * Get the default template for a new post.
-     * 
+     *
      * @return array{title: string, content: string}
      */
     private static function defaultPostTemplate(): array
