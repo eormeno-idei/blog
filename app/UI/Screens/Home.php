@@ -23,6 +23,8 @@ use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
 use App\Services\User\UserService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class Home extends Screen
 {
@@ -105,27 +107,44 @@ class Home extends Screen
             ->alignItems(AlignItems::CENTER)
             ->gap(Spacing::px(10))
             ->plain()
-            ->shadow(false)
             ->padding(Spacing::zero());
 
-        if (! $user instanceof User) {
+        // if (! $user instanceof User) {
+        //     $actionsBox->add(
+        //         UI::button('btn_home_login')
+        //             ->label('🔑 Iniciar Sesión')
+        //             ->action('open_login')
+        //             ->style('primary')
+        //     );
+        //     $actionsBox->add(
+        //         UI::button('btn_home_register')
+        //             ->label('📝 Registrarse')
+        //             ->action('open_register')
+        //             ->style('secondary')
+        //     );
+
+        //     return $actionsBox;
+        // }
+
+        if (Login::checkAccess()['allowed'] === true) {
             $actionsBox->add(
-                UI::button('btn_home_login')
+                UI::button('btn_go_login')
                     ->label('🔑 Iniciar Sesión')
                     ->action('open_login')
                     ->style('primary')
             );
+        }
+
+        if (Register::checkAccess()['allowed'] === true) {
             $actionsBox->add(
-                UI::button('btn_home_register')
+                UI::button('btn_go_register')
                     ->label('📝 Registrarse')
                     ->action('open_register')
                     ->style('secondary')
             );
-
-            return $actionsBox;
         }
 
-        if ($this->userService->currentUserHasRole(['publisher', 'admin'])) {
+        if (PublishPost::checkAccess()['allowed'] === true) {
             $actionsBox->add(
                 UI::button('btn_go_publish')
                     ->label('✍️ Publicar Post')
@@ -134,7 +153,7 @@ class Home extends Screen
             );
         }
 
-        if ($this->userService->currentUserHasRole('admin')) {
+        if (UsersManager::checkAccess()['allowed'] === true) {
             $actionsBox->add(
                 UI::button('btn_go_users')
                     ->label('👥 Gestionar Usuarios')
@@ -142,6 +161,24 @@ class Home extends Screen
                     ->style('secondary')
             );
         }
+
+        // if ($this->userService->currentUserHasRole(['publisher', 'admin'])) {
+        //     $actionsBox->add(
+        //         UI::button('btn_go_publish')
+        //             ->label('✍️ Publicar Post')
+        //             ->action('go_to_publish')
+        //             ->style('primary')
+        //     );
+        // }
+
+        // if ($this->userService->currentUserHasRole('admin')) {
+        //     $actionsBox->add(
+        //         UI::button('btn_go_users')
+        //             ->label('👥 Gestionar Usuarios')
+        //             ->action('go_to_users')
+        //             ->style('secondary')
+        //     );
+        // }
 
         return $actionsBox;
     }
@@ -319,6 +356,7 @@ class Home extends Screen
             );
         }
 
+        $user = Auth::user();
         if ($isOwner) {
             $editLabel = ($post->status ?? '') === 'changes_requested' ? '✏️ Corregir' : '✏️';
             $postActionBox->add(
@@ -330,7 +368,7 @@ class Home extends Screen
             );
         }
 
-        if ($isAdmin || $isOwner) {
+        if (($user instanceOf User) && $user->can('delete', $post)) {
             $postActionBox->add(
                 UI::button("btn_delete_post_{$post->id}")
                     ->label('🗑️')
@@ -436,6 +474,10 @@ class Home extends Screen
             $this->postService->deletePost($request->getPostId(), Auth::user());
             $this->toast('Post eliminado correctamente.', 'success');
             $this->removePostCardFromContainer($request->getPostId());
+        } catch (ModelNotFoundException $e) {
+            $this->toast('No se encontró el post a eliminar.', 'error');
+        } catch (AuthorizationException $e) {
+            $this->toast($e->getMessage(), 'error');
         } catch (\RuntimeException $e) {
             $this->toast($e->getMessage(), 'error');
         } catch (\Throwable $e) {

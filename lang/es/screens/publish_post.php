@@ -1,6 +1,6 @@
 <?php
 
 return [
-    'menu_title' => 'Publish Post',
-    'icon' => '',
+    'menu_title' => 'Publicar',
+    'icon' => '📝',
 ];

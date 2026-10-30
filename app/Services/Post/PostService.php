@@ -161,7 +161,7 @@ class PostService implements PostServiceInterface
         $post = $this->postRepository->findById($id);
 
         if (!$post) {
-            throw new ModelNotFoundException("Post with ID {$id} not found.");
+            throw new ModelNotFoundException("No se encontró el post con ID {$id}.");
         }
 
         // Lanzará automáticamente una AuthorizationException (403) si falla la Policy

@@ -12,13 +12,13 @@ class PostPolicy
     public function delete(Authenticatable $user, PostDTO $post): Response
     {
         if (!method_exists($user, 'hasRole')) {
-            return Response::deny('User role checking method not found.');
+            return Response::deny('El método de verificación de rol de usuario no se encuentra.');
         }
 
         // Regla 1: No se puede borrar si está publicado
         // Evaluamos contra tu Enum moderno en lugar de un string mágico
         if ($post->status === PostStatus::PUBLISHED) {
-            return Response::deny('Cannot delete a published post.');
+            return Response::deny('No se puede borrar un post publicado.');
         }
 
         // Regla 2: Propietario o Admin
@@ -27,6 +27,6 @@ class PostPolicy
             return Response::allow();
         }
 
-        return Response::deny('User does not have permission to delete this post.');
+        return Response::deny('El usuario no tiene permiso para borrar este post.');
     }
 }

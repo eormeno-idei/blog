@@ -163,7 +163,6 @@ return [
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
-                'publish_post.access',
                 'posts.review',
                 'posts.delete',
                 'admin.users_manager.access',
@@ -184,7 +183,6 @@ return [
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
-                'publish_post.access',
                 'posts.review',
                 'posts.delete',
                 'admin.users_manager.access',
@@ -269,19 +267,11 @@ return [
                 ],
             ],
         ],
-        'publish_post.access' => [
-            'default_translations' => [
-                'es' => [
-                    'display_name' => 'Publicar Posts',
-                    'description' => 'Permite acceder a la pantalla de creación de posts.',
-                ],
-            ],
-        ],
         'posts.delete' => [
             'default_translations' => [
                 'es' => [
                     'display_name' => 'Eliminar Posts',
-                    'description' => 'Permite eliminar cualquier post publicado.',
+                    'description' => 'Permite eliminar posts.',
                 ],
             ],
         ],

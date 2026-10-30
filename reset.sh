@@ -20,13 +20,14 @@ if [[ "$env_db" == "mysql" ]]; then
     mysql -u "$user" -p"$pass" -e "DROP DATABASE IF EXISTS $db; CREATE DATABASE $db;"
 fi
 
-if [[ "$env_db" == "sqlite" ]]; then
+# if [[ "$env_db" == "sqlite" ]]; then
     # Remove the database
-    rm -f database/database.sqlite
-    echo "Removed SQLite database: database/database.sqlite"
-fi
+    # rm -f database/database.sqlite
+    # echo "Removed SQLite database: database/database.sqlite"
+# fi
 
-php artisan migrate --force
+# php artisan migrate --force
+php artisan migrate:fresh --seed --force
 
 php artisan usim:discover
 php artisan usim:sync

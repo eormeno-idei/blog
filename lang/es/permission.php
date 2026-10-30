@@ -115,12 +115,6 @@ return [
             'description' => 'Permite eliminar usuarios del sistema.',
         ],
     ],
-    'pepito' => [
-        'access' => [
-            'name' => 'Acceder a Pepito',
-            'description' => 'Permite acceder a la pantalla Pepito.',
-        ],
-    ],
     'home_stub' => [
         'access' => [
             'name' => 'Acceder a Home Stub',
@@ -136,11 +130,15 @@ return [
     'posts' => [
         'delete' => [
             'name' => 'Eliminar Posts',
-            'description' => 'Permite eliminar cualquier post publicado.',
+            'description' => 'Permite eliminar posts.',
         ],
         'review' => [
             'name' => 'Revisar Posts',
             'description' => 'Permite moderar, solicitar cambios y aprobar propuestas de publicación.',
+        ],
+        'publish' => [
+            'name' => 'Publicar Posts',
+            'description' => 'Permite publicar posts.',
         ],
     ],
     'post' => [

@@ -51,17 +51,9 @@ class PublishPost extends Screen
 
     public static function authorize(): bool
     {
-        return self::requireRole(['publisher', 'admin']);
-    }
-
-    public static function getMenuLabel(): string
-    {
-        return 'Publicar Post';
-    }
-
-    public static function getMenuIcon(): ?string
-    {
-        return '✍️';
+        //return self::requireRole(['publisher', 'admin']);
+        $screenAccessPermission = self::getScreenSlug() . '.access';
+        return self::requirePermission($screenAccessPermission);
     }
 
     protected function buildBaseUI(Container $container, ...$params): void
