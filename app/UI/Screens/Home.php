@@ -30,7 +30,7 @@ class Home extends Screen
 
     protected Container $posts_list_container;
 
-    protected Label $lbl_registered_message;
+    protected Label $lbl_home_title;
 
     public function __construct(
         protected UserService $userService,
@@ -84,27 +84,16 @@ class Home extends Screen
             ->padding(Spacing::zero());
 
         $titleBox->add(
-            $this->lbl_registered_message
-                ->text('')
-                ->style('h4')
+            $this->lbl_home_title = UI::label('lbl_home_title')
+                ->text('📰 Últimos Posts')
+                ->style('h3')
         );
 
         if ($user instanceof User && $user->isRegisteredInLobby()) {
-            $this->lbl_registered_message
-                ->text("{$user->name}, aún estás en sala de espera.");
+            $this->lbl_home_title
+                ->text("⏳ {$user->name}, aún estás en sala de espera.")
+                ->style('warning');
         }
-
-        $titleBox->add(
-            UI::label('lbl_home_title')
-                ->text('📰 Últimos Posts')
-                ->style('h2')
-        );
-
-        $titleBox->add(
-            UI::label('lbl_home_subtitle')
-                ->text($this->resolveRoleSubtitle($user))
-                ->style('p')
-        );
 
         return $titleBox;
     }
@@ -155,27 +144,6 @@ class Home extends Screen
         }
 
         return $actionsBox;
-    }
-
-    private function resolveRoleSubtitle(?User $user): string
-    {
-        if ($user === null) {
-            return 'Modo invitado (guest): visualiza las publicaciones recientes o inicia sesión para participar.';
-        }
-
-        if ($this->userService->currentUserHasRole('admin')) {
-            return "Conectado como {$user->name} (Administrador): puedes publicar posts, revisarlos, eliminarlos y gestionar usuarios.";
-        }
-
-        if ($this->userService->currentUserHasRole('reviewer')) {
-            return "Conectado como {$user->name} (Revisor): puedes inspeccionar propuestas de posts, dejar observaciones o aprobar su publicación.";
-        }
-
-        if ($this->userService->currentUserHasRole('publisher')) {
-            return "Conectado como {$user->name} (Publicador): puedes proponer nuevos posts y reels para revisión institucional.";
-        }
-
-        return "Conectado como {$user->name}.";
     }
 
     private function renderPostsList(): void
@@ -250,8 +218,15 @@ class Home extends Screen
 
         $postCard->add($this->buildPostCardHeader($post));
 
-        $authorName = (string) ($post->author_name ?? 'Autor');
-        $createdAt = ! empty($post->created_at) ? substr((string) $post->createdAt, 0, 10) : '';
+        $authorName = '';
+
+        if ($this->postService->isCurrentUserOwner($post->id, Auth::user())) {
+            $authorName = 'Tú';
+        } elseif ($post->author) {
+            $authorName = $post->author->name;
+        }
+
+        $createdAt = $post->createdAt->diffForHumans();
 
         $postCard->add(
             UI::label("post_meta_{$post->id}")
@@ -287,8 +262,8 @@ class Home extends Screen
 
         $postHeader->add(
             UI::label("post_title_{$post->id}")
-                ->text((string) $post->title)
-                ->style('h3')
+                ->text($post->title)
+                ->style('h4')
         );
 
         [$badgeText, $badgeStyle] = $this->resolveStatusBadge($post);
@@ -491,7 +466,9 @@ class Home extends Screen
     {
         $user = $params['user'] ?? null;
         if (is_object($user) && isset($user->name)) {
-            $this->lbl_registered_message->text("{$user->name}, aún estás en sala de espera.");
+            $this->lbl_home_title
+                ->text("{$user->name}, aún estás en sala de espera.")
+                ->style('warning');
         }
     }
 }
