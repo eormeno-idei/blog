@@ -12,9 +12,10 @@ interface PostServiceInterface
      * Obtiene los últimos posts ordenados por fecha descendente.
      *
      * @param  ?Authenticatable  $user  El usuario actual, o null si no hay usuario autenticado.
+     * @param  string  $filter  Filtro de búsqueda.
      * @return Collection<int, PostDTO>
      */
-    public function getLatestPosts(?Authenticatable $user): Collection;
+    public function getLatestPosts(?Authenticatable $user, string $filter = ''): Collection;
 
     /**
      * Encuentra un post por su ID.

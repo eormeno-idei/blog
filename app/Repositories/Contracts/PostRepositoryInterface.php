@@ -24,4 +24,11 @@ interface PostRepositoryInterface
      * @return LengthAwarePaginator
      */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator;
+
+    /**
+     * Obtiene un array con los títulos de los posts de un usuario que coincidan con un prefijo.
+     *
+     * @return array<int, string>
+     */
+    public function getTitlesByPrefix(int $userId, string $prefix): array;
 }

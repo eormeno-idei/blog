@@ -111,6 +111,14 @@ class EloquentPostRepository implements PostRepositoryInterface
         return $query;
     }
 
+    public function getTitlesByPrefix(int $userId, string $prefix): array
+    {
+        return Post::where('user_id', $userId)
+            ->where('title', 'like', "{$prefix}%")
+            ->pluck('title')
+            ->toArray();
+    }
+
     private function toUserDTO(?User $user): ?UserDTO
     {
         if (!$user) {
@@ -121,11 +129,13 @@ class EloquentPostRepository implements PostRepositoryInterface
             id: $user->id,
             name: $user->name,
             email: $user->email,
-            emailVerifiedAt: $user->email_verified_at,
-            termsAcceptedAt: $user->terms_accepted_at,
-            isRoot: $user->is_root,
-            isRegisteredInLobby: $user->is_registered_in_lobby,
-            displayName: $user->display_name,
+            emailVerifiedAt: $user->email_verified_at ? CarbonImmutable::parse($user->email_verified_at) : null,
+            termsAcceptedAt: $user->terms_accepted_at ? CarbonImmutable::parse($user->terms_accepted_at) : null,
+            isRoot: $user->isRoot(),
+            isRegisteredInLobby: $user->isRegisteredInLobby(),
+            displayName: $user->getDisplayName(),
+            createdAt: $user->created_at ? CarbonImmutable::parse($user->created_at) : null,
+            updatedAt: $user->updated_at ? CarbonImmutable::parse($user->updated_at) : null,
         );
     }
 }

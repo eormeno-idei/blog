@@ -26,5 +26,8 @@ readonly class UserDTO
 
         public ?Collection $globalRoles = null,
         public ?Collection $usimUnits = null,
+
+        public ?CarbonImmutable $createdAt = null,
+        public ?CarbonImmutable $updatedAt = null,
     ) {}
 }
