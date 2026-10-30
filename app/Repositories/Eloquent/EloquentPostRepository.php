@@ -80,14 +80,19 @@ class EloquentPostRepository implements PostRepositoryInterface
     public function get(array $filters = []): Collection
     {
         $query = $this->buildFilterQuery($filters);
-        return $query->get()->map(fn(Post $post) => $this->toDTO($post));
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Post> $posts */
+        $posts = $query->get();
+
+        return $posts->map(fn(Post $post) => $this->toDTO($post));
     }
 
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = $this->buildFilterQuery($filters);
         $paginator = $query->paginate($perPage);
-        $paginator->getCollection()->transform(fn(Post $post) => $this->toDTO($post));
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Post> $posts */
+        $posts = $paginator->getCollection();
+        $posts->transform(fn(Post $post) => $this->toDTO($post));
 
         return $paginator;
     }
