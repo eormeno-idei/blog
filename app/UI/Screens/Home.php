@@ -3,6 +3,7 @@
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
+use App\DTOs\Posts\PostDTO;
 use App\Http\Requests\PostIdRequest;
 use App\Models\User;
 use App\UI\Screens\Admin\UsersManager;
@@ -181,7 +182,7 @@ class Home extends Screen
     {
         $this->posts_list_container->clear();
 
-        $posts = $this->postService->getLatestPosts();
+        $posts = $this->postService->getLatestPosts(Auth::user());
 
         if ($posts->isEmpty()) {
             $this->posts_list_container->add($this->buildEmptyPostsCard());
@@ -194,7 +195,7 @@ class Home extends Screen
         $dim = AspectRatio::_16_9->dimensionsFor(width: 240);
         $height = Size::px($dim[1] + 40);
 
-        /** @var \stdClass $post */
+        /** @var PostDTO $post */
         foreach ($posts as $post) {
             $this->posts_list_container->add(
                 $this->buildPostCard($post, $height, $isAdmin, $isReviewer)
@@ -219,9 +220,9 @@ class Home extends Screen
         return $emptyCard;
     }
 
-    private function buildPostCard(\stdClass $post, Size $imageHeight, bool $isAdmin, bool $isReviewer): Container
+    private function buildPostCard(PostDTO $post, Size $imageHeight, bool $isAdmin, bool $isReviewer): Container
     {
-        $isOwner = $this->postService->isCurrentUserOwner($post);
+        $isOwner = $this->postService->isCurrentUserOwner($post->id, Auth::user());
         $backgroundColor = $post->background_color ?? '#7c3aed';
         $textColor = $post->text_color ?? '#ffffff';
 
@@ -250,7 +251,7 @@ class Home extends Screen
         $postCard->add($this->buildPostCardHeader($post));
 
         $authorName = (string) ($post->author_name ?? 'Autor');
-        $createdAt = ! empty($post->created_at) ? substr((string) $post->created_at, 0, 10) : '';
+        $createdAt = ! empty($post->created_at) ? substr((string) $post->createdAt, 0, 10) : '';
 
         $postCard->add(
             UI::label("post_meta_{$post->id}")
@@ -262,7 +263,7 @@ class Home extends Screen
         if (! empty($post->reviewer_comment) && ($isOwner || $isReviewer)) {
             $postCard->add(
                 UI::label("post_review_note_{$post->id}")
-                    ->text('💬 Obs: ' . (string) $post->reviewer_comment)
+                    ->text('💬 Obs: ' . (string) $post->reviewerComment)
                     ->style('warning')
                     ->size('small')
             );
@@ -273,7 +274,7 @@ class Home extends Screen
         return $postCard;
     }
 
-    private function buildPostCardHeader(\stdClass $post): Container
+    private function buildPostCardHeader(PostDTO $post): Container
     {
         $postHeader = UI::container("post_header_{$post->id}")
             ->layout(LayoutType::HORIZONTAL)
@@ -306,9 +307,9 @@ class Home extends Screen
     /**
      * @return array{0: string, 1: string}
      */
-    private function resolveStatusBadge(\stdClass $post): array
+    private function resolveStatusBadge(PostDTO $post): array
     {
-        $status = (string) ($post->status ?? 'draft');
+        $status = (string) ($post->status->value ?? 'draft');
         $jobStatus = (string) ($post->ai_job_status ?? 'idle');
 
         if ($status === 'draft' && in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
@@ -324,7 +325,7 @@ class Home extends Screen
         };
     }
 
-    private function buildPostCardActions(\stdClass $post, bool $isOwner, bool $isAdmin, bool $isReviewer): Container
+    private function buildPostCardActions(PostDTO $post, bool $isOwner, bool $isAdmin, bool $isReviewer): Container
     {
         $postActionBox = UI::container("post_action_box_{$post->id}")
             ->layout(LayoutType::HORIZONTAL)
@@ -388,7 +389,7 @@ class Home extends Screen
      */
     public function onGoToPublish(array $params): void
     {
-        if ($this->postService->getLatestPosts()->isEmpty()) {
+        if ($this->postService->getLatestPosts(Auth::user())->isEmpty()) {
             $this->posts_list_container->clear();
         }
 
@@ -457,7 +458,7 @@ class Home extends Screen
     public function onDeletePost(PostIdRequest $request): void
     {
         try {
-            $this->postService->deletePost($request->getPostId());
+            $this->postService->deletePost($request->getPostId(), Auth::user());
             $this->toast('Post eliminado correctamente.', 'success');
             $this->removePostCardFromContainer($request->getPostId());
         } catch (\RuntimeException $e) {

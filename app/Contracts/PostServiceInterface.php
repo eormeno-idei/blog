@@ -37,10 +37,10 @@ interface PostServiceInterface
      * Verifica si el usuario actual es el propietario del post.
      *
      * @param  int  $id
-     * @param  Authenticatable  $user
+     * @param  ?Authenticatable  $user
      * @return bool
      */
-    public function isCurrentUserOwner(int $id, Authenticatable $user): bool;
+    public function isCurrentUserOwner(int $id, ?Authenticatable $user): bool;
 
     /**
      * Actualiza un post existente.

@@ -89,8 +89,12 @@ class PostService implements PostServiceInterface
         return $postDto->id;
     }
 
-    public function isCurrentUserOwner(int $id, Authenticatable $user): bool
+    public function isCurrentUserOwner(int $id, ?Authenticatable $user): bool
     {
+        if (!$user) {
+            return false;
+        }
+
         $post = $this->findById($id);
 
         if (!$post) {
