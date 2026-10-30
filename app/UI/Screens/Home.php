@@ -109,23 +109,6 @@ class Home extends Screen
             ->plain()
             ->padding(Spacing::zero());
 
-        // if (! $user instanceof User) {
-        //     $actionsBox->add(
-        //         UI::button('btn_home_login')
-        //             ->label('🔑 Iniciar Sesión')
-        //             ->action('open_login')
-        //             ->style('primary')
-        //     );
-        //     $actionsBox->add(
-        //         UI::button('btn_home_register')
-        //             ->label('📝 Registrarse')
-        //             ->action('open_register')
-        //             ->style('secondary')
-        //     );
-
-        //     return $actionsBox;
-        // }
-
         if (Login::checkAccess()['allowed'] === true) {
             $actionsBox->add(
                 UI::button('btn_go_login')
@@ -161,24 +144,6 @@ class Home extends Screen
                     ->style('secondary')
             );
         }
-
-        // if ($this->userService->currentUserHasRole(['publisher', 'admin'])) {
-        //     $actionsBox->add(
-        //         UI::button('btn_go_publish')
-        //             ->label('✍️ Publicar Post')
-        //             ->action('go_to_publish')
-        //             ->style('primary')
-        //     );
-        // }
-
-        // if ($this->userService->currentUserHasRole('admin')) {
-        //     $actionsBox->add(
-        //         UI::button('btn_go_users')
-        //             ->label('👥 Gestionar Usuarios')
-        //             ->action('go_to_users')
-        //             ->style('secondary')
-        //     );
-        // }
 
         return $actionsBox;
     }

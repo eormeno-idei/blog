@@ -4,6 +4,7 @@ namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
 use App\Http\Requests\PostRequest;
+use App\DTOs\Posts\PostDTO;
 use App\Models\User;
 use App\UI\Screens\Concerns\InteractsWithReelStudio;
 use Idei\Usim\Components\Button;
@@ -51,7 +52,6 @@ class PublishPost extends Screen
 
     public static function authorize(): bool
     {
-        //return self::requireRole(['publisher', 'admin']);
         $screenAccessPermission = self::getScreenSlug() . '.access';
         return self::requirePermission($screenAccessPermission);
     }
@@ -67,7 +67,7 @@ class PublishPost extends Screen
             $this->state_post_id = $explicitPostId;
         }
 
-        /** @var \stdClass|null $post */
+        /** @var PostDTO|null $post */
         $post = $this->resolvePost($explicitPostId > 0);
         if ($explicitPostId > 0 && $post === null) {
             $this->toast('Post no encontrado.', 'error');
@@ -94,7 +94,7 @@ class PublishPost extends Screen
         $this->restoreReelStudioFromPost($post);
     }
 
-    private function resolvePost(bool $isExplicit = false): ?object
+    private function resolvePost(bool $isExplicit = false): ?PostDTO
     {
         if ($this->state_post_id > 0) {
             $existing = $this->postService->findById($this->state_post_id);
@@ -115,7 +115,7 @@ class PublishPost extends Screen
         return is_numeric($candidate) && (int) $candidate > 0 ? (int) $candidate : 0;
     }
 
-    private function buildReviewerCommentAlert(object $post): Container
+    private function buildReviewerCommentAlert(PostDTO $post): Container
     {
         $reviewerName = (string) ($post->reviewer_name ?? 'Revisor');
         $comment = (string) ($post->reviewer_comment ?? '');
@@ -165,7 +165,7 @@ class PublishPost extends Screen
         return $header;
     }
 
-    private function buildFormColumn(\stdClass $post): Container
+    private function buildFormColumn(PostDTO $post): Container
     {
         $formCard = UI::container('publish_form_card')
             ->width(Size::full())
