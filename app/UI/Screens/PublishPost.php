@@ -329,7 +329,7 @@ class PublishPost extends Screen
         $targetPostId = $this->resolveCandidatePostId($request->all());
         if ($targetPostId > 0) {
             $this->state_post_id = $targetPostId;
-            $this->postService->updatePost($targetPostId, $payload);
+            $this->postService->updatePost($targetPostId, $payload, $user);
         } else {
             $this->state_post_id = $this->postService->createPost($payload);
         }
@@ -381,7 +381,7 @@ class PublishPost extends Screen
             $this->state_post_id = $targetPostId;
             $this->postService->updatePost($targetPostId, [
                 'title' => $value !== '' ? $value : 'Borrador sin título',
-            ]);
+            ], Auth::user());
         }
     }
 
@@ -399,7 +399,7 @@ class PublishPost extends Screen
             $this->state_post_id = $targetPostId;
             $this->postService->updatePost($targetPostId, [
                 'content' => $value,
-            ]);
+            ], Auth::user());
         }
     }
 }

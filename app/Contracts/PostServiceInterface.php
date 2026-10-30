@@ -5,6 +5,8 @@ namespace App\Contracts;
 use App\DTOs\Posts\PostDTO;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 interface PostServiceInterface
 {
@@ -47,35 +49,39 @@ interface PostServiceInterface
      *
      * @param  int  $id
      * @param  array  $data
+     * @param  ?Authenticatable  $user
+     * @throws ModelNotFoundException
+     * @throws AuthorizationException
      * @return bool
      */
-    public function updatePost(int $id, array $data): bool;
+    public function updatePost(int $id, array $data, ?Authenticatable $user): bool;
 
     /**
      * Solicita cambios en un post.
      *
      * @param  int  $postId
-     * @param  int  $reviewerId
+     * @param  Authenticatable  $reviewer
      * @param  string  $comment
      * @return bool
      */
-    public function requestChanges(int $postId, int $reviewerId, string $comment): bool;
+    public function requestChanges(int $postId, Authenticatable $reviewer, string $comment): bool;
 
     /**
      * Aprueba un post.
      *
      * @param  int  $postId
-     * @param  int  $reviewerId
+     * @param  Authenticatable  $reviewer
      * @return bool
      */
-    public function approvePost(int $postId, int $reviewerId): bool;
+    public function approvePost(int $postId, Authenticatable $reviewer): bool;
 
     /**
      * Archiva los posts que han expirado.
      *
+     * @param  Authenticatable  $user  El usuario que realiza la acción.
      * @return int  El número de posts archivados.
      */
-    public function archiveExpiredPosts(): int;
+    public function archiveExpiredPosts(Authenticatable $user): int;
 
     /**
      * Elimina un post si el usuario actual es el propietario, o tiene permisos
@@ -83,6 +89,8 @@ interface PostServiceInterface
      *
      * @param  int  $id
      * @param  Authenticatable  $user
+     * @throws ModelNotFoundException
+     * @throws AuthorizationException
      * @return bool
      */
     public function deletePost(int $id, Authenticatable $user): bool;

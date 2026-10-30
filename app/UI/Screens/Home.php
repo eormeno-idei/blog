@@ -357,7 +357,18 @@ class Home extends Screen
         }
 
         $user = Auth::user();
-        if ($isOwner) {
+        // if ($isOwner) {
+        //     $editLabel = ($post->status ?? '') === 'changes_requested' ? '✏️ Corregir' : '✏️';
+        //     $postActionBox->add(
+        //         UI::button("btn_edit_post_{$post->id}")
+        //             ->label($editLabel)
+        //             ->action('edit_post', ['post_id' => (int) $post->id])
+        //             ->style('secondary')
+        //             ->size('small')
+        //     );
+        // }
+
+        if (($user instanceOf User) && $user->can('update', $post)) {
             $editLabel = ($post->status ?? '') === 'changes_requested' ? '✏️ Corregir' : '✏️';
             $postActionBox->add(
                 UI::button("btn_edit_post_{$post->id}")

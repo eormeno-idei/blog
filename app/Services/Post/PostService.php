@@ -104,38 +104,49 @@ class PostService implements PostServiceInterface
         return $user->getAuthIdentifier() === $post->author->id;
     }
 
-    public function updatePost(int $id, array $data): bool
+    /**
+     * @inheritDoc
+     */
+    public function updatePost(int $id, array $data, ?Authenticatable $user): bool
     {
+        $post = $this->postRepository->findById($id);
+
+        if (!$post) {
+            throw new ModelNotFoundException("No se encontró el post con ID {$id}.");
+        }
+
+        Gate::forUser($user)->authorize('update', $post);
+
         $post = $this->postRepository->update($id, $data);
 
         return $post !== null;
     }
 
-    public function requestChanges(int $postId, int $reviewerId, string $comment): bool
+    public function requestChanges(int $postId, ?Authenticatable $reviewer, string $comment): bool
     {
         $data = [
             'status' => PostStatus::CHANGES_REQUESTED->value,
             'reviewer_comment' => $comment,
-            'reviewed_by' => $reviewerId,
+            'reviewed_by' => $reviewer?->getAuthIdentifier(),
             'reviewed_at' => CarbonImmutable::now(),
         ];
 
-        return $this->updatePost($postId, $data);
+        return $this->updatePost($postId, $data, $reviewer);
     }
 
-    public function approvePost(int $postId, int $reviewerId): bool
+    public function approvePost(int $postId, Authenticatable $reviewer): bool
     {
         $data = [
             'status' => PostStatus::PUBLISHED->value,
             'reviewer_comment' => null, // Limpiamos comentarios anteriores si los hubiera
-            'reviewed_by' => $reviewerId,
+            'reviewed_by' => $reviewer?->getAuthIdentifier(),
             'reviewed_at' => CarbonImmutable::now(),
         ];
 
-        return $this->updatePost($postId, $data);
+        return $this->updatePost($postId, $data, $reviewer);
     }
 
-    public function archiveExpiredPosts(): int
+    public function archiveExpiredPosts(Authenticatable $user): int
     {
         // Obtenemos todos los posts publicados
         $publishedPosts = $this->postRepository->get(['status' => PostStatus::PUBLISHED->value]);
@@ -149,7 +160,7 @@ class PostService implements PostServiceInterface
         );
 
         foreach ($expiredPosts as $post) {
-            $this->updatePost($post->id, ['status' => PostStatus::ARCHIVED->value]);
+            $this->updatePost($post->id, ['status' => PostStatus::ARCHIVED->value], $user);
             $archivedCount++;
         }
 
