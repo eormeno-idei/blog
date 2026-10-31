@@ -50,11 +50,11 @@ class PublishPost extends Screen
         parent::__construct();
     }
 
-    public static function authorize(): bool
-    {
-        $screenAccessPermission = self::getScreenSlug() . '.access';
-        return self::requirePermission($screenAccessPermission);
-    }
+    // public static function authorize(): bool
+    // {
+    //     $screenAccessPermission = self::getScreenSlug() . '.access';
+    //     return self::requirePermission($screenAccessPermission);
+    // }
 
     protected function buildBaseUI(Container $container, ...$params): void
     {

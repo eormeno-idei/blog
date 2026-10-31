@@ -99,7 +99,7 @@ return [
             'email' => 'admin@example.com',
             'password' => '11111111',
             'unit_roles' => [
-                'lobby' => ['admin'],
+                'lobby' => ['admin', 'publisher', 'reviewer'],
             ],
         ],
 
@@ -183,10 +183,8 @@ return [
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
-                'posts.review',
-                'posts.delete',
+                'post.delete',
                 'admin.users_manager.access',
-                'manage.roles',
                 'create.users',
                 'remove.users',
             ],
@@ -203,7 +201,7 @@ return [
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
-                'posts.review',
+                'post.review_post.access',
             ],
         ],
 

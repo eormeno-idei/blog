@@ -10,7 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "idei/usim": "^1.5",
+        "idei/usim": "^2.0",
         "laravel/ai": "^1.3",
         "laravel/framework": "^13.0",
         "laravel/octane": "^2.17",

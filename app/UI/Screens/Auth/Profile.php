@@ -30,12 +30,6 @@ class Profile extends Screen
 
     protected ?Uploader $uploader_profile = null;
 
-    public static function authorize(): bool
-    {
-        // This screen should only be accessible to authenticated users
-        return self::requireAuth();
-    }
-
     public static function getMenuLabel(): string
     {
         return 'Mi Perfil';

@@ -2254,8 +2254,9 @@ class UIRenderer {
                 return;
             }
 
-            // Text (labels)
-            if (changes.text !== undefined) {
+            // Text (labels fallback when component does not handle its own update)
+            const handledByComponentUpdate = componentId && this.components && typeof this.components.get(String(componentId))?.update === 'function';
+            if (changes.text !== undefined && !handledByComponentUpdate) {
                 const text = normalizeTextLineBreaks(changes.text);
                 if (element.getAttribute('data-markdown') === '1') {
                     element.style.whiteSpace = 'normal';

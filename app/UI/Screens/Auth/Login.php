@@ -35,23 +35,6 @@ class Login extends Screen
 
     protected Label $lbl_login_result;
 
-    public static function authorize(): bool
-    {
-        // This screen should only be accessible to guests,
-        // i.e. users who are not authenticated.
-        return ! self::requireAuth();
-    }
-
-    public static function getMenuLabel(): string
-    {
-        return 'Iniciar Sesión';
-    }
-
-    public static function getMenuIcon(): ?string
-    {
-        return '🔑';
-    }
-
     protected function buildBaseUI(Container $container, ...$params): void
     {
         $email = '';

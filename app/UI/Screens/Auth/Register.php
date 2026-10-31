@@ -34,12 +34,6 @@ class Register extends Screen
 
     protected bool $state_ask_for_role = false;
 
-    public static function authorize(): bool
-    {
-        // Accessible to guests (users not authenticated) or admins managing users
-        return ! self::requireAuth() || self::requirePermission('admin.users_manager.access');
-    }
-
     public static function getMenuLabel(): string
     {
         return 'Registrarse';

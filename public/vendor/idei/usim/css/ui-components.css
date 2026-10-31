@@ -215,6 +215,12 @@ body {
     color: var(--ui-text);
 }
 
+.ui-label.primary {
+    background: var(--usim-label-primary-bg, rgba(59, 130, 246, 0.16));
+    color: var(--usim-label-primary-text, #2563eb);
+    border: 1px solid var(--usim-label-primary-border, rgba(59, 130, 246, 0.35));
+}
+
 .ui-label.success {
     background: var(--usim-label-success-bg, rgba(46, 204, 113, 0.16));
     color: var(--usim-label-success-text, #1d6f44);
@@ -227,7 +233,8 @@ body {
     border: 1px solid var(--usim-label-warning-border, rgba(243, 156, 18, 0.35));
 }
 
-.ui-label.error {
+.ui-label.error,
+.ui-label.danger {
     background: var(--usim-label-error-bg, rgba(231, 76, 60, 0.16));
     color: var(--usim-label-error-text, #8f2e22);
     border: 1px solid var(--usim-label-error-border, rgba(231, 76, 60, 0.35));
@@ -328,6 +335,124 @@ body {
 
 .ui-label.text-justify {
     text-align: justify;
+}
+
+/* NewLabel Variants, Sizes, Typography & Visual Effects */
+.ui-label.variant-badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.ui-label.variant-chip {
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-weight: 500;
+}
+
+.ui-label.variant-tag {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border-left-width: 3px;
+}
+
+.ui-label.variant-pill {
+    padding: 4px 14px;
+    border-radius: 9999px;
+}
+
+.ui-label.variant-outlined {
+    background: transparent !important;
+    border-width: 1.5px;
+    border-style: solid;
+}
+
+.ui-label.size-xs {
+    font-size: 0.72rem;
+    padding: 2px 6px;
+}
+
+.ui-label.size-small {
+    font-size: 0.82rem;
+    padding: 4px 8px;
+}
+
+.ui-label.size-medium {
+    font-size: 0.9rem;
+}
+
+.ui-label.size-large {
+    font-size: 1.1rem;
+    padding: 10px 14px;
+}
+
+.ui-label.size-xl {
+    font-size: 1.35rem;
+    padding: 12px 16px;
+}
+
+.ui-label.weight-light {
+    font-weight: 300;
+}
+
+.ui-label.weight-normal {
+    font-weight: 400;
+}
+
+.ui-label.weight-medium {
+    font-weight: 500;
+}
+
+.ui-label.weight-semibold {
+    font-weight: 600;
+}
+
+.ui-label.weight-bold {
+    font-weight: 700;
+}
+
+.ui-label.transform-uppercase {
+    text-transform: uppercase;
+}
+
+.ui-label.transform-lowercase {
+    text-transform: lowercase;
+}
+
+.ui-label.transform-capitalize {
+    text-transform: capitalize;
+}
+
+.ui-label.is-truncated {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.ui-label.is-clamped {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ui-label.is-block {
+    display: block;
+    width: 100%;
+}
+
+.ui-label.has-shadow {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.ui-label.has-glow {
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);
+}
+
+.ui-label .ui-label-icon {
+    display: inline-block;
+    margin: 0 6px;
 }
 
 /* Input Styles */

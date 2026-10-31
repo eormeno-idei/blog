@@ -6,25 +6,29 @@ use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
 use App\Http\Requests\PostIdRequest;
 use App\Models\User;
+use App\Services\User\UserService;
 use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\Login;
 use App\UI\Screens\Auth\Register;
 use App\UI\Screens\Post\ReviewPost;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Components\Label;
+use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\AspectRatio;
+use Idei\Usim\Enums\FontWeight;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
+use Idei\Usim\Enums\Style;
+use Idei\Usim\Enums\TextSize;
+use Idei\Usim\Enums\Variant;
 use Idei\Usim\Enums\Visibility;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use Illuminate\Support\Facades\Auth;
-use App\Services\User\UserService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
 
 class Home extends Screen
 {
@@ -32,7 +36,7 @@ class Home extends Screen
 
     protected Container $posts_list_container;
 
-    protected Label $lbl_home_title;
+    protected NewLabel $lbl_home_title;
 
     public function __construct(
         protected UserService $userService,
@@ -86,15 +90,19 @@ class Home extends Screen
             ->padding(Spacing::zero());
 
         $titleBox->add(
-            $this->lbl_home_title = UI::label('lbl_home_title')
+            $this->lbl_home_title = UI::newLabel('lbl_home_title')
                 ->text('📰 Últimos Posts')
-                ->style('h3')
+                ->style(Style::DEFAULT)
+                ->size(TextSize::XL)
+                ->bold()
         );
 
         if ($user instanceof User && $user->isRegisteredInLobby()) {
             $this->lbl_home_title
                 ->text("⏳ {$user->name}, aún estás en sala de espera.")
-                ->style('warning');
+                ->size(TextSize::LARGE)
+                ->bold()
+                ->style(Style::WARNING);
         }
 
         return $titleBox;
@@ -109,37 +117,49 @@ class Home extends Screen
             ->plain()
             ->padding(Spacing::zero());
 
-        if (Login::checkAccess()['allowed'] === true) {
+        if (Login::canAccess()) {
+            $loginLabel = Login::getMenuLabel();
+            $loginIcon = Login::getMenuIcon();
             $actionsBox->add(
                 UI::button('btn_go_login')
-                    ->label('🔑 Iniciar Sesión')
+                    ->label($loginLabel)
+                    ->icon($loginIcon)
                     ->action('open_login')
                     ->style('primary')
             );
         }
 
-        if (Register::checkAccess()['allowed'] === true) {
+        if (Register::canAccess()) {
+            $registerLabel = Register::getMenuLabel();
+            $registerIcon = Register::getMenuIcon();
             $actionsBox->add(
                 UI::button('btn_go_register')
-                    ->label('📝 Registrarse')
+                    ->label($registerLabel)
+                    ->icon($registerIcon)
                     ->action('open_register')
                     ->style('secondary')
             );
         }
 
-        if (PublishPost::checkAccess()['allowed'] === true) {
+        if (PublishPost::canAccess()) {
+            $publishLabel = PublishPost::getMenuLabel();
+            $publishIcon = PublishPost::getMenuIcon();
             $actionsBox->add(
                 UI::button('btn_go_publish')
-                    ->label('✍️ Publicar Post')
+                    ->label($publishLabel)
+                    ->icon($publishIcon)
                     ->action('go_to_publish')
                     ->style('primary')
             );
         }
 
-        if (UsersManager::checkAccess()['allowed'] === true) {
+        if (UsersManager::canAccess()) {
+            $usersLabel = UsersManager::getMenuLabel();
+            $usersIcon = UsersManager::getMenuIcon();
             $actionsBox->add(
                 UI::button('btn_go_users')
-                    ->label('👥 Gestionar Usuarios')
+                    ->label($usersLabel)
+                    ->icon($usersIcon)
                     ->action('go_to_users')
                     ->style('secondary')
             );
@@ -181,9 +201,11 @@ class Home extends Screen
             ->alignItems(AlignItems::CENTER);
 
         $emptyCard->add(
-            UI::label('lbl_no_posts')
+            UI::newLabel('lbl_no_posts')
                 ->text('Aún no hay posts publicados.')
-                ->style('h3')
+                ->size(TextSize::XL)
+                ->style(Style::DEFAULT)
+                ->fontWeight(FontWeight::LIGHT)
                 ->center()
         );
 
@@ -231,18 +253,18 @@ class Home extends Screen
         $createdAt = $post->createdAt->diffForHumans();
 
         $postCard->add(
-            UI::label("post_meta_{$post->id}")
+            UI::newLabel("post_meta_{$post->id}")
                 ->text("Autor: {$authorName} • {$createdAt}")
-                ->size('small')
-                ->style('muted')
+                ->size(TextSize::SMALL)
+                ->style(Style::MUTED)
         );
 
         if (! empty($post->reviewer_comment) && ($isOwner || $isReviewer)) {
             $postCard->add(
-                UI::label("post_review_note_{$post->id}")
+                UI::newLabel("post_review_note_{$post->id}")
                     ->text('💬 Obs: ' . (string) $post->reviewerComment)
-                    ->style('warning')
-                    ->size('small')
+                    ->style(Style::WARNING)
+                    ->size(TextSize::SMALL)
             );
         }
 
@@ -263,18 +285,19 @@ class Home extends Screen
             ->gap(Spacing::px(6));
 
         $postHeader->add(
-            UI::label("post_title_{$post->id}")
+            UI::newLabel("post_title_{$post->id}")
                 ->text($post->title)
-                ->style('h4')
+                ->style(Style::INFO)
+                ->size(TextSize::LARGE)
         );
 
         [$badgeText, $badgeStyle] = $this->resolveStatusBadge($post);
 
-        $statusBadge = UI::label("post_status_{$post->id}")
+        $statusBadge = UI::newLabel("post_status_{$post->id}")
             ->text($badgeText)
-            ->variant('badge')
+            ->variant(Variant::BADGE)
             ->style($badgeStyle)
-            ->size('xs');
+            ->size(TextSize::SMALL);
 
         $postHeader->add($statusBadge);
 
@@ -322,16 +345,6 @@ class Home extends Screen
         }
 
         $user = Auth::user();
-        // if ($isOwner) {
-        //     $editLabel = ($post->status ?? '') === 'changes_requested' ? '✏️ Corregir' : '✏️';
-        //     $postActionBox->add(
-        //         UI::button("btn_edit_post_{$post->id}")
-        //             ->label($editLabel)
-        //             ->action('edit_post', ['post_id' => (int) $post->id])
-        //             ->style('secondary')
-        //             ->size('small')
-        //     );
-        // }
 
         if (($user instanceOf User) && $user->can('update', $post)) {
             $editLabel = ($post->status ?? '') === 'changes_requested' ? '✏️ Corregir' : '✏️';
