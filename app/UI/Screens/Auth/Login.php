@@ -192,6 +192,8 @@ class Login extends Screen
 
         if ($this->isOpenedAsModal()) {
             $this->closeModal();
+
+            return;
         }
 
         /** @var class-string<Screen>|string|null $homeScreen */

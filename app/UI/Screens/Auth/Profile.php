@@ -30,21 +30,16 @@ class Profile extends Screen
 
     protected ?Uploader $uploader_profile = null;
 
-    public static function getMenuLabel(): string
+    public static function authorize(): bool
     {
-        return 'Mi Perfil';
-    }
-
-    public static function getMenuIcon(): ?string
-    {
-        return '👤';
+        return self::requireAuth();
     }
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
         $user = Auth::user();
 
-        if (! $user instanceof User) {
+        if (!$user instanceof User) {
             $wrapper = UI::container('profile_wrapper')
                 ->maxWidth(Size::px(600))
                 ->centerHorizontal()
@@ -200,7 +195,7 @@ class Profile extends Screen
     {
         $user = Auth::user();
 
-        if (! $user instanceof User || $this->input_email === null || $this->input_name === null || $this->uploader_profile === null) {
+        if (!$user instanceof User || $this->input_email === null || $this->input_name === null || $this->uploader_profile === null) {
             return;
         }
 
@@ -210,7 +205,7 @@ class Profile extends Screen
         $this->input_email->value((string) $user->email);
         $this->input_name->value($user->name ?? '');
 
-        if (! $user->email_verified_at) {
+        if (!$user->email_verified_at) {
             $this->input_email->error(t('screens.auth.profile.email.not_verified'));
         } else {
             $this->input_email->error(null);
@@ -220,7 +215,7 @@ class Profile extends Screen
 
         // Actualizar uploader con imagen actual (si existe)
         if (\is_string($profileImage) && $profileImage !== '') {
-            $imageUrl = UploadService::fileUrl("uploads/images/{$profileImage}").'?t='.time();
+            $imageUrl = UploadService::fileUrl("uploads/images/{$profileImage}") . '?t=' . time();
         }
 
         $this->uploader_profile->existingFile($imageUrl);
@@ -236,7 +231,7 @@ class Profile extends Screen
             /** @var User|null $user */
             $user = Auth::user();
 
-            if (! $user instanceof User || $this->input_name === null || $this->uploader_profile === null) {
+            if (!$user instanceof User || $this->input_name === null || $this->uploader_profile === null) {
                 $this->toast(t('screens.auth.profile.toast.unauthenticated'), 'error');
 
                 return;
@@ -277,7 +272,7 @@ class Profile extends Screen
             // Mostrar éxito
             $this->toast(t('screens.auth.profile.toast.updated'), 'success');
         } catch (\Throwable $e) {
-            Log::error('Error saving profile: '.$e->getMessage()."\n".$e->getTraceAsString());
+            Log::error('Error saving profile: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->toast(t('screens.auth.profile.toast.save_error', ['message' => $e->getMessage()]), 'error');
         }
     }
@@ -311,7 +306,7 @@ class Profile extends Screen
     {
         $user = Auth::user();
 
-        if (! $user instanceof User) {
+        if (!$user instanceof User) {
             return;
         }
 

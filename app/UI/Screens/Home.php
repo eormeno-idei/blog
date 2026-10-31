@@ -97,14 +97,6 @@ class Home extends Screen
                 ->bold()
         );
 
-        if ($user instanceof User && $user->isRegisteredInLobby()) {
-            $this->lbl_home_title
-                ->text("⏳ {$user->name}, aún estás en sala de espera.")
-                ->size(TextSize::LARGE)
-                ->bold()
-                ->style(Style::WARNING);
-        }
-
         return $titleBox;
     }
 
@@ -487,19 +479,6 @@ class Home extends Screen
 
         if ($this->posts_list_container->count() === 0) {
             $this->posts_list_container->add($this->buildEmptyPostsCard());
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    public function onUpdatedProfile(array $params): void
-    {
-        $user = $params['user'] ?? null;
-        if (is_object($user) && isset($user->name)) {
-            $this->lbl_home_title
-                ->text("{$user->name}, aún estás en sala de espera.")
-                ->style('warning');
         }
     }
 }

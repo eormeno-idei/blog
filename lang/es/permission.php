@@ -149,4 +149,10 @@ return [
             ],
         ],
     ],
+    'registered_home' => [
+        'access' => [
+            'name' => 'Acceder a Registered Home',
+            'description' => 'Permite acceder a la pantalla Registered Home.',
+        ],
+    ],
 ];

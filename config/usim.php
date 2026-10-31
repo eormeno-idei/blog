@@ -3,6 +3,7 @@
 use App\Models\Device;
 use App\Models\User;
 use App\UI\Screens\Home;
+use App\UI\Screens\RegisteredHome;
 
 return [
 
@@ -228,9 +229,9 @@ return [
                 ],
             ],
             'priority' => 5,
-            'home_screen' => Home::class,
+            'home_screen' => RegisteredHome::class,
             'permissions' => [
-                'home.access',
+                'registered_home.access',
             ],
         ],
     ],
