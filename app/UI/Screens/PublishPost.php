@@ -50,12 +50,6 @@ class PublishPost extends Screen
         parent::__construct();
     }
 
-    // public static function authorize(): bool
-    // {
-    //     $screenAccessPermission = self::getScreenSlug() . '.access';
-    //     return self::requirePermission($screenAccessPermission);
-    // }
-
     protected function buildBaseUI(Container $container, ...$params): void
     {
         $rawPostId = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? null;
@@ -372,17 +366,19 @@ class PublishPost extends Screen
      */
     public function onTitleSaved(array $params): void
     {
-        $rawValue = $params['value'] ?? $params['post_title'] ?? '';
-        $value = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
-        $this->post_title->value($value);
+        $post = $this->postService->findById($this->state_post_id);
+        if ($post === null) {
+            $this->toast('No se pudo guardar el título: Post no encontrado.', 'error');
+            return;
+        }
 
-        $targetPostId = $this->resolveCandidatePostId($params);
-        if ($targetPostId > 0) {
-            $this->state_post_id = $targetPostId;
-            $this->postService->updatePost($targetPostId, [
-                'title' => $value !== '' ? $value : 'Borrador sin título',
+        $newTitle = trim($params['value']);
+        if ($newTitle !== '') {
+            $this->postService->updatePost($this->state_post_id, [
+                'title' => $newTitle,
             ], Auth::user());
         }
+
     }
 
     /**

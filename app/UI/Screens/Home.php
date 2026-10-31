@@ -222,7 +222,7 @@ class Home extends Screen
             UI::image("post_img_{$post->id}")
                 ->src($post->image ?? '')
                 ->storage('uploads/images')
-                ->alt((string) $post->title)
+                ->alt($post->title)
                 ->width(Size::full())
                 ->height($imageHeight)
                 ->objectFit('scale-down')
@@ -242,13 +242,15 @@ class Home extends Screen
             $authorName = $post->author->name;
         }
 
-        $createdAt = $post->createdAt->diffForHumans();
+        $createdAt = $post->updatedAt->diffForHumans();
 
         $postCard->add(
             UI::newLabel("post_meta_{$post->id}")
-                ->text("Autor: {$authorName} • {$createdAt}")
+                ->text("**Autor:** {$authorName} • {$createdAt}")
                 ->size(TextSize::SMALL)
-                ->style(Style::MUTED)
+                ->fontWeight(FontWeight::LIGHT)
+                ->style(Style::DEFAULT)
+                ->markdown()
         );
 
         if (! empty($post->reviewer_comment) && ($isOwner || $isReviewer)) {
@@ -279,8 +281,9 @@ class Home extends Screen
         $postHeader->add(
             UI::newLabel("post_title_{$post->id}")
                 ->text($post->title)
-                ->style(Style::INFO)
+                ->style(Style::DEFAULT)
                 ->size(TextSize::LARGE)
+                ->bold()
         );
 
         [$badgeText, $badgeStyle] = $this->resolveStatusBadge($post);
