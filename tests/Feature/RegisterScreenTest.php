@@ -181,7 +181,7 @@ it('registers a guest user, starts session, stores token and navigates to home s
     $harness
         ->assertToast(t('service.auth.register.success'), 'success')
         ->assertStorageHas('store_token')
-        ->assertRedirect(Home::getRoutePath());
+        ->assertRedirect(\App\UI\Screens\RegisteredHome::getRoutePath());
 });
 
 it('creates a user from admin modal, dispatches user_created event, closes modal and preserves admin session', function () {

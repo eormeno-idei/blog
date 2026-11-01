@@ -33,6 +33,9 @@ interface PostServiceInterface
      * @param  array  $data
      * @return int  El ID del post creado.
      */
+    /**
+     * @param  array<string, mixed>  $data
+     */
     public function createPost(array $data): int;
 
     /**
@@ -48,13 +51,13 @@ interface PostServiceInterface
      * Actualiza un post existente.
      *
      * @param  int  $id
-     * @param  array  $data
+     * @param  array<string, mixed>  $data
      * @param  ?Authenticatable  $user
      * @throws ModelNotFoundException
      * @throws AuthorizationException
      * @return bool
      */
-    public function updatePost(int $id, array $data, ?Authenticatable $user): bool;
+    public function updatePost(int $id, array $data, ?Authenticatable $user = null): bool;
 
     /**
      * Solicita cambios en un post.

@@ -33,6 +33,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | UI Cache TTL
+    |--------------------------------------------------------------------------
+    | Tiempo de vida en segundos de la caché de estado de UI y pantallas abiertas.
+    | Un valor adecuado previene la expiración prematura de pantallas abiertas
+    | si el usuario pasa varios minutos en una pantalla antes de interactuar.
+    */
+    'ui_cache_ttl' => (int) env('USIM_UI_CACHE_TTL', 7200),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Name & API Base URL
     |--------------------------------------------------------------------------
     */
@@ -149,8 +159,8 @@ return [
     | Roles del sistema:
     | - guest: usuario no autenticado (por defecto cuando no ha iniciado sesión)
     | - registered: usuario recién registrado en espera de asignación de rol
-    | - publisher: usuario que puede crear y publicar posts
-    | - admin: usuario que puede eliminar posts y asignar roles (publisher/admin)
+    | - publisher: usuario que puede crear y publicar post
+    | - admin: usuario que puede eliminar post y asignar roles (publisher/admin)
     */
     'roles' => [
         'root' => [
@@ -164,8 +174,8 @@ return [
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
-                'posts.review',
-                'posts.delete',
+                'post.review',
+                'post.delete',
                 'admin.users_manager.access',
                 'manage.roles',
                 'create.users',
@@ -177,13 +187,14 @@ return [
             'default_translations' => [
                 'es' => [
                     'display_name' => 'Administrador',
-                    'description' => 'Puede eliminar posts y asignar el rol de publisher o admin a usuarios registrados.',
+                    'description' => 'Puede eliminar post y asignar el rol de publisher o admin a usuarios registrados.',
                 ],
             ],
             'priority' => 2,
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
+                'post.view.any',
                 'post.delete',
                 'admin.users_manager.access',
                 'create.users',
@@ -195,13 +206,15 @@ return [
             'default_translations' => [
                 'es' => [
                     'display_name' => 'Revisor',
-                    'description' => 'Puede revisar propuestas de posts, solicitar correcciones o aprobar su publicación.',
+                    'description' => 'Puede revisar propuestas de post, solicitar correcciones o aprobar su publicación.',
                 ],
             ],
             'priority' => 3,
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
+                'post.view.any',
+                'post.review',
                 'post.review_post.access',
             ],
         ],
@@ -210,13 +223,15 @@ return [
             'default_translations' => [
                 'es' => [
                     'display_name' => 'Publicador',
-                    'description' => 'Puede crear y publicar nuevos posts con imagen.',
+                    'description' => 'Puede crear y publicar nuevos post con imagen.',
                 ],
             ],
             'priority' => 4,
             'home_screen' => Home::class,
             'permissions' => [
                 'home.access',
+                'post.create',
+                'post.view.own',
                 'publish_post.access',
             ],
         ],
@@ -266,15 +281,31 @@ return [
                 ],
             ],
         ],
-        'posts.delete' => [
+        'post.view.any' => [
             'default_translations' => [
                 'es' => [
-                    'display_name' => 'Eliminar Posts',
-                    'description' => 'Permite eliminar posts.',
+                    'display_name' => 'Ver Todos los Posts',
+                    'description' => 'Permite ver todos los posts del sistema.',
                 ],
             ],
         ],
-        'posts.review' => [
+        'post.view.own' => [
+            'default_translations' => [
+                'es' => [
+                    'display_name' => 'Ver Propios Posts',
+                    'description' => 'Permite ver los posts creados por el usuario.',
+                ],
+            ],
+        ],
+        'post.delete' => [
+            'default_translations' => [
+                'es' => [
+                    'display_name' => 'Eliminar Posts',
+                    'description' => 'Permite eliminar post.',
+                ],
+            ],
+        ],
+        'post.review' => [
             'default_translations' => [
                 'es' => [
                     'display_name' => 'Revisar Posts',

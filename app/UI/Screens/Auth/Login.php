@@ -193,6 +193,12 @@ class Login extends Screen
         if ($this->isOpenedAsModal()) {
             $this->closeModal();
 
+            /** @var class-string<Screen>|string|null $homeScreen */
+            $homeScreen = $params['home_screen'] ?? null;
+            if (\is_string($homeScreen) && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
+                $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
+            }
+
             return;
         }
 

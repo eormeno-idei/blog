@@ -6,7 +6,7 @@ return [
         'name' => 'Raíz',
     ],
     'admin' => [
-        'description' => 'Puede eliminar posts y asignar el rol de publisher o admin a usuarios registrados.',
+        'description' => 'Puede eliminar post y asignar el rol de publisher o admin a usuarios registrados.',
         'name' => 'Administrador',
     ],
     'registered' => [
@@ -49,10 +49,10 @@ return [
     ],
     'publisher' => [
         'name' => 'Publicador',
-        'description' => 'Puede crear y publicar nuevos posts con imagen.',
+        'description' => 'Puede crear y publicar nuevos post con imagen.',
     ],
     'reviewer' => [
         'name' => 'Revisor',
-        'description' => 'Puede revisar propuestas de posts, solicitar correcciones o aprobar su publicación.',
+        'description' => 'Puede revisar propuestas de post, solicitar correcciones o aprobar su publicación.',
     ],
 ];

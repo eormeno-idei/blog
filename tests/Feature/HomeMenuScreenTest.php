@@ -29,9 +29,8 @@ it('renders home screen with expected core components for guests', function () {
         ->assertHasComponent('home_wrapper')
         ->assertHasComponent('home_header')
         ->assertHasComponent('lbl_home_title')
-        ->assertHasComponent('lbl_home_subtitle')
-        ->assertHasComponent('btn_home_login')
-        ->assertHasComponent('btn_home_register')
+        ->assertHasComponent('btn_go_login')
+        ->assertHasComponent('btn_go_register')
         ->assertHasComponent('posts_list_container')
         ->assertComponentText('lbl_home_title', '📰 Últimos Posts');
 });
@@ -47,8 +46,8 @@ it('renders home screen with publish and manage users actions for admin', functi
         ->assertHasComponent('btn_go_publish')
         ->assertHasComponent('btn_go_users');
 
-    expect($harness->findComponent('btn_home_login'))->toBeNull()
-        ->and($harness->findComponent('btn_home_register'))->toBeNull();
+    expect($harness->findComponent('btn_go_login'))->toBeNull()
+        ->and($harness->findComponent('btn_go_register'))->toBeNull();
 });
 
 it('shows waiting room message on home screen for user with only registered role in lobby', function () {
@@ -60,8 +59,8 @@ it('shows waiting room message on home screen for user with only registered role
         ->render(shouldReset: true);
 
     $harness->assertComponentText(
-        'lbl_registered_message',
-        "{$registeredUser->name}, aún estás en sala de espera."
+        'lbl_home_title',
+        "⏳ {$registeredUser->name}, aún estás en sala de espera."
     );
 });
 
@@ -70,13 +69,13 @@ it('opens Login and Register modals from Home guest buttons', function () {
 
     $loginHarness = ScreenTestHarness::for(Home::class)
         ->render(shouldReset: true)
-        ->click('btn_home_login');
+        ->click('btn_go_login');
 
     $loginHarness->assertModal(Login::class);
 
     $registerHarness = ScreenTestHarness::for(Home::class)
         ->render(shouldReset: true)
-        ->click('btn_home_register');
+        ->click('btn_go_register');
 
     $registerHarness->assertModal(Register::class);
 });

@@ -10,6 +10,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 class PostService implements PostServiceInterface
@@ -30,6 +31,8 @@ class PostService implements PostServiceInterface
             $filters['search'] = $filter;
         }
 
+        $user = $user ?? Auth::user();
+
         // 1. Caso Guest (Sin autenticar): Solo posts publicados
         if (!$user) {
             $filters['status'] = PostStatus::PUBLISHED->value;
@@ -39,22 +42,28 @@ class PostService implements PostServiceInterface
 
         /** @var \App\Models\User $user */
 
-        // 2. Caso Admin o Reviewer: Todos los posts enviados a revisión
-        if ($user->hasRole('admin') || $user->hasRole('reviewer')) {
-            $filters['status'] = PostStatus::PENDING_REVIEW->value;
+        // 2. Alcance global (Admin o Reviewer): Ver posts no draft de cualquier usuario + borradores propios
+        if ($user->can('post.view.any') || $user->can('post.review') || $user->hasRole(['admin', 'reviewer'])) {
+            $filters['own_drafts_only_user_id'] = $user->getAuthIdentifier();
+            return $this->fetchAndSortByUpdated($filters);
+        }
+
+        // 3. Alcance personal (Publisher)
+        if ($user->can('post.view.own')) {
+            $filters['user_id'] = $user->getAuthIdentifier();
 
             return $this->fetchAndSortByUpdated($filters);
         }
 
-        // 3. Caso Usuario Normal: Sus propios posts
-        $filters['user_id'] = $user->getAuthIdentifier();
-
+        // 4. Fallback (Usuario autenticado sin permisos de gestión): solo posts públicos
+        $filters['status'] = PostStatus::PUBLISHED->value;
         return $this->fetchAndSortByUpdated($filters);
     }
 
     /**
      * Helper privado para obtener y ordenar la colección.
      *
+     * @param array<string, mixed> $filters
      * @return Collection<int, PostDTO>
      */
     private function fetchAndSortByUpdated(array $filters): Collection
@@ -69,12 +78,22 @@ class PostService implements PostServiceInterface
 
     public function findById(int $id): ?PostDTO
     {
-        return $this->postRepository->findById($id);
+        $post = $this->postRepository->findById($id);
+        if ($post !== null && $post->to !== null && $post->to->isPast()) {
+            $currentStatus = is_string($post->status) ? $post->status : $post->status->value;
+            if ($currentStatus === PostStatus::PUBLISHED->value) {
+                $this->postRepository->update($id, ['status' => PostStatus::ARCHIVED->value]);
+
+                return $this->postRepository->findById($id);
+            }
+        }
+
+        return $post;
     }
 
     public function createPost(array $data): int
     {
-        $userId = $data['user_id'];
+        $userId = is_numeric($data['user_id'] ?? null) ? (int) $data['user_id'] : 0;
 
         if (empty($data['title'])) {
             $data['title'] = $this->nextPostTitle($userId);
@@ -101,13 +120,13 @@ class PostService implements PostServiceInterface
             return false;
         }
 
-        return $user->getAuthIdentifier() === $post->author->id;
+        return $user->getAuthIdentifier() === $post->author?->id;
     }
 
     /**
      * @inheritDoc
      */
-    public function updatePost(int $id, array $data, ?Authenticatable $user): bool
+    public function updatePost(int $id, array $data, ?Authenticatable $user = null): bool
     {
         $post = $this->postRepository->findById($id);
 
@@ -115,7 +134,10 @@ class PostService implements PostServiceInterface
             throw new ModelNotFoundException("No se encontró el post con ID {$id}.");
         }
 
-        Gate::forUser($user)->authorize('update', $post);
+        $user = $user ?? Auth::user();
+        if ($user !== null) {
+            Gate::forUser($user)->authorize('update', $post);
+        }
 
         $post = $this->postRepository->update($id, $data);
 
@@ -139,7 +161,7 @@ class PostService implements PostServiceInterface
         $data = [
             'status' => PostStatus::PUBLISHED->value,
             'reviewer_comment' => null, // Limpiamos comentarios anteriores si los hubiera
-            'reviewed_by' => $reviewer?->getAuthIdentifier(),
+            'reviewed_by' => $reviewer->getAuthIdentifier(),
             'reviewed_at' => CarbonImmutable::now(),
         ];
 
@@ -204,7 +226,7 @@ class PostService implements PostServiceInterface
 
         $maxNumber++;
 
-        return $maxNumber > 0 ? "{$defaultTitle} {$maxNumber}" : $defaultTitle;
+        return "{$defaultTitle} {$maxNumber}";
     }
 
     /**

@@ -28,6 +28,26 @@ class Register extends Screen
 
     public static Visibility $visibility = Visibility::GUEST;
 
+    /**
+     * @return array{allowed: bool, reason?: string}
+     */
+    public static function checkAccess(): array
+    {
+        if (! \Illuminate\Support\Facades\Auth::check()) {
+            return ['allowed' => true];
+        }
+
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if ($user instanceof User && ($user->can('admin.users_manager.access') || $user->hasRole('admin'))) {
+            return ['allowed' => true];
+        }
+
+        return [
+            'allowed' => false,
+            'reason' => 'Solo invitados o administradores pueden acceder al registro.',
+        ];
+    }
+
     protected Label $lbl_register_result;
 
     protected string $store_token = '';

@@ -288,6 +288,13 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     expect($approvedPost?->status)->toBe('published')
         ->and($approvedPost?->reviewer_comment)->toBeNull();
 
+    // Verificamos que Home lee correctamente el estado 'published' y muestra el badge '🟢 Publicado'
+    Auth::logout();
+    $homeGuestHarness = ScreenTestHarness::for(Home::class)->render(shouldReset: true);
+    $statusBadge = $homeGuestHarness->findComponent("post_status_{$createdPost->id}");
+    expect($statusBadge)->not->toBeNull()
+        ->and($statusBadge?->get('text'))->toBe('🟢 Publicado');
+
     // 6. Una vez vencida la fecha 'to', el post pasa automáticamente a 'archived'
     $postService->updatePost($createdPost->id, [
         'to' => now()->subDay()->toDateTimeString(),

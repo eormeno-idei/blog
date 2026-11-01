@@ -148,6 +148,24 @@ return [
                 'description' => 'Permite acceder a la pantalla Post Review Post.',
             ],
         ],
+        'view' => [
+            'any' => [
+                'name' => 'Ver Todos los Posts',
+                'description' => 'Permite ver todos los posts del sistema.',
+            ],
+            'own' => [
+                'name' => 'Ver Propios Posts',
+                'description' => 'Permite ver los posts creados por el usuario.',
+            ],
+        ],
+        'delete' => [
+            'name' => 'Eliminar Posts',
+            'description' => 'Permite eliminar post.',
+        ],
+        'review' => [
+            'name' => 'Revisar Posts',
+            'description' => 'Permite moderar, solicitar cambios y aprobar propuestas de publicación.',
+        ],
     ],
     'registered_home' => [
         'access' => [

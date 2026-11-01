@@ -67,7 +67,9 @@ class PostIdRequest extends UIRequest
      */
     public function getPostId(): int
     {
-        return (int) $this->input('post_id');
+        $id = $this->input('post_id');
+
+        return is_numeric($id) ? (int) $id : 0;
     }
 
     /**
@@ -80,7 +82,7 @@ class PostIdRequest extends UIRequest
         /** @var static $instance */
         $instance = app(static::class);
         $instance->initialize(
-            screen: $screen,
+            screen: $screen ?? Screen::make(\App\UI\Screens\Home::class),
             parameters: $parameters
         );
 

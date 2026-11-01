@@ -4,6 +4,7 @@ namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
+use App\Enums\PostStatus;
 use App\Http\Requests\PostIdRequest;
 use App\Models\User;
 use App\Services\User\UserService;
@@ -29,6 +30,7 @@ use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class Home extends Screen
 {
@@ -97,6 +99,12 @@ class Home extends Screen
                 ->bold()
         );
 
+        if ($user instanceof User && $user->isRegisteredInLobby()) {
+            $this->lbl_home_title
+                ->text("⏳ {$user->name}, aún estás en sala de espera.")
+                ->style(Style::WARNING);
+        }
+
         return $titleBox;
     }
 
@@ -109,52 +117,54 @@ class Home extends Screen
             ->plain()
             ->padding(Spacing::zero());
 
-        if (Login::canAccess()) {
-            $loginLabel = Login::getMenuLabel();
-            $loginIcon = Login::getMenuIcon();
-            $actionsBox->add(
-                UI::button('btn_go_login')
-                    ->label($loginLabel)
-                    ->icon($loginIcon)
+        if ($user === null) {
+            if (Login::canAccess()) {
+                $loginBtn = UI::button('btn_go_login')
+                    ->label(Login::getMenuLabel())
                     ->action('open_login')
-                    ->style('primary')
-            );
-        }
+                    ->style('primary');
+                $loginIcon = Login::getMenuIcon();
+                if ($loginIcon !== null) {
+                    $loginBtn->icon($loginIcon);
+                }
+                $actionsBox->add($loginBtn);
+            }
 
-        if (Register::canAccess()) {
-            $registerLabel = Register::getMenuLabel();
-            $registerIcon = Register::getMenuIcon();
-            $actionsBox->add(
-                UI::button('btn_go_register')
-                    ->label($registerLabel)
-                    ->icon($registerIcon)
+            if (Register::canAccess()) {
+                $registerBtn = UI::button('btn_go_register')
+                    ->label(Register::getMenuLabel())
                     ->action('open_register')
-                    ->style('secondary')
-            );
+                    ->style('secondary');
+                $registerIcon = Register::getMenuIcon();
+                if ($registerIcon !== null) {
+                    $registerBtn->icon($registerIcon);
+                }
+                $actionsBox->add($registerBtn);
+            }
         }
 
         if (PublishPost::canAccess()) {
-            $publishLabel = PublishPost::getMenuLabel();
+            $publishBtn = UI::button('btn_go_publish')
+                ->label(PublishPost::getMenuLabel())
+                ->action('go_to_publish')
+                ->style('primary');
             $publishIcon = PublishPost::getMenuIcon();
-            $actionsBox->add(
-                UI::button('btn_go_publish')
-                    ->label($publishLabel)
-                    ->icon($publishIcon)
-                    ->action('go_to_publish')
-                    ->style('primary')
-            );
+            if ($publishIcon !== null) {
+                $publishBtn->icon($publishIcon);
+            }
+            $actionsBox->add($publishBtn);
         }
 
         if (UsersManager::canAccess()) {
-            $usersLabel = UsersManager::getMenuLabel();
+            $usersBtn = UI::button('btn_go_users')
+                ->label(UsersManager::getMenuLabel())
+                ->action('go_to_users')
+                ->style('secondary');
             $usersIcon = UsersManager::getMenuIcon();
-            $actionsBox->add(
-                UI::button('btn_go_users')
-                    ->label($usersLabel)
-                    ->icon($usersIcon)
-                    ->action('go_to_users')
-                    ->style('secondary')
-            );
+            if ($usersIcon !== null) {
+                $usersBtn->icon($usersIcon);
+            }
+            $actionsBox->add($usersBtn);
         }
 
         return $actionsBox;
@@ -242,7 +252,7 @@ class Home extends Screen
             $authorName = $post->author->name;
         }
 
-        $createdAt = $post->updatedAt->diffForHumans();
+        $createdAt = $post->updatedAt?->diffForHumans() ?? $post->createdAt?->diffForHumans() ?? '';
 
         $postCard->add(
             UI::newLabel("post_meta_{$post->id}")
@@ -304,8 +314,9 @@ class Home extends Screen
      */
     private function resolveStatusBadge(PostDTO $post): array
     {
-        $status = (string) ($post->status->value ?? 'draft');
+        $status = is_string($post->status) ? $post->status : $post->status->value;
         $jobStatus = (string) ($post->ai_job_status ?? 'idle');
+        Log::info("Post ID: {$post->id}, Status: {$status}, AI Job Status: {$jobStatus}");
 
         if ($status === 'draft' && in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
             return ['⚙️ Procesando IA', 'info'];
@@ -329,7 +340,9 @@ class Home extends Screen
             ->gap(Spacing::px(6))
             ->padding(Spacing::zero());
 
-        if ($isReviewer && ($post->status ?? '') === 'pending_review' && ! $isOwner) {
+        $status = is_string($post->status) ? $post->status : $post->status->value;
+
+        if ($isReviewer && $status === 'pending_review' && ! $isOwner) {
             $postActionBox->add(
                 UI::button("btn_review_post_{$post->id}")
                     ->label('🔍 Revisar')
@@ -341,8 +354,8 @@ class Home extends Screen
 
         $user = Auth::user();
 
-        if (($user instanceOf User) && $user->can('update', $post)) {
-            $editLabel = ($post->status ?? '') === 'changes_requested' ? '✏️ Corregir' : '✏️';
+        if (($user instanceof User) && $user->can('update', $post)) {
+            $editLabel = $status === 'changes_requested' ? '✏️ Corregir' : '✏️';
             $postActionBox->add(
                 UI::button("btn_edit_post_{$post->id}")
                     ->label($editLabel)
@@ -391,13 +404,20 @@ class Home extends Screen
         }
 
         $user = Auth::user();
+        if ($user === null) {
+            return;
+        }
+
         $draftId = $this->postService->createPost([
-            'user_id' => (int) $user->id,
+            'user_id' => is_numeric($user->getAuthIdentifier()) ? (int) $user->getAuthIdentifier() : 0,
             'status' => 'draft',
             'from' => now()->format('Y-m-d'),
             'to' => now()->addDays(14)->format('Y-m-d'),
         ]);
         $post = $this->postService->findById($draftId);
+        if ($post === null) {
+            return;
+        }
 
         $isAdmin = $this->userService->currentUserHasRole('admin');
         $isReviewer = $this->userService->currentUserHasRole(['reviewer', 'admin']);
@@ -454,8 +474,13 @@ class Home extends Screen
      */
     public function onDeletePost(PostIdRequest $request): void
     {
+        $user = Auth::user();
+        if ($user === null) {
+            return;
+        }
+
         try {
-            $this->postService->deletePost($request->getPostId(), Auth::user());
+            $this->postService->deletePost($request->getPostId(), $user);
             $this->toast('Post eliminado correctamente.', 'success');
             $this->removePostCardFromContainer($request->getPostId());
         } catch (ModelNotFoundException $e) {

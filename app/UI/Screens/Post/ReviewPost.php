@@ -3,6 +3,7 @@
 namespace App\UI\Screens\Post;
 
 use App\Contracts\PostServiceInterface;
+use App\DTOs\Posts\PostDTO;
 use App\Models\User;
 use App\Services\Post\ReelStoryboardFormatter;
 use App\UI\Screens\Home;
@@ -63,7 +64,7 @@ class ReviewPost extends Screen
             return;
         }
 
-        /** @var \stdClass|null $post */
+        /** @var PostDTO|null $post */
         $post = $this->postService->findById($this->state_post_id);
         if (! $post) {
             $this->toast('Propuesta no encontrada.', 'error');
@@ -126,7 +127,7 @@ class ReviewPost extends Screen
         return $header;
     }
 
-    private function buildProposalDetailsColumn(\stdClass $post): Container
+    private function buildProposalDetailsColumn(PostDTO $post): Container
     {
         $detailsCard = UI::container('review_details_card')
             ->card()
@@ -188,7 +189,7 @@ class ReviewPost extends Screen
         return $detailsCard;
     }
 
-    private function buildModerationColumn(\stdClass $post): Container
+    private function buildModerationColumn(PostDTO $post): Container
     {
         $modCard = UI::container('review_moderation_card')
             ->card()
@@ -291,7 +292,7 @@ class ReviewPost extends Screen
             return;
         }
 
-        $this->postService->requestChanges($this->state_post_id, (int) $user->id, $comment);
+        $this->postService->requestChanges($this->state_post_id, $user, $comment);
         $this->toast('Observaciones enviadas al autor.', 'info');
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }
@@ -306,7 +307,7 @@ class ReviewPost extends Screen
             return;
         }
 
-        $this->postService->approvePost($this->state_post_id, (int) $user->id);
+        $this->postService->approvePost($this->state_post_id, $user);
         $this->toast('¡Publicación aprobada y activa para difusión!', 'success');
         $this->showInto(Home::class, force: true, updateBrowserUrl: true);
     }

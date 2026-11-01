@@ -23,7 +23,7 @@ use Carbon\CarbonImmutable;
  * @property string|null $ai_script
  * @property string|null $reel_video
  * @property string $ai_job_status
- * @property string|null $ai_job_payload
+ * @property array<string, mixed>|string|null $ai_job_payload
  * @property string|null $reviewer_comment
  * @property int|null $reviewed_by
  * @property CarbonImmutable|null $reviewed_at

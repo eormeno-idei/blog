@@ -15,7 +15,6 @@ use Idei\Usim\Support\DevicePairingManager;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
 use Illuminate\Support\Facades\Event;
-use Mockery;
 
 beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();

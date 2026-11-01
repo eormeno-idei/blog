@@ -1,46 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
-use App\Http\Requests\PostRequest;
 use App\DTOs\Posts\PostDTO;
-use App\Models\User;
-use App\UI\Screens\Concerns\InteractsWithReelStudio;
+use App\UI\Screens\Concerns\HasAiReelStructureStep;
+use App\UI\Screens\Concerns\HasPostDataStep;
+use App\UI\Screens\Concerns\HasPostImageStep;
+use App\UI\Screens\Concerns\HasReviewerResponseStep;
+use App\UI\Screens\Concerns\HasReviewSubmissionStep;
+use App\UI\Screens\Concerns\HasSummaryAndPublishStep;
+use App\UI\Screens\Concerns\HasVideoGenerationStep;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Components\Input;
-use Idei\Usim\Components\Textarea;
-use Idei\Usim\Components\Uploader;
 use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\AspectRatio;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use Illuminate\Support\Facades\Auth;
 
+/**
+ * Pantalla de asistente (Wizard) para la creación y publicación de posts en 7 pasos.
+ *
+ * @property Button $btn_save_post
+ */
 class PublishPost extends Screen
 {
-    use InteractsWithReelStudio;
+    use HasAiReelStructureStep;
+    use HasPostDataStep;
+    use HasPostImageStep;
+    use HasReviewerResponseStep;
+    use HasReviewSubmissionStep;
+    use HasSummaryAndPublishStep;
+    use HasVideoGenerationStep;
 
-    protected Input $post_id;
-
-    protected Input $post_title;
-
-    protected Textarea $post_content;
-
-    protected Input $post_from;
-
-    protected Input $post_to;
-
-    protected Uploader $post_image;
-
-    protected Button $btn_ask_ai;
-
-    protected Button $btn_save_post;
+    protected Container $workspace_tabs;
 
     protected int $state_post_id = 0;
 
@@ -61,7 +59,6 @@ class PublishPost extends Screen
             $this->state_post_id = $explicitPostId;
         }
 
-        /** @var PostDTO|null $post */
         $post = $this->resolvePost($explicitPostId > 0);
         if ($explicitPostId > 0 && $post === null) {
             $this->toast('Post no encontrado.', 'error');
@@ -77,64 +74,14 @@ class PublishPost extends Screen
             ->centerHorizontal();
 
         $container->add($this->buildReelPollTimer());
+        $container->add($this->buildVideoPollTimer());
         $container->add($this->buildHeader());
 
-        if (!empty($post->reviewer_comment)) {
-            $container->add($this->buildReviewerCommentAlert($post));
-        }
-
-        $container->add($this->buildWorkspaceTabs($this->buildFormColumn($post)));
+        $this->buildWizardTabs($post);
+        $container->add($this->workspace_tabs);
 
         $this->restoreReelStudioFromPost($post);
-    }
-
-    private function resolvePost(bool $isExplicit = false): ?PostDTO
-    {
-        if ($this->state_post_id > 0) {
-            $existing = $this->postService->findById($this->state_post_id);
-            if ($existing !== null || $isExplicit) {
-                return $existing;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    private function resolveCandidatePostId(array $params = []): int
-    {
-        $candidate = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? $this->state_post_id;
-
-        return is_numeric($candidate) && (int) $candidate > 0 ? (int) $candidate : 0;
-    }
-
-    private function buildReviewerCommentAlert(PostDTO $post): Container
-    {
-        $reviewerName = (string) ($post->reviewer_name ?? 'Revisor');
-        $comment = (string) ($post->reviewer_comment ?? '');
-
-        $alertCard = UI::container('reviewer_feedback_alert')
-            ->card()
-            ->width(Size::full())
-            ->layout(LayoutType::VERTICAL)
-            ->padding(Spacing::px(16))
-            ->gap(Spacing::px(6));
-
-        $alertCard->add(
-            UI::label('lbl_reviewer_alert_title')
-                ->text("⚠️ Observaciones de Revisión ({$reviewerName}):")
-                ->style('warning')
-                ->bold()
-        );
-
-        $alertCard->add(
-            UI::label('lbl_reviewer_alert_body')
-                ->text($comment)
-                ->style('default')
-        );
-
-        return $alertCard;
+        $this->configureInitialTabState($post);
     }
 
     private function buildHeader(): Container
@@ -159,197 +106,133 @@ class PublishPost extends Screen
         return $header;
     }
 
-    private function buildFormColumn(PostDTO $post): Container
+    private function buildWizardTabs(?PostDTO $post): void
     {
-        $formCard = UI::container('publish_form_card')
-            ->width(Size::full())
-            ->centerHorizontal()
-            ->layout(LayoutType::VERTICAL)
-            ->padding(Spacing::px(12))
-            ->gap(Spacing::px(12));
+        $hasAiScript = $post !== null && ! empty($post->aiScript);
+        $hasVideo = $post !== null && ! empty($post->reelVideo);
+        $statusVal = $post !== null ? (is_string($post->status) ? $post->status : $post->status->value) : 'draft';
 
-        $initialTitle = $post->title;
-        $initialContent = $post->content;
-
-        $this->post_title = UI::input('post_title')
-            ->label('Título del Post')
-            ->placeholder('Escribe un título atractivo...')
-            ->value($initialTitle)
-            ->required(true)
-            ->width(Size::full())
-            ->onChange('on_title_saved');
-
-        $this->post_content = UI::textarea('post_content')
-            ->label('Notas base para el Post y el Reel')
-            ->placeholder('Escribe las notas o información del evento/proyecto…')
-            ->value($initialContent)
-            ->plainText()
-            ->width(Size::full())
-            ->height(Size::px(240))
-            ->maxLength(5000)
-            ->helpText('Máximo 5000 caracteres. La IA usará estas notas para estructurar el guion del Reel.')
-            ->onChange('on_plain_saved');
-
-        $this->post_id = UI::input('post_id')
-            ->type('hidden')
-            ->value((string) $this->state_post_id);
-
-        $this->ai_response = UI::input('ai_response')
-            ->type('hidden')
-            ->value((string) ($post->ai_script ?? ''));
-
-        $this->post_image = UI::uploader('post_image')
-            ->images()
-            ->maxFiles(1)
-            ->maxSize(5)
-            ->aspect(AspectRatio::_16_9)
-            ->size(2)
-            ->label('Imagen de Portada (opcional)');
-
-        $formCard->add($this->post_id);
-        $formCard->add($this->post_title);
-        $formCard->add($this->post_content);
-        $formCard->add($this->buildDateRangeRow($post));
-        $formCard->add($this->ai_response);
-        $formCard->add($this->post_image);
-        $formCard->add($this->buildActionsRow());
-
-        return $formCard;
-    }
-
-    private function buildDateRangeRow(?object $post = null): Container
-    {
-        $datesRow = UI::container('publish_dates_row')
+        $this->workspace_tabs = UI::container('workspace_tabs')
             ->card()
-            ->shadow(false)
             ->width(Size::full())
-            ->layout(LayoutType::HORIZONTAL)
-            ->padding(Spacing::px(8))
-            ->justifyContent(JustifyContent::END)
-            ->gap(Spacing::px(8));
+            ->tabs([
+                'form_tab' => [
+                    'label' => '1. Datos',
+                    'disabled' => false,
+                ],
+                'step_image_tab' => [
+                    'label' => '2. Imagen',
+                    'disabled' => $post === null,
+                ],
+                'reel_studio_tab' => [
+                    'label' => '3. Estructurar Reel con IA',
+                    'disabled' => ! $hasAiScript && ($post === null || $statusVal === 'draft'),
+                ],
+                'step_review_submission_tab' => [
+                    'label' => '4. Enviar a Revisión',
+                    'disabled' => ! $hasAiScript,
+                ],
+                'step_reviewer_response_tab' => [
+                    'label' => '5. Respuesta del Revisor',
+                    'disabled' => ! in_array($statusVal, ['pending_review', 'changes_requested', 'published'], true),
+                ],
+                'step_video_generation_tab' => [
+                    'label' => '6. Generación de Video',
+                    'disabled' => ! in_array($statusVal, ['published', 'reel_generated', 'reel_generation_pending'], true) && ! $hasVideo,
+                ],
+                'step_summary_publish_tab' => [
+                    'label' => '7. Resumen y Publicar',
+                    'disabled' => ! $hasVideo,
+                ],
+            ], 'form_tab');
 
-        $fromVal = $post !== null && !empty($post->from)
-            ? substr((string) $post->from, 0, 10)
-            : now()->format('Y-m-d');
-        $toVal = $post !== null && !empty($post->to)
-            ? substr((string) $post->to, 0, 10)
-            : now()->addDays(14)->format('Y-m-d');
-
-        $this->post_from = UI::input('post_from')
-            ->type('date')
-            ->label('Desde')
-            ->value($fromVal);
-
-        $this->post_to = UI::input('post_to')
-            ->type('date')
-            ->label('Hasta')
-            ->value($toVal);
-
-        $datesRow->add($this->post_from);
-        $datesRow->add($this->post_to);
-
-        return $datesRow;
+        $this->workspace_tabs->add($this->buildDataStepCard($post), tab: 'form_tab');
+        $this->workspace_tabs->add($this->buildImageStepCard($post), tab: 'step_image_tab');
+        $this->workspace_tabs->add($this->buildAiReelStructureStepCard($post), tab: 'reel_studio_tab');
+        $this->workspace_tabs->add($this->buildReviewSubmissionStepCard($post), tab: 'step_review_submission_tab');
+        $this->workspace_tabs->add($this->buildReviewerResponseStepCard($post), tab: 'step_reviewer_response_tab');
+        $this->workspace_tabs->add($this->buildVideoGenerationStepCard($post), tab: 'step_video_generation_tab');
+        $this->workspace_tabs->add($this->buildSummaryAndPublishStepCard($post), tab: 'step_summary_publish_tab');
     }
 
-    private function buildActionsRow(): Container
+    private function configureInitialTabState(?PostDTO $post): void
     {
-        $actionsRow = UI::container('publish_actions_row')
-            ->width(Size::full())
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->alignItems(AlignItems::CENTER)
-            ->gap(Spacing::px(12))
-            ->plain()
-            ->shadow(false)
-            ->padding(Spacing::zero());
+        if ($post === null) {
+            return;
+        }
 
-        $this->btn_ask_ai = UI::button('btn_ask_ai')
-            ->label('✨ Generar Reel con IA')
-            ->action('ask_ai')
-            ->style('info');
+        $statusVal = is_string($post->status) ? $post->status : $post->status->value;
 
-        $this->btn_save_post = UI::button('btn_save_post')
-            ->label('📤 Enviar a Revisión')
-            ->action('save_post')
-            ->style('primary')
-            ->enabled(false);
+        if ($statusVal === 'changes_requested') {
+            $this->enableStepTab('step_reviewer_response_tab', activate: false);
+            $this->workspace_tabs->activeTab('form_tab');
 
-        $actionsRow->add($this->btn_save_post);
-        $actionsRow->add($this->btn_ask_ai);
-
-        return $actionsRow;
-    }
-
-    public function onSavePost(PostRequest $request): void
-    {
-        $user = Auth::user();
-        if (!$user instanceof User) {
-            $this->toast('Debes iniciar sesión para publicar.', 'error');
+            if (isset($this->btn_save_post)) {
+                $this->btn_save_post->enabled(true);
+            }
 
             return;
         }
 
-        $this->stopActiveReelJobPolling();
+        if ($statusVal === 'pending_review') {
+            $this->enableStepTab('step_reviewer_response_tab', activate: true);
 
-        $imageFilename = $this->resolveUploadedImageFilename($request->all());
-        $currentVersion = $this->getCurrentVersionData();
-        $videoFilename = is_string($currentVersion['video_filename'] ?? null)
-            ? $currentVersion['video_filename']
-            : null;
-        $aiResponseVal = $this->ai_response->get('value');
-        $fallbackAiScript = is_string($aiResponseVal) && trim($aiResponseVal) !== '' ? trim($aiResponseVal) : null;
-        $aiScript = is_string($currentVersion['json_script'] ?? null)
-            ? $currentVersion['json_script']
-            : $fallbackAiScript;
-
-        $this->cleanupDiscardedReelFiles($videoFilename);
-
-        $payload = [
-            'user_id' => (int) $user->id,
-            'title' => $request->title(),
-            'content' => $request->content(),
-            'image' => $imageFilename,
-            'background_color' => '#32637b',
-            'text_color' => '#000000',
-            'background_image' => null,
-            'aspect_ratio' => '9:16',
-            'from' => $request->fromDate(),
-            'to' => $request->toDate(),
-            'status' => 'pending_review',
-            'ai_script' => $aiScript,
-            'reel_video' => $videoFilename,
-        ];
-
-        $targetPostId = $this->resolveCandidatePostId($request->all());
-        if ($targetPostId > 0) {
-            $this->state_post_id = $targetPostId;
-            $this->postService->updatePost($targetPostId, $payload, $user);
-        } else {
-            $this->state_post_id = $this->postService->createPost($payload);
+            return;
         }
 
-        $this->toast('¡Propuesta enviada a revisión correctamente!', 'success');
-        $this->navigate(Home::class);
+        if (! empty($post->reelVideo)) {
+            $this->enableStepTab('step_video_generation_tab', activate: false);
+            $this->enableStepTab('step_summary_publish_tab', activate: false);
+        }
+
+        if (! empty($post->aiScript) && isset($this->btn_save_post)) {
+            $this->btn_save_post->enabled(true);
+        }
     }
 
-    /**
-     * @param  array<string, mixed>  $requestData
-     */
-    private function resolveUploadedImageFilename(array $requestData): ?string
+    public function enableStepTab(string $tabId, bool $activate = false): void
     {
-        $confirmedImage = $this->post_image->confirm($requestData, 'images');
-
-        if (is_string($confirmedImage) && $confirmedImage !== '') {
-            return $confirmedImage;
+        if (! isset($this->workspace_tabs)) {
+            return;
         }
 
-        if (is_array($confirmedImage)) {
-            $first = reset($confirmedImage);
+        $this->workspace_tabs->disableTab($tabId, false);
 
-            return is_string($first) && $first !== '' ? $first : null;
+        if ($activate) {
+            $this->workspace_tabs->activeTab($tabId);
+        }
+    }
+
+    public function goToStep(string $tabId): void
+    {
+        $this->enableStepTab($tabId, activate: true);
+    }
+
+    protected function enableReelStudioTab(bool $activate = false): void
+    {
+        $this->enableStepTab('reel_studio_tab', $activate);
+    }
+
+    private function resolvePost(bool $isExplicit = false): ?PostDTO
+    {
+        if ($this->state_post_id > 0) {
+            $existing = $this->postService->findById($this->state_post_id);
+            if ($existing !== null || $isExplicit) {
+                return $existing;
+            }
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    protected function resolveCandidatePostId(array $params = []): int
+    {
+        $candidate = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? $this->state_post_id;
+
+        return is_numeric($candidate) && (int) $candidate > 0 ? (int) $candidate : 0;
     }
 
     /**
@@ -359,43 +242,5 @@ class PublishPost extends Screen
     {
         $this->stopActiveReelJobPolling();
         $this->navigate(Home::class);
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    public function onTitleSaved(array $params): void
-    {
-        $post = $this->postService->findById($this->state_post_id);
-        if ($post === null) {
-            $this->toast('No se pudo guardar el título: Post no encontrado.', 'error');
-            return;
-        }
-
-        $newTitle = trim($params['value']);
-        if ($newTitle !== '') {
-            $this->postService->updatePost($this->state_post_id, [
-                'title' => $newTitle,
-            ], Auth::user());
-        }
-
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    public function onPlainSaved(array $params): void
-    {
-        $rawValue = $params['value'] ?? '';
-        $value = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
-        $this->post_content->value($value);
-
-        $targetPostId = $this->resolveCandidatePostId($params);
-        if ($targetPostId > 0 && $value !== '') {
-            $this->state_post_id = $targetPostId;
-            $this->postService->updatePost($targetPostId, [
-                'content' => $value,
-            ], Auth::user());
-        }
     }
 }

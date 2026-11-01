@@ -1,10 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UI\Screens\Concerns;
 
+use App\Contracts\PostServiceInterface;
+use App\DTOs\Posts\PostDTO;
 use App\DTOs\ReelGenerationStatus;
 use App\Jobs\GenerateReelPreviewJob;
 use App\Services\Post\ReelStoryboardFormatter;
+use App\UI\Screens\PublishPost;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Carousel;
 use Idei\Usim\Components\Container;
@@ -19,13 +24,28 @@ use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 
-trait InteractsWithReelStudio
+/**
+ * Step 3: Estructurar Reel con IA (Interacción exclusiva con LLM, simulación visual y refinamiento).
+ *
+ * @mixin PublishPost
+ *
+ * @property int $state_post_id
+ * @property PostServiceInterface $postService
+ * @property Textarea $post_content
+ * @property Button $btn_save_post
+ * @property \Idei\Usim\Components\Textarea $post_content
+ * @property \Idei\Usim\Components\Button $btn_save_post
+ *
+ * @method void goToStep(string $tabId)
+ * @method void enableStepTab(string $tabId, bool $activate = false)
+ * @method static toast(string $message, string $type = 'info')
+ */
+trait HasAiReelStructureStep
 {
     protected Timer $tmr_reel_poll;
-
-    protected Container $workspace_tabs;
 
     protected Container $ai_studio_card;
 
@@ -51,7 +71,13 @@ trait InteractsWithReelStudio
 
     protected Button $btn_refine_ai;
 
+    protected Button $btn_ask_ai;
+
     protected Input $ai_response;
+
+    protected Button $btn_step3_back;
+
+    protected Button $btn_step3_next;
 
     protected string $state_active_job_id = '';
 
@@ -72,41 +98,7 @@ trait InteractsWithReelStudio
         return $this->tmr_reel_poll;
     }
 
-    protected function buildWorkspaceTabs(Container $formCard): Container
-    {
-        $this->workspace_tabs = UI::container('workspace_tabs')
-            ->card()
-            ->width(Size::full())
-            ->tabs([
-                'form_tab' => [
-                    'label' => '📝 Datos de la Publicación',
-                ],
-                'reel_studio_tab' => [
-                    'label' => '🎬 Estudio de Reel IA',
-                    'disabled' => true,
-                ],
-            ], 'form_tab');
-
-        $this->workspace_tabs->add($formCard, tab: 'form_tab');
-        $this->workspace_tabs->add($this->buildAiStudioCard(), tab: 'reel_studio_tab');
-
-        return $this->workspace_tabs;
-    }
-
-    protected function enableReelStudioTab(bool $activate = false): void
-    {
-        if (! isset($this->workspace_tabs)) {
-            return;
-        }
-
-        $this->workspace_tabs->disableTab('reel_studio_tab', false);
-
-        if ($activate) {
-            $this->workspace_tabs->activeTab('reel_studio_tab');
-        }
-    }
-
-    protected function buildAiStudioCard(): Container
+    protected function buildAiReelStructureStepCard(?PostDTO $post = null): Container
     {
         $this->ai_studio_card = UI::container('ai_studio_card')
             ->card()
@@ -117,9 +109,15 @@ trait InteractsWithReelStudio
             ->padding(Spacing::px(24))
             ->gap(Spacing::px(16));
 
+        $this->ai_response = UI::input('ai_response')
+            ->type('hidden')
+            ->value($post !== null ? (string) ($post->aiScript ?? '') : '');
+
+        $this->ai_studio_card->add($this->ai_response);
         $this->ai_studio_card->add($this->buildStudioHeader());
         $this->ai_studio_card->add($this->buildProgressBox());
-        $this->ai_studio_card->add($this->buildPreviewBox());
+        $this->ai_studio_card->add($this->buildPreviewAndSimulationBox());
+        $this->ai_studio_card->add($this->buildStep3ActionsRow());
 
         return $this->ai_studio_card;
     }
@@ -137,12 +135,12 @@ trait InteractsWithReelStudio
 
         $studioHeader->add(
             UI::label('lbl_studio_title')
-                ->text('🎬 Estudio de Reel IA')
+                ->text('🎬 Estructuración de Reel con IA')
                 ->style('h3')
         );
 
         $this->lbl_version_badge = UI::label('lbl_version_badge')
-            ->text('Sin previsualización')
+            ->text('Sin estructuración')
             ->variant('badge')
             ->secondary();
 
@@ -161,12 +159,12 @@ trait InteractsWithReelStudio
             ->gap(Spacing::px(8));
 
         $this->lbl_ai_progress_step = UI::label('lbl_ai_progress_step')
-            ->text('💡 Pulsa "✨ Generar Reel con IA" para crear una previsualización animada a partir de tus notas.')
+            ->text('💡 Pulsa "✨ Generar Reel con IA" para que el LLM estructure el guion a partir de tus notas.')
             ->style('info')
             ->bold();
 
         $this->lbl_ai_progress_detail = UI::label('lbl_ai_progress_detail')
-            ->text('Podrás revisar el video escena por escena y pedirle ajustes a la IA tantas veces como necesites antes de enviarlo a revisión.')
+            ->text('Podrás simular la visualización escena por escena y ajustar el guion antes de enviarlo a revisión.')
             ->style('muted')
             ->size('small');
 
@@ -176,7 +174,7 @@ trait InteractsWithReelStudio
         return $this->ai_progress_box;
     }
 
-    private function buildPreviewBox(): Container
+    private function buildPreviewAndSimulationBox(): Container
     {
         $this->ai_preview_box = UI::container('ai_preview_box')
             ->plain()
@@ -189,6 +187,7 @@ trait InteractsWithReelStudio
 
         $this->ai_preview_box->add($this->buildVersionNavRow());
 
+        // Simulador visual de escenas y reproductor de previsualización (9:16 vertical)
         $this->reel_preview_player = UI::carousel('reel_preview_player')
             ->modeManual()
             ->loop(true)
@@ -251,7 +250,7 @@ trait InteractsWithReelStudio
 
         $storyboardCard->add(
             UI::label('lbl_storyboard_header')
-                ->text('📋 Resumen de Escenas')
+                ->text('📋 Simulación y Resumen de Escenas')
                 ->style('primary')
                 ->bold()
                 ->size('small')
@@ -278,22 +277,22 @@ trait InteractsWithReelStudio
 
         $refinementCard->add(
             UI::label('lbl_refinement_title')
-                ->text('🔄 ¿No estás conforme? Pide un ajuste')
+                ->text('🔄 ¿Deseas perfeccionar el guion? Pide un ajuste a la IA')
                 ->style('h4')
         );
 
         $refinementCard->add($this->buildQuickChipsRow());
 
         $this->ai_feedback = UI::textarea('ai_feedback')
-            ->label('Instrucciones de modificación para la IA')
-            ->placeholder('Ej: En la escena 2 agrega un punto sobre becas, cambia el título final o haz que dure 30 segundos...')
+            ->label('Instrucciones de refinamiento para el LLM')
+            ->placeholder('Ej: Haz que la escena 2 enfatice las fechas límite, cambia el título o reduce la duración a 20s...')
             ->plainText()
             ->width(Size::full())
             ->height(Size::px(90))
             ->maxLength(600);
 
         $this->btn_refine_ai = UI::button('btn_refine_ai')
-            ->label('✨ Aplicar Ajustes y Re-renderizar')
+            ->label('✨ Reestructurar Guion con Ajustes')
             ->action('refine_ai')
             ->style('primary')
             ->fullWidth(true);
@@ -316,8 +315,8 @@ trait InteractsWithReelStudio
 
         $quickChipsRow->add(
             UI::button('btn_chip_shorter')
-                ->label('⚡ Más corto (máx 30s)')
-                ->action('quick_refine', ['prompt' => 'Reduce la duración total a un máximo de 30 segundos resumiendo las escenas.'])
+                ->label('⚡ Más corto (máx 25s)')
+                ->action('quick_refine', ['prompt' => 'Reduce la duración total a un máximo de 25 segundos resumiendo las escenas.'])
                 ->style('secondary')
                 ->size('small')
         );
@@ -325,15 +324,15 @@ trait InteractsWithReelStudio
         $quickChipsRow->add(
             UI::button('btn_chip_dynamic')
                 ->label('🎨 Más dinámico')
-                ->action('quick_refine', ['prompt' => 'Usa animaciones más dinámicas, alterna entradas slide_from_left/right y reduce el tiempo por escena.'])
+                ->action('quick_refine', ['prompt' => 'Usa animaciones más dinámicas, alterna entradas y reduce el tiempo por escena.'])
                 ->style('secondary')
                 ->size('small')
         );
 
         $quickChipsRow->add(
             UI::button('btn_chip_impact')
-                ->label('🎯 Títulos más impactantes')
-                ->action('quick_refine', ['prompt' => 'Reescribe los titulares (headline) de cada escena para que sean más directos, atractivos e impactantes.'])
+                ->label('🎯 Titulares impactantes')
+                ->action('quick_refine', ['prompt' => 'Reescribe los titulares (headline) de cada escena para que sean más directos y memorables.'])
                 ->style('secondary')
                 ->size('small')
         );
@@ -341,110 +340,55 @@ trait InteractsWithReelStudio
         return $quickChipsRow;
     }
 
-    /**
-     * Restaura el estado del Estudio de Reel desde el registro en base de datos,
-     * incluyendo versiones previas o un procesamiento de IA en curso si el usuario cerró la ventana y volvió a entrar.
-     */
-    protected function restoreReelStudioFromPost(object $post): void
+    private function buildStep3ActionsRow(): Container
     {
-        $status = isset($post->id) && is_numeric($post->id)
-            ? GenerateReelPreviewJob::getStatus((int) $post->id)
-            : null;
+        $actions = UI::container('step3_actions_row')
+            ->plain()
+            ->shadow(false)
+            ->width(Size::full())
+            ->layout(LayoutType::HORIZONTAL)
+            ->justifyContent(JustifyContent::SPACE_BETWEEN)
+            ->alignItems(AlignItems::CENTER)
+            ->padding(Spacing::zero())
+            ->gap(Spacing::px(12));
 
-        $savedVersions = $status !== null ? $status->versions : [];
-        if ($savedVersions !== []) {
-            $this->hydrateSavedVersions($savedVersions);
-        } else {
-            $this->preloadExistingReel(
-                is_string($post->ai_script ?? null) ? $post->ai_script : null,
-                is_string($post->reel_video ?? null) ? $post->reel_video : null
-            );
-        }
+        $this->btn_step3_back = UI::button('btn_step3_back')
+            ->label('← Atrás: Imagen')
+            ->action('step3_back')
+            ->style('secondary');
 
-        $jobStatus = $status !== null ? $status->status : (is_string($post->ai_job_status ?? null) ? $post->ai_job_status : 'idle');
-        if (in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
-            $this->state_active_job_id = (string) ($post->id ?? '');
-            $versionNumber = $status !== null && $status->version !== null ? $status->version : (count($this->state_reel_versions) + 1);
-            $this->updateUiForJobStart($versionNumber, false, null);
+        $this->btn_ask_ai = UI::button('btn_ask_ai')
+            ->label('✨ Generar Reel con IA')
+            ->action('ask_ai')
+            ->style('info');
 
-            if ($status !== null) {
-                if ($jobStatus === 'rendering_video') {
-                    $this->handleRenderingVideoStatus($status);
-                } else {
-                    $this->handleGeneratingScriptStatus($status);
-                }
-            }
+        $this->btn_step3_next = UI::button('btn_step3_next')
+            ->label('Siguiente: Enviar a Revisión →')
+            ->action('step3_next')
+            ->style('primary')
+            ->enabled(false);
 
-            return;
-        }
+        $actions->add($this->btn_step3_back);
+        $actions->add($this->btn_ask_ai);
+        $actions->add($this->btn_step3_next);
 
-        if ($jobStatus === 'failed' && $status !== null) {
-            $this->enableReelStudioTab(activate: false);
-            $this->handleFailedStatus($status);
-        }
+        return $actions;
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $savedVersions
+     * @param  array<string, mixed>  $params
      */
-    private function hydrateSavedVersions(array $savedVersions): void
+    public function onStep3Back(array $params): void
     {
-        $formatter = app(ReelStoryboardFormatter::class);
-        $this->state_reel_versions = [];
-
-        foreach ($savedVersions as $idx => $ver) {
-            $jsonScript = isset($ver['json_script']) && is_string($ver['json_script']) ? $ver['json_script'] : '';
-            $feedback = isset($ver['feedback_applied']) && is_string($ver['feedback_applied'])
-                ? $ver['feedback_applied']
-                : null;
-            $verNum = isset($ver['version']) && is_numeric($ver['version']) ? (int) $ver['version'] : ($idx + 1);
-            $videoUrl = isset($ver['video_url']) && is_string($ver['video_url']) ? $ver['video_url'] : '';
-            $videoFile = isset($ver['video_filename']) && is_string($ver['video_filename']) ? $ver['video_filename'] : '';
-            $scenes = isset($ver['scene_count']) && is_numeric($ver['scene_count']) ? (int) $ver['scene_count'] : 0;
-            $duration = isset($ver['duration_seconds']) && is_numeric($ver['duration_seconds']) ? (int) $ver['duration_seconds'] : 10;
-
-            $this->state_reel_versions[] = [
-                'version' => $verNum,
-                'video_url' => $videoUrl,
-                'video_filename' => $videoFile,
-                'json_script' => $jsonScript,
-                'scene_count' => $scenes,
-                'duration_seconds' => $duration,
-                'storyboard_markdown' => $formatter->format($jsonScript, $feedback),
-                'feedback_applied' => $feedback,
-            ];
-        }
-
-        $this->state_current_version_index = count($this->state_reel_versions) - 1;
-        $this->enableReelStudioTab(activate: false);
-        $this->applyCurrentVersionToUI();
+        $this->goToStep('step_image_tab');
     }
 
     /**
-     * Precarga una versión existente (por ejemplo, al abrir un post que ya tenía ai_script o reel_video).
+     * @param  array<string, mixed>  $params
      */
-    protected function preloadExistingReel(?string $jsonScript, ?string $videoFilename): void
+    public function onStep3Next(array $params): void
     {
-        $script = trim((string) $jsonScript);
-        $video = trim((string) $videoFilename);
-
-        if ($script === '' && $video === '') {
-            return;
-        }
-
-        $rawDecoded = $script !== '' ? json_decode($script, true) : [];
-        $decoded = is_array($rawDecoded) ? $rawDecoded : [];
-        $scenes = is_array($decoded['scenes'] ?? null) ? $decoded['scenes'] : [];
-
-        $this->hydrateSavedVersions([[
-            'version' => 1,
-            'video_url' => $video !== '' ? "/storage/reels/{$video}" : '',
-            'video_filename' => $video,
-            'json_script' => $script,
-            'scene_count' => count($scenes),
-            'duration_seconds' => 10,
-            'feedback_applied' => null,
-        ]]);
+        $this->enableStepTab('step_review_submission_tab', activate: true);
     }
 
     /**
@@ -452,15 +396,18 @@ trait InteractsWithReelStudio
      */
     public function onAskAI(array $params): void
     {
-        $rawNotes = $params['post_content'] ?? $this->post_content->getValue();
+        $rawNotes = $params['post_content'] ?? (isset($this->post_content) ? $this->post_content->getValue() : '');
         $notes = is_string($rawNotes) ? trim($rawNotes) : '';
         if ($notes === '') {
-            $this->toast('Escribe las notas del post antes de generar el Reel con IA.', 'warning');
+            $this->toast('Escribe las notas del post antes de estructurar el Reel con IA.', 'warning');
 
             return;
         }
 
-        $this->post_content->value($notes);
+        if (isset($this->post_content)) {
+            $this->post_content->value($notes);
+        }
+
         $this->startReelGenerationJob($notes, null, null);
     }
 
@@ -472,12 +419,12 @@ trait InteractsWithReelStudio
         $rawFeedback = $params['ai_feedback'] ?? $this->ai_feedback->getValue();
         $feedback = is_string($rawFeedback) ? trim($rawFeedback) : '';
         if ($feedback === '') {
-            $this->toast('Por favor escribe qué cambios deseas aplicar al video.', 'warning');
+            $this->toast('Por favor escribe qué cambios deseas aplicar al guion.', 'warning');
 
             return;
         }
 
-        $rawNotes = $params['post_content'] ?? $this->post_content->getValue();
+        $rawNotes = $params['post_content'] ?? (isset($this->post_content) ? $this->post_content->getValue() : '');
         $notes = is_string($rawNotes) ? trim($rawNotes) : '';
         $previousJson = $this->resolveCurrentJsonScript();
 
@@ -496,7 +443,7 @@ trait InteractsWithReelStudio
         }
 
         $this->ai_feedback->value($presetPrompt);
-        $rawNotes = $params['post_content'] ?? $this->post_content->getValue();
+        $rawNotes = $params['post_content'] ?? (isset($this->post_content) ? $this->post_content->getValue() : '');
         $notes = is_string($rawNotes) ? trim($rawNotes) : '';
         $previousJson = $this->resolveCurrentJsonScript();
 
@@ -506,7 +453,7 @@ trait InteractsWithReelStudio
     private function resolveCurrentJsonScript(): ?string
     {
         $currentVersion = $this->getCurrentVersionData();
-        $rawScript = $currentVersion['json_script'] ?? $this->ai_response->get('value') ?? '';
+        $rawScript = $currentVersion['json_script'] ?? (isset($this->ai_response) ? $this->ai_response->get('value') : null) ?? '';
         $script = is_string($rawScript) ? trim($rawScript) : '';
 
         return $script !== '' ? $script : null;
@@ -515,7 +462,7 @@ trait InteractsWithReelStudio
     protected function startReelGenerationJob(string $notes, ?string $previousJson, ?string $userFeedback): void
     {
         if ($this->state_active_job_id !== '') {
-            $this->toast('Ya hay una generación de video en curso. Espera unos segundos.', 'info');
+            $this->toast('Ya hay un procesamiento de IA en curso. Espera unos segundos.', 'info');
 
             return;
         }
@@ -541,13 +488,13 @@ trait InteractsWithReelStudio
 
     private function updateUiForJobStart(int $versionNumber, bool $isRefinement, ?string $userFeedback): void
     {
-        $this->enableReelStudioTab(activate: true);
+        $this->enableStepTab('reel_studio_tab', activate: true);
 
         $this->ai_progress_box->visible(true);
         $this->lbl_ai_progress_step
             ->text($isRefinement
-                ? "🧠 Paso 1/2: Ajustando el guion para la Versión {$versionNumber}..."
-                : '🧠 Paso 1/2: Analizando tus notas y estructurando el guion con IA...')
+                ? "🧠 Ajustando el guion para la Versión {$versionNumber}..."
+                : '🧠 Analizando tus notas y estructurando el guion con IA...')
             ->style('warning');
 
         $this->lbl_ai_progress_detail
@@ -556,7 +503,7 @@ trait InteractsWithReelStudio
                 : 'Diseñando titulares, viñetas y tiempos de animación...');
 
         $this->lbl_version_badge
-            ->text("Generando v{$versionNumber}...")
+            ->text("Estructurando v{$versionNumber}...")
             ->style('warning');
 
         $this->btn_ask_ai->loading(true, 'Generando...')->enabled(false);
@@ -593,7 +540,7 @@ trait InteractsWithReelStudio
     private function handleGeneratingScriptStatus(ReelGenerationStatus $status): void
     {
         $this->lbl_ai_progress_step
-            ->text('🧠 '.($status->message ?? 'Paso 1/2: Generando guion con IA...'))
+            ->text('🧠 '.($status->message ?? 'Estructurando guion con IA...'))
             ->style('warning');
         $this->lbl_ai_progress_detail
             ->text($status->detail ?? '');
@@ -602,10 +549,10 @@ trait InteractsWithReelStudio
     private function handleRenderingVideoStatus(ReelGenerationStatus $status): void
     {
         $this->lbl_ai_progress_step
-            ->text('🎬 '.($status->message ?? 'Paso 2/2: Renderizando video con Remotion...'))
+            ->text('🎬 '.($status->message ?? 'Renderizando previsualización con Remotion...'))
             ->style('info');
         $this->lbl_ai_progress_detail
-            ->text($status->detail ?? 'Codificando fotogramas en MP4...');
+            ->text($status->detail ?? 'Codificando fotogramas...');
 
         if ($status->parsedScript !== null) {
             $storyboard = app(ReelStoryboardFormatter::class)->format($status->parsedScript);
@@ -634,11 +581,11 @@ trait InteractsWithReelStudio
         $this->state_current_version_index = count($this->state_reel_versions) - 1;
 
         $this->btn_ask_ai->loading(false)->label('🔄 Regenerar desde Notas')->enabled(true);
-        $this->btn_refine_ai->loading(false)->label('✨ Aplicar Ajustes y Re-renderizar')->enabled(true);
+        $this->btn_refine_ai->loading(false)->label('✨ Aplicar Ajustes')->enabled(true);
         $this->ai_feedback->value('');
 
         $this->applyCurrentVersionToUI();
-        $this->toast("¡Previsualización v{$versionNumber} lista!", 'success');
+        $this->toast("¡Estructura de Reel v{$versionNumber} lista!", 'success');
     }
 
     private function handleFailedStatus(ReelGenerationStatus $status): void
@@ -647,16 +594,16 @@ trait InteractsWithReelStudio
         $this->state_active_job_id = '';
 
         $this->lbl_ai_progress_step
-            ->text('❌ '.($status->message ?? 'Error al generar el video.'))
+            ->text('❌ '.($status->message ?? 'Error al procesar el guion.'))
             ->style('danger');
         $this->lbl_ai_progress_detail
-            ->text($status->detail ?? 'Intenta nuevamente o ajusta tus notas.');
+            ->text($status->detail ?? 'Intenta nuevamente o revisa tus notas.');
 
-        $this->lbl_version_badge->text('Error en generación')->style('danger');
+        $this->lbl_version_badge->text('Error')->style('danger');
         $this->btn_ask_ai->loading(false)->label('✨ Reintentar con IA')->enabled(true);
-        $this->btn_refine_ai->loading(false)->label('✨ Aplicar Ajustes y Re-renderizar')->enabled(true);
+        $this->btn_refine_ai->loading(false)->label('✨ Aplicar Ajustes')->enabled(true);
 
-        $this->toast('Ocurrió un error al generar el video con IA.', 'error');
+        $this->toast('Ocurrió un error al procesar el guion con IA.', 'error');
     }
 
     /**
@@ -709,20 +656,22 @@ trait InteractsWithReelStudio
             ->style('success');
 
         $this->lbl_ai_progress_step
-            ->text("✅ Previsualización v{$versionNum} lista ({$durationSec}s en total)")
+            ->text("✅ Estructura v{$versionNum} lista ({$durationSec}s en total)")
             ->style('success');
 
         $this->lbl_ai_progress_detail
-            ->text('Revisa el video y el resumen de escenas. Si estás conforme, envíalo a revisión.');
+            ->text('Revisa el resumen de escenas y la simulación. Si estás conforme, continúa a revisión.');
 
         $this->ai_preview_box->visible(true);
         $this->btn_prev_version->enabled($this->state_current_version_index > 0);
         $this->btn_next_version->enabled($this->state_current_version_index < $totalVersions - 1);
+        $this->btn_step3_next->enabled(true);
 
         if (isset($this->btn_save_post)) {
             $this->btn_save_post->enabled(true);
         }
 
+        // Simulación visual en el reproductor (si hay video cargado, o placeholder simulado)
         if ($videoUrl !== '') {
             $this->reel_preview_player->currentMedia([
                 'id' => "reel_v{$versionNum}",
@@ -736,13 +685,17 @@ trait InteractsWithReelStudio
 
         $this->lbl_storyboard_summary->text($storyboard);
 
-        if (isset($this->postService) && $this->state_post_id > 0) {
-            $rawVideoFilename = $versionData['video_filename'] ?? null;
-            $videoFilename = is_string($rawVideoFilename) ? $rawVideoFilename : '';
-            $this->postService->updatePost($this->state_post_id, [
-                'ai_script' => $jsonScript !== '' ? $jsonScript : null,
-                'reel_video' => $videoFilename !== '' ? $videoFilename : null,
-            ]);
+        if ($this->state_post_id > 0) {
+            $existingPost = $this->postService->findById($this->state_post_id);
+            $statusVal = $existingPost !== null ? (is_string($existingPost->status) ? $existingPost->status : $existingPost->status->value) : '';
+            if ($existingPost !== null && ! in_array($statusVal, ['published', 'archived'], true)) {
+                $rawVideoFilename = $versionData['video_filename'] ?? null;
+                $videoFilename = is_string($rawVideoFilename) ? $rawVideoFilename : '';
+                $this->postService->updatePost($this->state_post_id, [
+                    'ai_script' => $jsonScript !== '' ? $jsonScript : null,
+                    'reel_video' => $videoFilename !== '' ? $videoFilename : null,
+                ], Auth::user());
+            }
         }
     }
 
@@ -761,9 +714,107 @@ trait InteractsWithReelStudio
         return $this->state_reel_versions[$this->state_current_version_index];
     }
 
+    protected function restoreReelStudioFromPost(?PostDTO $post = null): void
+    {
+        if ($post === null) {
+            return;
+        }
+
+        $status = GenerateReelPreviewJob::getStatus((int) $post->id);
+
+        $savedVersions = $status !== null ? $status->versions : [];
+        if ($savedVersions !== []) {
+            $this->hydrateSavedVersions($savedVersions);
+        } else {
+            $this->preloadExistingReel(
+                $post->aiScript,
+                $post->reelVideo
+            );
+        }
+
+        $jobStatus = $status !== null ? $status->status : $post->aiJobStatus;
+        if (in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
+            $this->state_active_job_id = (string) $post->id;
+            $versionNumber = $status !== null && $status->version !== null ? $status->version : (count($this->state_reel_versions) + 1);
+            $this->updateUiForJobStart($versionNumber, false, null);
+
+            if ($status !== null) {
+                if ($jobStatus === 'rendering_video') {
+                    $this->handleRenderingVideoStatus($status);
+                } else {
+                    $this->handleGeneratingScriptStatus($status);
+                }
+            }
+
+            return;
+        }
+
+        if ($jobStatus === 'failed' && $status !== null) {
+            $this->enableStepTab('reel_studio_tab', activate: false);
+            $this->handleFailedStatus($status);
+        }
+    }
+
     /**
-     * Elimina del disco los archivos MP4 de las versiones descartadas durante la sesión.
+     * @param  array<int, array<string, mixed>>  $savedVersions
      */
+    private function hydrateSavedVersions(array $savedVersions): void
+    {
+        $formatter = app(ReelStoryboardFormatter::class);
+        $this->state_reel_versions = [];
+
+        foreach ($savedVersions as $idx => $ver) {
+            $jsonScript = isset($ver['json_script']) && is_string($ver['json_script']) ? $ver['json_script'] : '';
+            $feedback = isset($ver['feedback_applied']) && is_string($ver['feedback_applied'])
+                ? $ver['feedback_applied']
+                : null;
+            $verNum = isset($ver['version']) && is_numeric($ver['version']) ? (int) $ver['version'] : ($idx + 1);
+            $videoUrl = isset($ver['video_url']) && is_string($ver['video_url']) ? $ver['video_url'] : '';
+            $videoFile = isset($ver['video_filename']) && is_string($ver['video_filename']) ? $ver['video_filename'] : '';
+            $scenes = isset($ver['scene_count']) && is_numeric($ver['scene_count']) ? (int) $ver['scene_count'] : 0;
+            $duration = isset($ver['duration_seconds']) && is_numeric($ver['duration_seconds']) ? (int) $ver['duration_seconds'] : 10;
+
+            $this->state_reel_versions[] = [
+                'version' => $verNum,
+                'video_url' => $videoUrl,
+                'video_filename' => $videoFile,
+                'json_script' => $jsonScript,
+                'scene_count' => $scenes,
+                'duration_seconds' => $duration,
+                'storyboard_markdown' => $formatter->format($jsonScript, $feedback),
+                'feedback_applied' => $feedback,
+            ];
+        }
+
+        $this->state_current_version_index = count($this->state_reel_versions) - 1;
+        $this->enableStepTab('reel_studio_tab', activate: false);
+        $this->applyCurrentVersionToUI();
+    }
+
+    protected function preloadExistingReel(?string $jsonScript, ?string $videoFilename): void
+    {
+        $script = trim((string) $jsonScript);
+        $video = trim((string) $videoFilename);
+
+        if ($script === '' && $video === '') {
+            return;
+        }
+
+        $rawDecoded = $script !== '' ? json_decode($script, true) : [];
+        $decoded = is_array($rawDecoded) ? $rawDecoded : [];
+        $scenes = is_array($decoded['scenes'] ?? null) ? $decoded['scenes'] : [];
+
+        $this->hydrateSavedVersions([[
+            'version' => 1,
+            'video_url' => $video !== '' ? "/storage/reels/{$video}" : '',
+            'video_filename' => $video,
+            'json_script' => $script,
+            'scene_count' => count($scenes),
+            'duration_seconds' => 10,
+            'feedback_applied' => null,
+        ]]);
+    }
+
     protected function cleanupDiscardedReelFiles(?string $keptVideoFilename): void
     {
         foreach ($this->state_reel_versions as $version) {
@@ -782,7 +833,7 @@ trait InteractsWithReelStudio
 
     protected function stopActiveReelJobPolling(): void
     {
-        if ($this->state_active_job_id !== '') {
+        if ($this->state_active_job_id !== '' && isset($this->tmr_reel_poll)) {
             $this->tmr_reel_poll->stop();
             $this->state_active_job_id = '';
         }
