@@ -166,6 +166,44 @@ return [
             'name' => 'Revisar Posts',
             'description' => 'Permite moderar, solicitar cambios y aprobar propuestas de publicación.',
         ],
+        'parts' => [
+            'initial_data' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Initial Data',
+                    'description' => 'Permite acceder a la pantalla Post Parts Initial Data.',
+                ],
+            ],
+            'reel_studio' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Reel Studio',
+                    'description' => 'Permite acceder a la pantalla Post Parts Reel Studio.',
+                ],
+            ],
+            'sumary_publish' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Sumary Publish',
+                    'description' => 'Permite acceder a la pantalla Post Parts Sumary Publish.',
+                ],
+            ],
+            'reviewer_chat' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Reviewer Chat',
+                    'description' => 'Permite acceder a la pantalla Post Parts Reviewer Chat.',
+                ],
+            ],
+            'date_time_data' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Date Time Data',
+                    'description' => 'Permite acceder a la pantalla Post Parts Date Time Data.',
+                ],
+            ],
+            'video_studio' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Video Studio',
+                    'description' => 'Permite acceder a la pantalla Post Parts Video Studio.',
+                ],
+            ],
+        ],
     ],
     'registered_home' => [
         'access' => [

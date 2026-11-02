@@ -18,19 +18,19 @@ class PostPolicy
 
         $status = is_string($post->status) ? $post->status : $post->status->value;
 
-        // Regla 1: Admin o Reviewer pueden actualizar cualquier post
-        if ($user->hasRole('admin') || $user->hasRole('reviewer')) {
-            return Response::allow();
-        }
-
-        // Regla 2: No se puede actualizar si está publicado
+        // Regla 1: No se puede actualizar si está publicado
         if ($status === PostStatus::PUBLISHED->value) {
             return Response::deny('No se puede modificar un post publicado.');
         }
 
-        // Regla 3: No se puede actualizar si está archivado
+        // Regla 2: No se puede actualizar si está archivado
         if ($status === PostStatus::ARCHIVED->value) {
             return Response::deny('No se puede modificar un post archivado.');
+        }
+
+        // Regla 3: Admin o Reviewer pueden actualizar cualquier post
+        if ($user->hasRole('admin') || $user->hasRole('reviewer')) {
+            return Response::allow();
         }
 
         // Regla 4: El autor no puede actualizar si está pendiente de revisión

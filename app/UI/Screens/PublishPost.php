@@ -6,13 +6,6 @@ namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
-use App\UI\Screens\Concerns\HasAiReelStructureStep;
-use App\UI\Screens\Concerns\HasPostDataStep;
-use App\UI\Screens\Concerns\HasPostImageStep;
-use App\UI\Screens\Concerns\HasReviewerResponseStep;
-use App\UI\Screens\Concerns\HasReviewSubmissionStep;
-use App\UI\Screens\Concerns\HasSummaryAndPublishStep;
-use App\UI\Screens\Concerns\HasVideoGenerationStep;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Enums\AlignItems;
@@ -22,6 +15,7 @@ use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use App\UI\Screens\Post\Support\WizzardPartsLoader;
 
 /**
  * Pantalla de asistente (Wizard) para la creación y publicación de posts en 7 pasos.
@@ -30,17 +24,9 @@ use Idei\Usim\ValueObjects\Spacing;
  */
 class PublishPost extends Screen
 {
-    use HasAiReelStructureStep;
-    use HasPostDataStep;
-    use HasPostImageStep;
-    use HasReviewerResponseStep;
-    use HasReviewSubmissionStep;
-    use HasSummaryAndPublishStep;
-    use HasVideoGenerationStep;
+    protected Container $buttons_container;
 
-    protected Container $workspace_tabs;
-
-    protected int $state_post_id = 0;
+    protected Container $demo_container;
 
     public function __construct(
         protected PostServiceInterface $postService
@@ -51,37 +37,46 @@ class PublishPost extends Screen
     protected function buildBaseUI(Container $container, ...$params): void
     {
         $rawPostId = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? null;
-        $explicitPostId = isset($rawPostId) && is_numeric($rawPostId)
-            ? (int) $rawPostId
-            : 0;
 
-        if ($explicitPostId > 0) {
-            $this->state_post_id = $explicitPostId;
-        }
-
-        $post = $this->resolvePost($explicitPostId > 0);
-        if ($explicitPostId > 0 && $post === null) {
-            $this->toast('Post no encontrado.', 'error');
+        if ($rawPostId === null || !is_numeric($rawPostId) || (int) $rawPostId <= 0) {
             $this->navigate(Home::class);
-
             return;
         }
+
+        $post = $this->postService->findById((int) $rawPostId);
 
         $container
             ->plain()
             ->width(Size::full())
-            ->maxWidth(Size::px(980))
+            ->maxWidth(Size::px(1024))
             ->centerHorizontal();
 
-        $container->add($this->buildReelPollTimer());
-        $container->add($this->buildVideoPollTimer());
+        $wrapper = UI::container('wrapper')
+            ->width(Size::full())
+            ->gap(Spacing::px(5))
+            ->padding(Spacing::zero());
+
+        $this->demo_container = UI::container('demo_container')
+            ->card()
+            ->shadow(false)
+            ->width(Size::full())
+            ->height(Size::px(500));
+
+        $wrapper->add($this->buttonsContainer());
+        $wrapper->add($this->demo_container);
+        $wrapper->add($this->buildNavigation($post));
+
         $container->add($this->buildHeader());
+        $container->add($wrapper);
+    }
 
-        $this->buildWizardTabs($post);
-        $container->add($this->workspace_tabs);
-
-        $this->restoreReelStudioFromPost($post);
-        $this->configureInitialTabState($post);
+    protected function postLoadUI(): void
+    {
+        $class = WizzardPartsLoader::getWizzardByIndex($this->selectedIndex());
+        if ($class === null) {
+            return;
+        }
+        $this->demo_container->embed($class);
     }
 
     private function buildHeader(): Container
@@ -92,9 +87,8 @@ class PublishPost extends Screen
             ->justifyContent(JustifyContent::SPACE_BETWEEN)
             ->alignItems(AlignItems::CENTER)
             ->plain()
-            ->shadow(false)
             ->padding(Spacing::zero())
-            ->gap(Spacing::px(16));
+            ->gap(Spacing::px(5));
 
         $header->add(
             UI::button('btn_back_home')
@@ -106,133 +100,119 @@ class PublishPost extends Screen
         return $header;
     }
 
-    private function buildWizardTabs(?PostDTO $post): void
+    private function buttonsContainer(): Container
     {
-        $hasAiScript = $post !== null && ! empty($post->aiScript);
-        $hasVideo = $post !== null && ! empty($post->reelVideo);
-        $statusVal = $post !== null ? (is_string($post->status) ? $post->status : $post->status->value) : 'draft';
+        $this->buttons_container = UI::container('buttons_container')
+            ->layout(LayoutType::HORIZONTAL)
+            ->alignContent('center')
+            ->alignItems('center')
+            ->gap(Spacing::px(10))
+            ->plain();
 
-        $this->workspace_tabs = UI::container('workspace_tabs')
-            ->card()
+        $wizzardParts = WizzardPartsLoader::getWizzardParts();
+
+        foreach ($wizzardParts as $index => $stepClass) {
+            $button = UI::button("button_$index")
+                ->label($stepClass::getName())
+                ->status($index === 0)
+                ->style($index === 0 ? 'primary' : 'secondary');
+            $id = $button->getId();
+            $button->action('demo_selected', [
+                'id' => $id,
+                'index' => $index,
+                'screen_class' => $stepClass,
+            ]);
+            $this->buttons_container->add($button);
+        }
+        return $this->buttons_container;
+    }
+
+    private function buildNavigation(PostDTO $post): Container
+    {
+        $navigation = UI::container('navigation')
             ->width(Size::full())
-            ->tabs([
-                'form_tab' => [
-                    'label' => '1. Datos',
-                    'disabled' => false,
-                ],
-                'step_image_tab' => [
-                    'label' => '2. Imagen',
-                    'disabled' => $post === null,
-                ],
-                'reel_studio_tab' => [
-                    'label' => '3. Estructurar Reel con IA',
-                    'disabled' => ! $hasAiScript && ($post === null || $statusVal === 'draft'),
-                ],
-                'step_review_submission_tab' => [
-                    'label' => '4. Enviar a Revisión',
-                    'disabled' => ! $hasAiScript,
-                ],
-                'step_reviewer_response_tab' => [
-                    'label' => '5. Respuesta del Revisor',
-                    'disabled' => ! in_array($statusVal, ['pending_review', 'changes_requested', 'published'], true),
-                ],
-                'step_video_generation_tab' => [
-                    'label' => '6. Generación de Video',
-                    'disabled' => ! in_array($statusVal, ['published', 'reel_generated', 'reel_generation_pending'], true) && ! $hasVideo,
-                ],
-                'step_summary_publish_tab' => [
-                    'label' => '7. Resumen y Publicar',
-                    'disabled' => ! $hasVideo,
-                ],
-            ], 'form_tab');
+            ->layout(LayoutType::HORIZONTAL)
+            ->justifyContent(JustifyContent::SPACE_BETWEEN)
+            ->alignItems(AlignItems::CENTER);
 
-        $this->workspace_tabs->add($this->buildDataStepCard($post), tab: 'form_tab');
-        $this->workspace_tabs->add($this->buildImageStepCard($post), tab: 'step_image_tab');
-        $this->workspace_tabs->add($this->buildAiReelStructureStepCard($post), tab: 'reel_studio_tab');
-        $this->workspace_tabs->add($this->buildReviewSubmissionStepCard($post), tab: 'step_review_submission_tab');
-        $this->workspace_tabs->add($this->buildReviewerResponseStepCard($post), tab: 'step_reviewer_response_tab');
-        $this->workspace_tabs->add($this->buildVideoGenerationStepCard($post), tab: 'step_video_generation_tab');
-        $this->workspace_tabs->add($this->buildSummaryAndPublishStepCard($post), tab: 'step_summary_publish_tab');
-    }
+        $navigation->add(
+            UI::button('btn_previous_step')
+                ->label('← Paso Anterior')
+                ->action('go_to_previous_step')
+                ->style('secondary')
+        );
 
-    private function configureInitialTabState(?PostDTO $post): void
-    {
-        if ($post === null) {
-            return;
-        }
+        $navigation->add(
+            UI::button('btn_next_step')
+                ->label('Siguiente Paso →')
+                ->action('go_to_next_step')
+                ->style('primary')
+        );
 
-        $statusVal = is_string($post->status) ? $post->status : $post->status->value;
-
-        if ($statusVal === 'changes_requested') {
-            $this->enableStepTab('step_reviewer_response_tab', activate: false);
-            $this->workspace_tabs->activeTab('form_tab');
-
-            if (isset($this->btn_save_post)) {
-                $this->btn_save_post->enabled(true);
-            }
-
-            return;
-        }
-
-        if ($statusVal === 'pending_review') {
-            $this->enableStepTab('step_reviewer_response_tab', activate: true);
-
-            return;
-        }
-
-        if (! empty($post->reelVideo)) {
-            $this->enableStepTab('step_video_generation_tab', activate: false);
-            $this->enableStepTab('step_summary_publish_tab', activate: false);
-        }
-
-        if (! empty($post->aiScript) && isset($this->btn_save_post)) {
-            $this->btn_save_post->enabled(true);
-        }
-    }
-
-    public function enableStepTab(string $tabId, bool $activate = false): void
-    {
-        if (! isset($this->workspace_tabs)) {
-            return;
-        }
-
-        $this->workspace_tabs->disableTab($tabId, false);
-
-        if ($activate) {
-            $this->workspace_tabs->activeTab($tabId);
-        }
-    }
-
-    public function goToStep(string $tabId): void
-    {
-        $this->enableStepTab($tabId, activate: true);
-    }
-
-    protected function enableReelStudioTab(bool $activate = false): void
-    {
-        $this->enableStepTab('reel_studio_tab', $activate);
-    }
-
-    private function resolvePost(bool $isExplicit = false): ?PostDTO
-    {
-        if ($this->state_post_id > 0) {
-            $existing = $this->postService->findById($this->state_post_id);
-            if ($existing !== null || $isExplicit) {
-                return $existing;
-            }
-        }
-
-        return null;
+        return $navigation;
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * Handle the action when a demo button is selected.
+     *
+     * @param  array<string, mixed> $params Parameters containing the button ID
+     * and index of the selected demo
      */
-    protected function resolveCandidatePostId(array $params = []): int
+    public function onDemoSelected(array $params): void
     {
-        $candidate = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? $this->state_post_id;
+        /** @var string|null $id */
+        $id = $params['id'] ?? null;
+        if ($id === null) {
+            return;
+        }
 
-        return is_numeric($candidate) && (int) $candidate > 0 ? (int) $candidate : 0;
+        /** @var int|null $index */
+        $index = $params['index'] ?? null;
+        if ($index === null) {
+            return;
+        }
+
+        /** @var class-string<Screen> | null $screenClass */
+        $screenClass = $params['screen_class'] ?? null;
+        if ($screenClass === null) {
+            return;
+        }
+
+        $this->updateButtonState($id);
+        $this->demo_container->embed($screenClass);
+    }
+
+    private function updateButtonState(string|int $id): void
+    {
+        foreach ($this->buttons_container->getChildren() as $button) {
+            if ($button instanceof Button) {
+                $button->status(false);
+                $button->style('secondary');
+            }
+        }
+        $button = $this->findRootComponentAs($id, Button::class);
+        if (!$button && $id !== null) {
+            foreach ($this->buttons_container->getChildren() as $child) {
+                if ($child instanceof Button && $child->getName() === $id) {
+                    $button = $child;
+                    break;
+                }
+            }
+        }
+        if ($button) {
+            $button->status(true);
+            $button->style('primary');
+        }
+    }
+
+    private function selectedIndex(): int
+    {
+        foreach ($this->buttons_container->getChildren() as $index => $button) {
+            if ($button instanceof Button && $button->getStatus()) {
+                return $index;
+            }
+        }
+        return 0;
     }
 
     /**

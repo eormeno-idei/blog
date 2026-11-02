@@ -21,7 +21,7 @@ use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Step 1: Datos de la publicación (Título, contenido/notas y rango de fechas).
+ * Step 1: Datos de la publicación (Título, contenido/notas).
  *
  * @mixin PublishPost
  *
@@ -40,26 +40,16 @@ trait HasPostDataStep
 
     protected Textarea $post_content;
 
-    protected Input $post_from;
-
-    protected Input $post_to;
-
     protected Button $btn_step1_next;
 
     protected function buildDataStepCard(?PostDTO $post = null): Container
     {
         $card = UI::container('step_data_card')
-            ->card()
             ->width(Size::full())
-            ->maxWidth(Size::px(860))
             ->centerHorizontal()
             ->layout(LayoutType::VERTICAL)
-            ->padding(Spacing::px(20))
-            ->gap(Spacing::px(16));
-
-        if ($post !== null && ! empty($post->reviewerComment)) {
-            $card->add($this->buildReviewerCommentAlert($post));
-        }
+            ->padding(Spacing::px(10))
+            ->gap(Spacing::px(8));
 
         $initialTitle = $post !== null ? $post->title : '';
         $initialContent = $post !== null ? $post->content : '';
@@ -74,7 +64,7 @@ trait HasPostDataStep
             ->value($initialTitle)
             ->required(true)
             ->width(Size::full())
-            ->onChange('on_title_saved');
+            ->onChange('on_title_changed');
 
         $this->post_content = UI::textarea('post_content')
             ->label('Información textual (Notas base para el Post y el Reel)')
@@ -83,54 +73,15 @@ trait HasPostDataStep
             ->plainText()
             ->width(Size::full())
             ->height(Size::px(220))
-            ->maxLength(5000)
-            ->helpText('Máximo 5000 caracteres. La IA utilizará estas notas para redactar las escenas del Reel.')
-            ->onChange('on_plain_saved');
+            ->helpText('La IA utilizará estas notas para redactar las escenas del Reel.')
+            ->onChange('on_content_changed');
 
         $card->add($this->post_id);
         $card->add($this->post_title);
         $card->add($this->post_content);
-        $card->add($this->buildDateRangeRow($post));
         $card->add($this->buildStep1ActionsRow());
 
         return $card;
-    }
-
-    private function buildDateRangeRow(?PostDTO $post = null): Container
-    {
-        $row = UI::container('publish_dates_row')
-            ->plain()
-            ->shadow(false)
-            ->width(Size::full())
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->gap(Spacing::px(16))
-            ->padding(Spacing::zero());
-
-        $fromVal = $post !== null && $post->from !== null
-            ? $post->from->format('Y-m-d')
-            : now()->format('Y-m-d');
-
-        $toVal = $post !== null && $post->to !== null
-            ? $post->to->format('Y-m-d')
-            : now()->addDays(14)->format('Y-m-d');
-
-        $this->post_from = UI::input('post_from')
-            ->type('date')
-            ->label('Fecha desde la que debe publicarse')
-            ->value($fromVal)
-            ->width(Size::full());
-
-        $this->post_to = UI::input('post_to')
-            ->type('date')
-            ->label('Fecha hasta la que debe publicarse')
-            ->value($toVal)
-            ->width(Size::full());
-
-        $row->add($this->post_from);
-        $row->add($this->post_to);
-
-        return $row;
     }
 
     private function buildStep1ActionsRow(): Container
@@ -153,34 +104,6 @@ trait HasPostDataStep
         return $actions;
     }
 
-    private function buildReviewerCommentAlert(PostDTO $post): Container
-    {
-        $reviewerName = $post->reviewedBy !== null ? $post->reviewedBy->name : 'Revisor';
-        $comment = $post->reviewerComment ?? '';
-
-        $alert = UI::container('reviewer_feedback_alert')
-            ->card()
-            ->width(Size::full())
-            ->layout(LayoutType::VERTICAL)
-            ->padding(Spacing::px(16))
-            ->gap(Spacing::px(6));
-
-        $alert->add(
-            UI::label('lbl_reviewer_alert_title')
-                ->text("⚠️ Observaciones del Revisor ({$reviewerName}):")
-                ->style('warning')
-                ->bold()
-        );
-
-        $alert->add(
-            UI::label('lbl_reviewer_alert_body')
-                ->text($comment)
-                ->style('default')
-        );
-
-        return $alert;
-    }
-
     /**
      * @param  array<string, mixed>  $params
      */
@@ -198,8 +121,6 @@ trait HasPostDataStep
 
         $title = $request->title();
         $content = $request->content();
-        $from = $request->fromDate();
-        $to = $request->toDate();
 
         $this->post_title->value($title);
         $this->post_content->value($content);
@@ -208,8 +129,6 @@ trait HasPostDataStep
             'user_id' => (int) $user->id,
             'title' => $title,
             'content' => $content,
-            'from' => $from,
-            'to' => $to,
         ];
 
         if ($this->state_post_id > 0) {
@@ -226,7 +145,7 @@ trait HasPostDataStep
     /**
      * @param  array<string, mixed>  $params
      */
-    public function onTitleSaved(array $params): void
+    public function onTitleChanged(array $params): void
     {
         $rawValue = $params['value'] ?? $params['post_title'] ?? '';
         $newTitle = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
@@ -253,7 +172,7 @@ trait HasPostDataStep
     /**
      * @param  array<string, mixed>  $params
      */
-    public function onPlainSaved(array $params): void
+    public function onContentChanged(array $params): void
     {
         $rawValue = $params['value'] ?? $params['post_content'] ?? '';
         $value = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
