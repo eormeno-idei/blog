@@ -178,6 +178,42 @@ function getCsrfHeaders() {
 // Make available globally for other modular components
 window.getCsrfHeaders = getCsrfHeaders;
 
+function getCurrentQueryParams() {
+    if (typeof window === 'undefined') {
+        return new URLSearchParams();
+    }
+    const helpers = window.USIM_COMPONENT_HELPERS;
+    if (helpers && typeof helpers.getCurrentQueryParams === 'function') {
+        return helpers.getCurrentQueryParams();
+    }
+    if (window.location && window.location.search) {
+        return new URLSearchParams(window.location.search);
+    }
+    if (window.QUERY_PARAMS instanceof URLSearchParams) {
+        return window.QUERY_PARAMS;
+    }
+    if (typeof window.QUERY_PARAMS === 'string') {
+        return new URLSearchParams(window.QUERY_PARAMS);
+    }
+    return new URLSearchParams();
+}
+window.getCurrentQueryParams = getCurrentQueryParams;
+
+function getUiEventUrl() {
+    const helpers = window.USIM_COMPONENT_HELPERS;
+    if (helpers && typeof helpers.buildUiEventUrl === 'function') {
+        return helpers.buildUiEventUrl();
+    }
+    const origin = (typeof window !== 'undefined' && window.location?.origin) || 'http://localhost';
+    const url = new URL('/api/ui-event', origin);
+    const currentParams = getCurrentQueryParams();
+    for (const [key, value] of currentParams.entries()) {
+        url.searchParams.append(key, value);
+    }
+    return `${url.pathname}${url.search}`;
+}
+window.getUiEventUrl = getUiEventUrl;
+
 function getUsimStorageObject() {
     const storageRaw = getUsimStorageValue();
     return safeParseJsonObject(storageRaw) || {};
@@ -775,7 +811,7 @@ class UIComponent {
 
             // console.log('Sending event:', { component_id: componentId, action, csrfHeaders });
 
-            const response = await fetch('/api/ui-event', {
+            const response = await fetch(getUiEventUrl(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -994,7 +1030,12 @@ class UIComponent {
                 parameters,
             });
         }
-        const url = new URL('/api/ui-data', window.location.origin);
+        const origin = (typeof window !== 'undefined' && window.location?.origin) || 'http://localhost';
+        const url = new URL('/api/ui-data', origin);
+        const currentParams = getCurrentQueryParams();
+        for (const [key, value] of currentParams.entries()) {
+            url.searchParams.append(key, value);
+        }
         url.searchParams.set('component_id', this.getComponentId());
         url.searchParams.set('action', action);
         if (parameters && typeof parameters === 'object' && Object.keys(parameters).length > 0) {
@@ -2220,7 +2261,7 @@ class UIRenderer {
                         const usimClientId = getUsimClientId();
 
                         try {
-                            const response = await fetch('/api/ui-event', {
+                            const response = await fetch(getUiEventUrl(), {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -3525,7 +3566,7 @@ async function executeTimeoutAction(action, callerServiceId) {
             const usimStorage = getUsimStorageHeaderValue();
             const usimClientId = getUsimClientId();
 
-            const response = await fetch('/api/ui-event', {
+            const response = await fetch(getUiEventUrl(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

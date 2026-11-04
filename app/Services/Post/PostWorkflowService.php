@@ -3,52 +3,80 @@
 namespace App\Services\Post;
 
 use App\Contracts\PostServiceInterface;
-use App\DTOs\Posts\Workflow;
-use App\DTOs\Posts\WorkflowStep;
-use Illuminate\Contracts\Auth\Authenticatable;
+use App\DTOs\Posts\PostDTO;
+use App\DTOs\Posts\WorkflowStateDTO;
+use App\DTOs\Posts\WorkflowStepDTO;
+use App\Enums\PostWorkflowStep;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 class PostWorkflowService
 {
     public function __construct(
-        private readonly PostServiceInterface $postRepository
+        private readonly PostServiceInterface $postService
     ) {}
 
-    /**
-     * @return Workflow
-     */
-    public function currentWorkflowStatus(int $post_id, ?Authenticatable $user = null): Workflow
+    public function getWorkflowState(int $postId, ?int $requestedIndex = null): WorkflowStateDTO
     {
-        $user = $user ?? Auth::user();
-
-        $post = $this->postRepository->findById($post_id);
-
-        if (! $post) {
-            throw new ModelNotFoundException("Post with ID {$post_id} not found.");
+        $post = $this->postService->findById($postId);
+        if ($post === null) {
+            throw new ModelNotFoundException("Post {$postId} not found.");
         }
 
-        if (! Gate::forUser($user)->allows('update', $post)) {
-            throw new AuthorizationException("User does not have permission to update this post.");
+        $allSteps = PostWorkflowStep::cases();
+        $totalSteps = count($allSteps);
+
+        // 1. Determinar el índice actual solicitado o por defecto
+        $currentIndex = $requestedIndex !== null
+            ? max(0, min($requestedIndex, $totalSteps - 1))
+            : $this->resolveCurrentIndexFromPost($post);
+
+        // 2. Construir los DTOs de pasos evaluando si cumplen requisitos
+        $stepDTOs = [];
+        foreach ($allSteps as $idx => $stepEnum) {
+            $isCompleted = $this->isStepCompleted($stepEnum, $post);
+            $canAccess = $idx <= $currentIndex || $isCompleted;
+
+            $stepDTOs[] = new WorkflowStepDTO(
+                step: $stepEnum,
+                label: $stepEnum->label(),
+                screenClass: $stepEnum->screenClass(),
+                isCurrent: $idx === $currentIndex,
+                isCompleted: $isCompleted,
+                canAccess: $canAccess,
+            );
         }
 
-        $initial_data = new WorkflowStep('Data Entry');
-        $date_time = new WorkflowStep('Date & Time', $initial_data);
-        $reel_studio = new WorkflowStep('Reel Studio', $date_time);
-        $reviewer_chat = new WorkflowStep('Review Submission', $reel_studio);
-        $video_generation = new WorkflowStep('Video Generation', $reviewer_chat);
-        $summary_publish = new WorkflowStep('Summary & Publish', $video_generation);
+        // 3. Evaluar si el paso actual puede avanzar al siguiente
+        $currentStepEnum = $allSteps[$currentIndex];
+        $canAdvance = ($currentIndex < $totalSteps - 1) && $this->isStepCompleted($currentStepEnum, $post);
+        $canGoBack = $currentIndex > 0;
 
-        $steps = collect([]);
-        $steps->push($initial_data);
-        $steps->push($date_time);
-        $steps->push($reel_studio);
-        $steps->push($reviewer_chat);
-        $steps->push($video_generation);
-        $steps->push($summary_publish);
+        return new WorkflowStateDTO(
+            steps: $stepDTOs,
+            currentIndex: $currentIndex,
+            canAdvance: $canAdvance,
+            canGoBack: $canGoBack,
+        );
+    }
 
-        return new Workflow(steps: $steps, current: $steps[$post->status_value]);
+    /**
+     * Reglas de validación de negocio puras para cada paso.
+     */
+    private function isStepCompleted(PostWorkflowStep $step, PostDTO $post): bool
+    {
+        return match ($step) {
+            PostWorkflowStep::INITIAL_DATA => trim($post->title) !== '' && trim($post->content) !== '',
+            PostWorkflowStep::DATE_TIME => $post->from !== null && $post->to !== null,
+            PostWorkflowStep::REEL_STUDIO => $post->aiScript !== null || $post->reelVideo !== null,
+            PostWorkflowStep::REVIEWER_CHAT => true,
+            PostWorkflowStep::VIDEO_STUDIO => $post->reelVideo !== null,
+            PostWorkflowStep::SUMMARY_PUBLISH => true,
+        };
+    }
+
+    private function resolveCurrentIndexFromPost(PostDTO $post): int
+    {
+        $workFlowStep = $post->workflowStep;
+        return 0;
     }
 }

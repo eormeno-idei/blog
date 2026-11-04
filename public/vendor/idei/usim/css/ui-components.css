@@ -58,19 +58,19 @@ body {
 .ui-container.ui-container-card {
     background: var(--usim-container-bg, var(--ui-surface));
     border: 1px solid var(--usim-container-border, var(--ui-border));
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: var(--usim-container-shadow, 0 2px 6px rgba(15, 23, 36, 0.1));
-    margin-bottom: 12px;
+    border-radius: 5px;
+    padding: 5px;
+    box-shadow: var(--usim-container-shadow, 0 2px 5px rgba(15, 23, 36, 0.1));
+    margin-bottom: 5px;
 }
 
 .ui-container.ui-container-plain {
     background: transparent;
     border: none;
     border-radius: 0;
-    padding: 0;
+    padding: 4px;
     box-shadow: none;
-    margin-bottom: 0;
+    margin-bottom: 4px;
 }
 
 .ui-container.ui-container-card:hover {

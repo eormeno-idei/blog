@@ -12,9 +12,8 @@ use Idei\Usim\Enums\Style;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
-use App\Contracts\PostWorkflowStepInterface;
 
-class SumaryPublish extends Screen implements PostWorkflowStepInterface
+class SumaryPublish extends Screen
 {
     protected NewLabel $label;
 
@@ -33,30 +32,5 @@ class SumaryPublish extends Screen implements PostWorkflowStepInterface
                     ->size(TextSize::LARGE)
                     ->center()
             );
-    }
-
-    public static function getName(): string
-    {
-        return "Summary & Publish";
-    }
-
-    public function getPrevious(): ?string
-    {
-        return VideoStudio::class;
-    }
-
-    public function getNext(): ?string
-    {
-        return null;
-    }
-
-    public function isNextEnabled(): bool
-    {
-        return false;
-    }
-
-    public function isPreviousEnabled(): bool
-    {
-        return true;
     }
 }

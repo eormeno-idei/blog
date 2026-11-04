@@ -4,6 +4,32 @@
 (function initUsimComponentHelpers(global) {
     const namespace = global.USIM_COMPONENT_HELPERS || {};
 
+    function getCurrentQueryParams() {
+        if (typeof global === 'undefined') {
+            return new URLSearchParams();
+        }
+        if (global.location && global.location.search) {
+            return new URLSearchParams(global.location.search);
+        }
+        if (global.QUERY_PARAMS instanceof URLSearchParams) {
+            return global.QUERY_PARAMS;
+        }
+        if (typeof global.QUERY_PARAMS === 'string') {
+            return new URLSearchParams(global.QUERY_PARAMS);
+        }
+        return new URLSearchParams();
+    }
+
+    function buildUiEventUrl() {
+        const origin = (typeof global !== 'undefined' && global.location?.origin) || 'http://localhost';
+        const url = new URL('/api/ui-event', origin);
+        const currentParams = getCurrentQueryParams();
+        for (const [key, value] of currentParams.entries()) {
+            url.searchParams.append(key, value);
+        }
+        return `${url.pathname}${url.search}`;
+    }
+
     async function sendUiEvent({ componentId, event, action, parameters = {}, credentials = 'same-origin' }) {
         const csrfHeaders = typeof global.getCsrfHeaders === 'function'
             ? global.getCsrfHeaders()
@@ -17,7 +43,7 @@
             ? global.getUsimClientId()
             : (typeof getUsimClientId === 'function' ? getUsimClientId() : '');
 
-        const response = await fetch('/api/ui-event', {
+        const response = await fetch(buildUiEventUrl(), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -72,7 +98,12 @@
     }
 
     function buildUiDataUrl({ componentId, action, parameters = {} }) {
-        const url = new URL('/api/ui-data', window.location.origin);
+        const origin = (typeof global !== 'undefined' && global.location?.origin) || 'http://localhost';
+        const url = new URL('/api/ui-data', origin);
+        const currentParams = getCurrentQueryParams();
+        for (const [key, value] of currentParams.entries()) {
+            url.searchParams.append(key, value);
+        }
         url.searchParams.set('component_id', componentId);
         url.searchParams.set('action', action);
         if (parameters && typeof parameters === 'object' && Object.keys(parameters).length > 0) {
@@ -94,14 +125,9 @@
             ? global.getUsimClientId()
             : (typeof getUsimClientId === 'function' ? getUsimClientId() : '');
 
-        const url = new URL('/api/ui-data', window.location.origin);
-        url.searchParams.set('component_id', componentId);
-        url.searchParams.set('action', action);
-        if (parameters && typeof parameters === 'object' && Object.keys(parameters).length > 0) {
-            url.searchParams.set('parameters', JSON.stringify(parameters));
-        }
+        const requestUrl = buildUiDataUrl({ componentId, action, parameters });
 
-        const response = await fetch(url.toString(), {
+        const response = await fetch(requestUrl, {
             method: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -157,6 +183,8 @@
         return { ok: response.ok, status: response.status, contentType, response, data };
     }
 
+    namespace.getCurrentQueryParams = getCurrentQueryParams;
+    namespace.buildUiEventUrl = buildUiEventUrl;
     namespace.sendUiEvent = sendUiEvent;
     namespace.applyUiUpdate = applyUiUpdate;
     namespace.buildUiDataUrl = buildUiDataUrl;

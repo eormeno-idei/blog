@@ -2,7 +2,6 @@
 
 namespace App\UI\Screens\Post\Parts;
 
-use App\Contracts\PostWorkflowStepInterface;
 use Idei\Usim\Screen;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
@@ -17,7 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Idei\Usim\Enums\JustifyContent;
 
 
-class InitialData extends Screen implements PostWorkflowStepInterface
+class InitialData extends Screen
 {
     protected Input $post_title;
     protected Textarea $post_content;
@@ -91,70 +90,23 @@ class InitialData extends Screen implements PostWorkflowStepInterface
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param int $post_id
+     * @param string $post_title
+     * @return void
      */
-    public function onTitleChanged(array $params): void
+    public function onTitleChanged(int $post_id, string $post_title): void
     {
-        $post = $this->resolveQueryPost();
-        if ($post === null) {
-            return;
-        }
-        $postId = $post->id;
-        $rawValue = $params['value'] ?? $params['post_title'] ?? '';
-        $newTitle = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
-        if ($newTitle === '') {
-            return;
-        }
-
-        $this->post_title->value($newTitle);
-
-        $this->postService->updatePost($postId, [
-            'title' => $newTitle,
-        ], Auth::user());
+        $this->postService->updatePost($post_id, ['title' => $post_title,], Auth::user());
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param int $post_id
+     * @param string $post_content
+     * @return void
      */
-    public function onContentChanged(array $params): void
+    public function onContentChanged(int $post_id, string $post_content): void
     {
-        $post = $this->resolveQueryPost();
-        if ($post === null) {
-            return;
-        }
-        $postId = $post->id;
-        $rawValue = $params['value'] ?? $params['post_content'] ?? '';
-        $value = trim(is_scalar($rawValue) || $rawValue instanceof \Stringable ? (string) $rawValue : '');
-        $this->post_content->value($value);
-
-        $this->postService->updatePost($postId, [
-            'content' => $value,
-        ], Auth::user());
-    }
-
-    public static function getName(): string
-    {
-        return "Initial Data";
-    }
-
-    public function getPrevious(): ?string
-    {
-        return null;
-    }
-
-    public function getNext(): ?string
-    {
-        return DateTimeData::class;
-    }
-
-    public function isNextEnabled(): bool
-    {
-        return false;
-    }
-
-    public function isPreviousEnabled(): bool
-    {
-        return false;
+        $this->postService->updatePost($post_id, ['content' => $post_content,], Auth::user());
     }
 
     private function resolveQueryPost(): ?PostDTO

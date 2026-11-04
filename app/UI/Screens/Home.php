@@ -438,18 +438,10 @@ class Home extends Screen
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param int $postId
      */
-    public function onEditPost(array $params): void
+    public function onEditPost(int $postId): void
     {
-        $postId = isset($params['post_id']) && is_numeric($params['post_id'])
-            ? (int) $params['post_id']
-            : 0;
-
-        if ($postId <= 0) {
-            return;
-        }
-
         $this->navigate(PublishPost::class, params: ['post_id' => $postId]);
     }
 

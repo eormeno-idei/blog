@@ -12,9 +12,8 @@ use Idei\Usim\Enums\Style;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
-use App\Contracts\PostWorkflowStepInterface;
 
-class ReviewerChat extends Screen implements PostWorkflowStepInterface
+class ReviewerChat extends Screen
 {
     protected NewLabel $label;
 
@@ -32,30 +31,5 @@ class ReviewerChat extends Screen implements PostWorkflowStepInterface
                 ->size(TextSize::LARGE)
                 ->center()
         );
-    }
-
-    public static function getName(): string
-    {
-        return "Reviewer Chat";
-    }
-
-    public function getPrevious(): ?string
-    {
-        return ReelStudio::class;
-    }
-
-    public function getNext(): ?string
-    {
-        return VideoStudio::class;
-    }
-
-    public function isNextEnabled(): bool
-    {
-        return false;
-    }
-
-    public function isPreviousEnabled(): bool
-    {
-        return true;
     }
 }

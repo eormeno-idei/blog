@@ -3,6 +3,7 @@
 use Idei\Usim\Enums\AspectRatio;
 use App\Enums\PostStatus;
 use App\Enums\PostTemplate;
+use App\Enums\PostWorkflowStep;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -20,13 +21,18 @@ return new class extends Migration
         $templates = PostTemplate::all();
         $defaultTemplate = PostTemplate::default();
 
+        $workflowSteps = PostWorkflowStep::all();
+        $defaultWorkflowStep = PostWorkflowStep::default();
+
         Schema::create('posts', function (Blueprint $table) use (
             $aspects,   $defaultAspect,
             $statuses,  $defaultStatus,
-            $templates, $defaultTemplate
+            $templates, $defaultTemplate,
+            $workflowSteps, $defaultWorkflowStep
         ) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->enum('workflow_step', $workflowSteps)->default($defaultWorkflowStep);
             $table->string('title');
             $table->text('content');
             $table->enum('template', $templates)->default($defaultTemplate);

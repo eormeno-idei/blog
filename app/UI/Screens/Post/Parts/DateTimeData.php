@@ -2,21 +2,27 @@
 
 namespace App\UI\Screens\Post\Parts;
 
-use App\Contracts\PostWorkflowStepInterface;
-use Idei\Usim\Components\Button;
-use Idei\Usim\Components\Container;
-use Idei\Usim\Components\NewLabel;
-use Idei\Usim\Enums\TextSize;
-use Idei\Usim\Enums\LayoutType;
-use Idei\Usim\Enums\JustifyContent;
-use Idei\Usim\Enums\Style;
-use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\Screen;
+use App\Contracts\PostServiceInterface;
+use App\DTOs\Posts\PostDTO;
+use Idei\Usim\Components\Container;
+use Idei\Usim\Components\Input;
+use Idei\Usim\Enums\JustifyContent;
+use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\UI;
+use Idei\Usim\ValueObjects\Size;
+use Idei\Usim\ValueObjects\Spacing;
 
-class DateTimeData extends Screen implements PostWorkflowStepInterface
+class DateTimeData extends Screen
 {
-    protected NewLabel $label;
+    protected ?Input $post_from;
+    protected ?Input $post_to;
+
+   public function __construct(
+        protected PostServiceInterface $postService
+    ) {
+        parent::__construct();
+    }
 
     public static function authorize(): bool
     {
@@ -25,38 +31,79 @@ class DateTimeData extends Screen implements PostWorkflowStepInterface
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
+        $post = $this->resolveQueryPost();
         $container
+            ->width(Size::full())
+            ->height(Size::full())
+            ->justifyContent(JustifyContent::START)
             ->add(
-                $this->label
-                    ->text("Date & Time")
-                    ->style(Style::INFO)
-                    ->size(TextSize::LARGE)
-                    ->center()
+                $this->buildDateTimeStepCard($post)
             );
     }
 
-    public static function getName(): string
+   protected function buildDateTimeStepCard(?PostDTO $post = null): Container
     {
-        return "Date & Time";
+        $card = UI::container('step_data_card')
+            ->card()
+            ->width(Size::full())
+            ->maxWidth(Size::px(860))
+            ->centerHorizontal()
+            ->layout(LayoutType::VERTICAL)
+            ->padding(Spacing::px(20))
+            ->gap(Spacing::px(16));
+
+        $card->add($this->buildDateRangeRow($post));
+
+        return $card;
     }
 
-    public function getPrevious(): ?string
+    private function buildDateRangeRow(?PostDTO $post = null): Container
     {
-        return InitialData::class;
+        $row = UI::container('publish_dates_row')
+            ->plain()
+            ->shadow(false)
+            ->width(Size::full())
+            ->layout(LayoutType::HORIZONTAL)
+            ->justifyContent(JustifyContent::SPACE_BETWEEN)
+            ->gap(Spacing::px(16))
+            ->padding(Spacing::zero());
+
+        $fromVal = $post !== null && $post->from !== null
+            ? $post->from->format('Y-m-d')
+            : now()->format('Y-m-d');
+
+        $toVal = $post !== null && $post->to !== null
+            ? $post->to->format('Y-m-d')
+            : now()->addDays(14)->format('Y-m-d');
+
+        $this->post_from = UI::input('post_from')
+            ->type('date')
+            ->label('Fecha desde la que debe publicarse')
+            ->value($fromVal)
+            ->required()
+            ->width(Size::full());
+
+        $this->post_to = UI::input('post_to')
+            ->type('date')
+            ->label('Fecha hasta la que debe publicarse')
+            ->value($toVal)
+            ->required()
+            ->width(Size::full());
+
+        $row->add($this->post_from);
+        $row->add($this->post_to);
+
+        return $row;
     }
 
-    public function getNext(): ?string
+    private function resolveQueryPost(): ?PostDTO
     {
-        return ReelStudio::class;
-    }
+        $queryParams = $this->getQueryParams();
+        $postId = $queryParams['post_id'] ?? null;
+        if ($postId === null) {
+            return null;
+        }
 
-    public function isNextEnabled(): bool
-    {
-        return false;
-    }
-
-    public function isPreviousEnabled(): bool
-    {
-        return false;
+        return $this->postService->findById((int) $postId);
     }
 }

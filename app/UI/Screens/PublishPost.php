@@ -1,60 +1,47 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
-use App\DTOs\Posts\PostDTO;
+use App\DTOs\Posts\WorkflowStateDTO;
+use App\Services\Post\PostWorkflowService;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
+use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use App\UI\Screens\Post\Support\WizzardPartsLoader;
 
-/**
- * Pantalla de asistente (Wizard) para la creación y publicación de posts en 7 pasos.
- *
- * @property Button $btn_save_post
- */
 class PublishPost extends Screen
 {
     protected Container $buttons_container;
-
     protected Container $demo_container;
+    protected Button $btn_previous_step;
+    protected Button $btn_next_step;
+
+    protected int $state_post_id = 0;
+    protected int $state_currentStepIndex = 0;
 
     public function __construct(
-        protected PostServiceInterface $postService
+        protected PostServiceInterface $postService,
+        protected PostWorkflowService $workflowService,
     ) {
         parent::__construct();
     }
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
-        $rawPostId = $params['post_id'] ?? $this->getQueryParams()['post_id'] ?? null;
 
-        if ($rawPostId === null || !is_numeric($rawPostId) || (int) $rawPostId <= 0) {
+        $postId = $this->resolvePostId($params);
+        $stepIndex = $this->resolveCurrentStepIndex();
+        if ($postId === null) {
             $this->navigate(Home::class);
             return;
         }
 
-        $post = $this->postService->findById((int) $rawPostId);
-
-        $container
-            ->plain()
-            ->width(Size::full())
-            ->maxWidth(Size::px(1024))
-            ->centerHorizontal();
-
-        $wrapper = UI::container('wrapper')
-            ->width(Size::full())
-            ->gap(Spacing::px(5))
-            ->padding(Spacing::zero());
+        $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
 
         $this->demo_container = UI::container('demo_container')
             ->card()
@@ -62,165 +49,161 @@ class PublishPost extends Screen
             ->width(Size::full())
             ->height(Size::px(500));
 
-        $wrapper->add($this->buttonsContainer());
-        $wrapper->add($this->demo_container);
-        $wrapper->add($this->buildNavigation($post));
+        $wrapper = UI::container('wrapper')
+            ->width(Size::full())
+            ->gap(Spacing::px(5));
 
-        $container->add($this->buildHeader());
+        $wrapper->add($this->buildStepsBar($workflow));
+        $wrapper->add($this->demo_container);
+        $wrapper->add($this->buildNavigation($workflow));
+
         $container->add($wrapper);
     }
 
     protected function postLoadUI(): void
     {
-        $class = WizzardPartsLoader::getWizzardByIndex($this->selectedIndex());
-        if ($class === null) {
+        $postId = $this->resolvePostId();
+        $stepIndex = $this->resolveCurrentStepIndex();
+        if ($postId === null) {
             return;
         }
-        $this->demo_container->embed($class);
+
+        $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
+        $this->demo_container->embed($workflow->currentStep()->screenClass);
     }
 
-    private function buildHeader(): Container
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function onGoToNextStep(array $params): void
     {
-        $header = UI::container('publish_header')
-            ->width(Size::full())
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->alignItems(AlignItems::CENTER)
-            ->plain()
-            ->padding(Spacing::zero())
-            ->gap(Spacing::px(5));
+        $postId = $this->resolvePostId();
+        if ($postId === null) {
+            return;
+        }
 
-        $header->add(
-            UI::button('btn_back_home')
-                ->label('← Volver al Inicio')
-                ->action('cancel_post')
-                ->style('secondary')
-        );
+        $stepIndex = $this->resolveCurrentStepIndex();
 
-        return $header;
+        $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
+
+        if (!$workflow->canAdvance) {
+            $this->toast('No puedes avanzar al siguiente paso. Asegúrate de completar los requisitos del paso actual.', 'warning');
+            // Regla de negocio no cumplida: mostrar feedback visual sin avanzar
+            return;
+        }
+
+        $this->state_currentStepIndex++;
+        $newWorkflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
+
+        $this->demo_container->embed($newWorkflow->currentStep()->screenClass);
+        $this->refreshNavigationState($newWorkflow);
     }
 
-    private function buttonsContainer(): Container
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function onGoToPreviousStep(array $params): void
+    {
+        if ($this->state_currentStepIndex <= 0) {
+            return;
+        }
+
+        $postId = $this->resolvePostId();
+        if ($postId === null) {
+            return;
+        }
+
+        $this->state_currentStepIndex--;
+        $newWorkflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
+
+        $this->demo_container->embed($newWorkflow->currentStep()->screenClass);
+        $this->refreshNavigationState($newWorkflow);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ?int
+     */
+    private function resolvePostId(array $params = []): ?int
+    {
+        if (isset($params['post_id']) && is_numeric($params['post_id']) && (int) $params['post_id'] > 0) {
+            $this->state_post_id = (int) $params['post_id'];
+            return $this->state_post_id;
+        }
+        
+        $rawPostId = $this->getQueryParams()['post_id'] ?? null;
+        if (is_numeric($rawPostId) && (int) $rawPostId > 0) {
+            $this->state_post_id = (int) $rawPostId;
+        }
+        return $this->state_post_id > 0 ? $this->state_post_id : null;
+    }
+
+    private function resolveCurrentStepIndex(): int
+    {
+        $rawIndex = $this->getQueryParams()['step_index'] ?? null;
+        if (is_numeric($rawIndex) && (int) $rawIndex >= 0) {
+            $this->state_currentStepIndex = (int) $rawIndex;
+        }
+        return max(0, $this->state_currentStepIndex);
+    }
+
+    private function buildStepsBar(WorkflowStateDTO $workflow): Container
     {
         $this->buttons_container = UI::container('buttons_container')
             ->layout(LayoutType::HORIZONTAL)
-            ->alignContent('center')
-            ->alignItems('center')
-            ->gap(Spacing::px(10))
-            ->plain();
+            ->gap(Spacing::px(10));
 
-        $wizzardParts = WizzardPartsLoader::getWizzardParts();
+        foreach ($workflow->steps as $index => $step) {
+            $button = UI::button("step_btn_{$index}")
+                ->label($step->label)
+                ->status($step->isCurrent)
+                ->style($step->isCurrent ? 'primary' : ($step->isCompleted ? 'success' : 'secondary'));
 
-        foreach ($wizzardParts as $index => $stepClass) {
-            $button = UI::button("button_$index")
-                ->label($stepClass::getName())
-                ->status($index === 0)
-                ->style($index === 0 ? 'primary' : 'secondary');
-            $id = $button->getId();
-            $button->action('demo_selected', [
-                'id' => $id,
-                'index' => $index,
-                'screen_class' => $stepClass,
-            ]);
+            if ($step->canAccess) {
+                $button->action('on_select_step', ['index' => $index]);
+            }
+
             $this->buttons_container->add($button);
         }
+
         return $this->buttons_container;
     }
 
-    private function buildNavigation(PostDTO $post): Container
+    private function buildNavigation(WorkflowStateDTO $workflow): Container
     {
-        $navigation = UI::container('navigation')
-            ->width(Size::full())
+        $nav = UI::container('navigation')
             ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->alignItems(AlignItems::CENTER);
+            ->justifyContent(JustifyContent::SPACE_BETWEEN);
 
-        $navigation->add(
-            UI::button('btn_previous_step')
-                ->label('← Paso Anterior')
-                ->action('go_to_previous_step')
-                ->style('secondary')
-        );
+        $this->btn_previous_step = UI::button('btn_previous_step')
+            ->label('← Paso Anterior')
+            ->action('go_to_previous_step')
+            ->enabled($workflow->canGoBack)
+            ->status($workflow->canGoBack);
 
-        $navigation->add(
-            UI::button('btn_next_step')
-                ->label('Siguiente Paso →')
-                ->action('go_to_next_step')
-                ->style('primary')
-        );
+        $this->btn_next_step = UI::button('btn_next_step')
+            ->label('Siguiente Paso →')
+            ->action('go_to_next_step')
+            ->enabled($workflow->canAdvance)
+            ->status($workflow->canAdvance);
 
-        return $navigation;
+        $nav->add($this->btn_previous_step);
+        $nav->add($this->btn_next_step);
+
+        return $nav;
     }
 
-    /**
-     * Handle the action when a demo button is selected.
-     *
-     * @param  array<string, mixed> $params Parameters containing the button ID
-     * and index of the selected demo
-     */
-    public function onDemoSelected(array $params): void
+    private function refreshNavigationState(WorkflowStateDTO $workflow): void
     {
-        /** @var string|null $id */
-        $id = $params['id'] ?? null;
-        if ($id === null) {
-            return;
-        }
-
-        /** @var int|null $index */
-        $index = $params['index'] ?? null;
-        if ($index === null) {
-            return;
-        }
-
-        /** @var class-string<Screen> | null $screenClass */
-        $screenClass = $params['screen_class'] ?? null;
-        if ($screenClass === null) {
-            return;
-        }
-
-        $this->updateButtonState($id);
-        $this->demo_container->embed($screenClass);
-    }
-
-    private function updateButtonState(string|int $id): void
-    {
-        foreach ($this->buttons_container->getChildren() as $button) {
-            if ($button instanceof Button) {
-                $button->status(false);
-                $button->style('secondary');
+        $this->btn_previous_step->status($workflow->canGoBack);
+        $this->btn_next_step->status($workflow->canAdvance);
+        // Actualizar estilos de los botones del stepper
+        foreach ($this->buttons_container->getChildren() as $index => $btn) {
+            if ($btn instanceof Button && isset($workflow->steps[$index])) {
+                $step = $workflow->steps[$index];
+                $btn->status($step->isCurrent);
+                $btn->style($step->isCurrent ? 'primary' : ($step->isCompleted ? 'success' : 'secondary'));
             }
         }
-        $button = $this->findRootComponentAs($id, Button::class);
-        if (!$button && $id !== null) {
-            foreach ($this->buttons_container->getChildren() as $child) {
-                if ($child instanceof Button && $child->getName() === $id) {
-                    $button = $child;
-                    break;
-                }
-            }
-        }
-        if ($button) {
-            $button->status(true);
-            $button->style('primary');
-        }
-    }
-
-    private function selectedIndex(): int
-    {
-        foreach ($this->buttons_container->getChildren() as $index => $button) {
-            if ($button instanceof Button && $button->getStatus()) {
-                return $index;
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    public function onCancelPost(array $params): void
-    {
-        $this->stopActiveReelJobPolling();
-        $this->navigate(Home::class);
     }
 }

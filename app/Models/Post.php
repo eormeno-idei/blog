@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PostStatus;
 use App\Enums\PostTemplate;
+use App\Enums\PostWorkflowStep;
 use Idei\Usim\Enums\AspectRatio;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,6 +49,7 @@ class Post extends Model
      */
     protected $fillable = [
         'user_id',
+        'workflow_step',
         'title',
         'content',
         'template',
@@ -74,6 +76,7 @@ class Post extends Model
         'template' => PostTemplate::DEFAULT->value,
         'aspect_ratio' => AspectRatio::_16_9->value,
         'status' => PostStatus::DRAFT->value,
+        'workflow_step' => PostWorkflowStep::INITIAL_DATA->value,
         'ai_job_status' => 'idle',
         'ai_job_payload' => null,
     ];
@@ -86,6 +89,7 @@ class Post extends Model
     protected function casts(): array
     {
         return [
+            'workflow_step' => PostWorkflowStep::class,
             'template' => PostTemplate::class,
             'aspect_ratio' => AspectRatio::class,
             'status' => PostStatus::class,

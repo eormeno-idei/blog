@@ -12,9 +12,8 @@ use Idei\Usim\Enums\Style;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
-use App\Contracts\PostWorkflowStepInterface;
 
-class VideoStudio extends Screen implements PostWorkflowStepInterface
+class VideoStudio extends Screen
 {
     protected NewLabel $label;
 
@@ -33,30 +32,5 @@ class VideoStudio extends Screen implements PostWorkflowStepInterface
                     ->size(TextSize::LARGE)
                     ->center()
             );
-    }
-
-    public static function getName(): string
-    {
-        return "Video Studio";
-    }
-
-    public function getPrevious(): ?string
-    {
-        return ReviewerChat::class;
-    }
-
-    public function getNext(): ?string
-    {
-        return SumaryPublish::class;
-    }
-
-    public function isNextEnabled(): bool
-    {
-        return false;
-    }
-
-    public function isPreviousEnabled(): bool
-    {
-        return false;
     }
 }

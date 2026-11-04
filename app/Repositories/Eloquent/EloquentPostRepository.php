@@ -64,6 +64,7 @@ class EloquentPostRepository implements PostRepositoryInterface
     {
         return new PostDTO(
             id: $post->id,
+            workflowStep: $post->workflow_step,
             title: $post->title,
             content: $post->content,
             template: $post->template,
