@@ -33,6 +33,7 @@ class PublishPost extends Screen
 
     protected function buildBaseUI(Container $container, int $postId): void
     {
+        $container->padding(Spacing::zero());
         $stepIndex = $this->resolveCurrentStepIndex();
         $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
 
@@ -44,7 +45,8 @@ class PublishPost extends Screen
 
         $wrapper = UI::container('wrapper')
             ->width(Size::full())
-            ->gap(Spacing::px(5));
+            ->padding(Spacing::zero())
+            ->gap(Spacing::px(4));
 
         $wrapper->add($this->buildStepsBar($workflow));
         $wrapper->add($this->demo_container);
@@ -100,13 +102,18 @@ class PublishPost extends Screen
     {
         $this->buttons_container = UI::container('buttons_container')
             ->layout(LayoutType::HORIZONTAL)
+            ->padding(Spacing::zero())
             ->gap(Spacing::px(10));
 
         foreach ($workflow->steps as $index => $step) {
+            $index_inc = $index + 1;
+            $style = $step->isCurrent ? 'primary' : 'secondary';
+
             $button = UI::button("step_btn_{$index}")
-                ->label($step->label)
+                ->label("{$index_inc}. {$step->label}")
                 ->status($step->isCurrent)
-                ->style($step->isCurrent ? 'primary' : ($step->isCompleted ? 'success' : 'secondary'));
+                ->enabled($step->canAccess)
+                ->style($style);
 
             if ($step->canAccess) {
                 $button->action('on_select_step', ['index' => $index]);
@@ -116,6 +123,24 @@ class PublishPost extends Screen
         }
 
         return $this->buttons_container;
+    }
+
+    private function updateStepsBar(WorkflowStateDTO $workflow): void
+    {
+        foreach ($this->buttons_container->getChildren() as $index => $btn) {
+            if ($btn instanceof Button && isset($workflow->steps[$index])) {
+                $step = $workflow->steps[$index];
+                $btn->status($step->isCurrent);
+                $btn->enabled($step->canAccess);
+                $btn->style($step->isCurrent ? 'primary' : 'secondary');
+            }
+        }
+    }
+
+    public function onPostChanged(int $postId, int $stepIndex): void
+    {
+        $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
+        $this->updateStepsBar($workflow);
     }
 
     private function buildNavigation(WorkflowStateDTO $workflow): Container
@@ -161,6 +186,7 @@ class PublishPost extends Screen
         $header = UI::container('publish_header')
             ->width(Size::full())
             ->layout(LayoutType::HORIZONTAL)
+            ->padding(Spacing::zero())
             ->add(
                 UI::button('btn_back_home')
                     ->label('← Inicio')

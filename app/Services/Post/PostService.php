@@ -100,7 +100,7 @@ class PostService implements PostServiceInterface
         }
 
         if (empty($data['content'])) {
-            $data['content'] = $this->getDefaultContent();
+            $data['content'] = '';
         }
 
         $postDto = $this->postRepository->create($data);
@@ -227,13 +227,5 @@ class PostService implements PostServiceInterface
         $maxNumber++;
 
         return "{$defaultTitle} {$maxNumber}";
-    }
-
-    /**
-     * Devuelve la plantilla inicial de contenido.
-     */
-    private function getDefaultContent(): string
-    {
-        return t('post.default_content');
     }
 }

@@ -32,9 +32,10 @@ class PostWorkflowService
 
         // 2. Construir los DTOs de pasos evaluando si cumplen requisitos
         $stepDTOs = [];
+        $previousStepCompleted = true; // Para el primer paso, asumimos que se puede acceder
         foreach ($allSteps as $idx => $stepEnum) {
             $isCompleted = $this->isStepCompleted($stepEnum, $post);
-            $canAccess = $idx <= $currentIndex || $isCompleted;
+            $canAccess = ($idx <= $currentIndex || $isCompleted) && $previousStepCompleted;
 
             $stepDTOs[] = new WorkflowStepDTO(
                 step: $stepEnum,
@@ -44,6 +45,8 @@ class PostWorkflowService
                 isCompleted: $isCompleted,
                 canAccess: $canAccess,
             );
+
+            $previousStepCompleted = $isCompleted;
         }
 
         // 3. Evaluar si el paso actual puede avanzar al siguiente
@@ -65,13 +68,27 @@ class PostWorkflowService
     private function isStepCompleted(PostWorkflowStep $step, PostDTO $post): bool
     {
         return match ($step) {
-            PostWorkflowStep::INITIAL_DATA => trim($post->title) !== '' && trim($post->content) !== '',
+            PostWorkflowStep::INITIAL_DATA => $this->initialDataStepCompleted($post),
             PostWorkflowStep::DATE_TIME => $post->from !== null && $post->to !== null,
             PostWorkflowStep::REEL_STUDIO => $post->aiScript !== null || $post->reelVideo !== null,
             PostWorkflowStep::REVIEWER_CHAT => true,
             PostWorkflowStep::VIDEO_STUDIO => $post->reelVideo !== null,
             PostWorkflowStep::SUMMARY_PUBLISH => true,
         };
+        return $isCompleted;
+    }
+
+    private function initialDataStepCompleted(PostDTO $post): bool
+    {
+        return strlen(trim($post->title)) > 10 && strlen(trim($post->content)) > 50;
+    }
+
+    private function dateTimeStepCompleted(PostDTO $post): bool
+    {
+        $ret = $post->from !== null && $post->to !== null;
+        $ret = $ret && $post->from < $post->to;
+        $ret = $ret && $post->from > now();
+        return $ret;
     }
 
     private function resolveCurrentIndexFromPost(PostDTO $post): int
