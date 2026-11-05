@@ -18,7 +18,7 @@ class DateTimeData extends Screen
     protected ?Input $post_from;
     protected ?Input $post_to;
 
-   public function __construct(
+    public function __construct(
         protected PostServiceInterface $postService
     ) {
         parent::__construct();
@@ -29,9 +29,10 @@ class DateTimeData extends Screen
         return self::requireAuth();
     }
 
-    protected function buildBaseUI(Container $container, ...$params): void
+    protected function buildBaseUI(Container $container, int $post_id): void
     {
-        $post = $this->resolveQueryPost();
+        $post = $this->postService->findById($post_id);
+
         $container
             ->width(Size::full())
             ->height(Size::full())
@@ -41,7 +42,7 @@ class DateTimeData extends Screen
             );
     }
 
-   protected function buildDateTimeStepCard(?PostDTO $post = null): Container
+    protected function buildDateTimeStepCard(?PostDTO $post = null): Container
     {
         $card = UI::container('step_data_card')
             ->card()
@@ -68,19 +69,20 @@ class DateTimeData extends Screen
             ->gap(Spacing::px(16))
             ->padding(Spacing::zero());
 
-        $fromVal = $post !== null && $post->from !== null
-            ? $post->from->format('Y-m-d')
-            : now()->format('Y-m-d');
+        $fromVal = $post->from !== null
+            ? $post->from->isoFormat('YYYY-MM-DD')
+            : now()->addDays(2)->isoFormat('YYYY-MM-DD');
 
         $toVal = $post !== null && $post->to !== null
-            ? $post->to->format('Y-m-d')
-            : now()->addDays(14)->format('Y-m-d');
+            ? $post->to->isoFormat('YYYY-MM-DD')
+            : now()->addDays(14)->isoFormat('YYYY-MM-DD');
 
         $this->post_from = UI::input('post_from')
             ->type('date')
             ->label('Fecha desde la que debe publicarse')
             ->value($fromVal)
             ->required()
+            ->onChange('on_post_from_change')
             ->width(Size::full());
 
         $this->post_to = UI::input('post_to')
@@ -88,6 +90,7 @@ class DateTimeData extends Screen
             ->label('Fecha hasta la que debe publicarse')
             ->value($toVal)
             ->required()
+            ->onChange('on_post_to_change')
             ->width(Size::full());
 
         $row->add($this->post_from);
@@ -96,14 +99,17 @@ class DateTimeData extends Screen
         return $row;
     }
 
-    private function resolveQueryPost(): ?PostDTO
+    public function onPostFromChange(int $post_id, string $newValue): void
     {
-        $queryParams = $this->getQueryParams();
-        $postId = $queryParams['post_id'] ?? null;
-        if ($postId === null) {
-            return null;
-        }
+        $this->postService->updatePost($post_id, [
+            'from' => $newValue,
+        ]);
+    }
 
-        return $this->postService->findById((int) $postId);
+    public function onPostToChange(int $post_id, string $newValue): void
+    {
+        $this->postService->updatePost($post_id, [
+            'to' => $newValue,
+        ]);
     }
 }

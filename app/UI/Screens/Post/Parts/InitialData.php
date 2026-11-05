@@ -32,9 +32,10 @@ class InitialData extends Screen
         return self::requireAuth();
     }
 
-    protected function buildBaseUI(Container $container, ...$params): void
+    protected function buildBaseUI(Container $container, int $post_id): void
     {
-        $post = $this->resolveQueryPost();
+        $post = $this->postService->findById($post_id);
+
         $container
             ->width(Size::full())
             ->height(Size::full())
@@ -44,9 +45,9 @@ class InitialData extends Screen
             );
     }
 
-    protected function postLoadUI(): void
+    protected function postLoadUI(int $post_id): void
     {
-        $post = $this->resolveQueryPost();
+        $post = $this->postService->findById($post_id);
         if ($post !== null) {
             $this->post_title->value($post->title);
             $this->post_content->value($post->content);
@@ -116,16 +117,5 @@ class InitialData extends Screen
             'postId' => $post_id,
             'stepIndex' => 0,
         ]));
-    }
-
-    private function resolveQueryPost(): ?PostDTO
-    {
-        $queryParams = $this->getQueryParams();
-        $postId = $queryParams['post_id'] ?? null;
-        if ($postId === null) {
-            return null;
-        }
-
-        return $this->postService->findById((int) $postId);
     }
 }

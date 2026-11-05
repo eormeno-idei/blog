@@ -35,7 +35,7 @@ class PostWorkflowService
         $previousStepCompleted = true; // Para el primer paso, asumimos que se puede acceder
         foreach ($allSteps as $idx => $stepEnum) {
             $isCompleted = $this->isStepCompleted($stepEnum, $post);
-            $canAccess = ($idx <= $currentIndex || $isCompleted) && $previousStepCompleted;
+            $canAccess = $previousStepCompleted;
 
             $stepDTOs[] = new WorkflowStepDTO(
                 step: $stepEnum,
@@ -69,18 +69,20 @@ class PostWorkflowService
     {
         return match ($step) {
             PostWorkflowStep::INITIAL_DATA => $this->initialDataStepCompleted($post),
-            PostWorkflowStep::DATE_TIME => $post->from !== null && $post->to !== null,
+            PostWorkflowStep::DATE_TIME => $this->dateTimeStepCompleted($post),
             PostWorkflowStep::REEL_STUDIO => $post->aiScript !== null || $post->reelVideo !== null,
-            PostWorkflowStep::REVIEWER_CHAT => true,
+            PostWorkflowStep::REVIEWER_CHAT => false,
             PostWorkflowStep::VIDEO_STUDIO => $post->reelVideo !== null,
             PostWorkflowStep::SUMMARY_PUBLISH => true,
         };
-        return $isCompleted;
     }
 
     private function initialDataStepCompleted(PostDTO $post): bool
     {
-        return strlen(trim($post->title)) > 10 && strlen(trim($post->content)) > 50;
+        $titleLength = strlen(trim($post->title));
+        $contentLength = strlen(trim($post->content));
+        $ret = $titleLength > 10 && $contentLength > 50;
+        return $ret;
     }
 
     private function dateTimeStepCompleted(PostDTO $post): bool

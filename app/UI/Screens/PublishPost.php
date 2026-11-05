@@ -7,21 +7,18 @@ use App\DTOs\Posts\WorkflowStateDTO;
 use App\Services\Post\PostWorkflowService;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Log;
 
 class PublishPost extends Screen
 {
     protected Container $buttons_container;
     protected Container $demo_container;
-    protected Button $btn_previous_step;
-    protected Button $btn_next_step;
 
-    protected int $state_post_id = 0;
     protected int $state_currentStepIndex = 0;
 
     public function __construct(
@@ -34,8 +31,7 @@ class PublishPost extends Screen
     protected function buildBaseUI(Container $container, int $postId): void
     {
         $container->padding(Spacing::zero());
-        $stepIndex = $this->resolveCurrentStepIndex();
-        $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
+        $workflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
 
         $this->demo_container = UI::container('demo_container')
             ->card()
@@ -50,7 +46,6 @@ class PublishPost extends Screen
 
         $wrapper->add($this->buildStepsBar($workflow));
         $wrapper->add($this->demo_container);
-        $wrapper->add($this->buildNavigation($workflow));
 
         $container->add($this->buildHeader());
         $container->add($wrapper);
@@ -58,44 +53,8 @@ class PublishPost extends Screen
 
     protected function postLoadUI(int $postId): void
     {
-        $workflow = $this->workflowService->getWorkflowState($postId, 0);
+        $workflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
         $this->demo_container->embed($workflow->currentStep()->screenClass);
-    }
-
-    public function onGoToNextStep(int $postId): void
-    {
-        $stepIndex = $this->resolveCurrentStepIndex();
-        $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
-
-        if (!$workflow->canAdvance) {
-            $this->toast('No puedes avanzar al siguiente paso. Asegúrate de completar los requisitos del paso actual.', 'warning');
-            // Regla de negocio no cumplida: mostrar feedback visual sin avanzar
-            return;
-        }
-
-        $this->state_currentStepIndex++;
-        $newWorkflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
-
-        $this->demo_container->embed($newWorkflow->currentStep()->screenClass);
-        $this->refreshNavigationState($newWorkflow);
-    }
-
-    public function onGoToPreviousStep(int $postId): void
-    {
-        $this->state_currentStepIndex--;
-        $newWorkflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
-
-        $this->demo_container->embed($newWorkflow->currentStep()->screenClass);
-        $this->refreshNavigationState($newWorkflow);
-    }
-
-    private function resolveCurrentStepIndex(): int
-    {
-        $rawIndex = $this->getQueryParams()['step_index'] ?? null;
-        if (is_numeric($rawIndex) && (int) $rawIndex >= 0) {
-            $this->state_currentStepIndex = (int) $rawIndex;
-        }
-        return max(0, $this->state_currentStepIndex);
     }
 
     private function buildStepsBar(WorkflowStateDTO $workflow): Container
@@ -125,6 +84,19 @@ class PublishPost extends Screen
         return $this->buttons_container;
     }
 
+    public function onSelectStep(int $postId, int $index): void
+    {
+        $workflow = $this->workflowService->getWorkflowState($postId, $index);
+        if (!$workflow->steps[$index]->canAccess) {
+            $this->toast('No puedes acceder a este paso. Completa los pasos anteriores primero.', 'warning');
+            return;
+        }
+
+        $this->state_currentStepIndex = $index;
+        $this->demo_container->embed($workflow->currentStep()->screenClass);
+        $this->refreshNavigationState($workflow);
+    }
+
     private function updateStepsBar(WorkflowStateDTO $workflow): void
     {
         foreach ($this->buttons_container->getChildren() as $index => $btn) {
@@ -143,40 +115,14 @@ class PublishPost extends Screen
         $this->updateStepsBar($workflow);
     }
 
-    private function buildNavigation(WorkflowStateDTO $workflow): Container
-    {
-        $nav = UI::container('navigation')
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN);
-
-        $this->btn_previous_step = UI::button('btn_previous_step')
-            ->label('← Paso Anterior')
-            ->action('go_to_previous_step')
-            ->enabled($workflow->canGoBack)
-            ->status($workflow->canGoBack);
-
-        $this->btn_next_step = UI::button('btn_next_step')
-            ->label('Siguiente Paso →')
-            ->action('go_to_next_step')
-            ->enabled($workflow->canAdvance)
-            ->status($workflow->canAdvance);
-
-        $nav->add($this->btn_previous_step);
-        $nav->add($this->btn_next_step);
-
-        return $nav;
-    }
-
     private function refreshNavigationState(WorkflowStateDTO $workflow): void
     {
-        $this->btn_previous_step->status($workflow->canGoBack);
-        $this->btn_next_step->status($workflow->canAdvance);
-        // Actualizar estilos de los botones del stepper
         foreach ($this->buttons_container->getChildren() as $index => $btn) {
             if ($btn instanceof Button && isset($workflow->steps[$index])) {
                 $step = $workflow->steps[$index];
                 $btn->status($step->isCurrent);
-                $btn->style($step->isCurrent ? 'primary' : ($step->isCompleted ? 'success' : 'secondary'));
+                $btn->icon($step->isCompleted ? '✅' : '');
+                $btn->style($step->isCurrent ? 'primary' : 'secondary');
             }
         }
     }
