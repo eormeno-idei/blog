@@ -1,13 +1,10 @@
 <?php
 
-// @usim: feature="admin", type="screen"
-
 namespace App\UI\Screens\Auth;
 
 use App\Http\Requests\Auth\LoginRequest;
-use App\UI\Screens\Home;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Components\Label;
+use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Contracts\LoginActionInterface;
 use Idei\Usim\DTOs\LoginCredentials;
 use Idei\Usim\Enums\AlignItems;
@@ -33,7 +30,7 @@ class Login extends Screen
 
     protected string $store_token = '';
 
-    protected Label $lbl_login_result;
+    protected NewLabel $lbl_login_result;
 
     protected function buildBaseUI(Container $container, ...$params): void
     {
@@ -43,9 +40,9 @@ class Login extends Screen
         if (config('app.env') === 'local') {
             // Pre-fill credentials in local environment for easier testing
             $email = empty($this->state_email)
-                ? config('usim.users.admin.email', 'admin@example.com')
+                ? config('usim.users.root.email')
                 : $this->state_email;
-            $password = config('usim.users.admin.password', 'password');
+            $password = config('usim.users.root.password');
         }
 
         $wrapper = UI::container('login_wrapper')
@@ -83,7 +80,7 @@ class Login extends Screen
         );
 
         $card->add(
-            $this->lbl_login_result = UI::label('lbl_login_result')->text('')
+            $this->lbl_login_result = UI::newLabel('lbl_login_result')->text('')
         );
 
         $buttonsContainer = UI::container('login_buttons')
@@ -132,10 +129,7 @@ class Login extends Screen
     /** @param array<string, mixed> $params */
     public function onNavigateForgotPassword(array $params): void
     {
-        if ($this->isOpenedAsModal()) {
-            $this->closeModal();
-        }
-        $this->navigate(ForgotPassword::class);
+        $this->redirect('/auth/forgot-password');
     }
 
     /** @param array<string, mixed> $params */
@@ -190,20 +184,33 @@ class Login extends Screen
             $this->lbl_login_result->text($message)->style('success');
         }
 
-        if ($this->isOpenedAsModal()) {
-            $this->closeModal();
+        /** @var class-string<Screen>|string|null $homeScreen */
+        $homeScreen = $params['home_screen'] ?? null;
 
-            /** @var class-string<Screen>|string|null $homeScreen */
-            $homeScreen = $params['home_screen'] ?? null;
+        if ($this->isOpenedAsModal()) {
             if (\is_string($homeScreen) && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
-                $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
+                $this->closeModalAndNavigate($homeScreen);
+            } else {
+                $this->closeModal();
             }
 
             return;
         }
 
-        /** @var class-string<Screen>|string|null $homeScreen */
-        $homeScreen = $params['home_screen'] ?? null;
+        // Check for intended redirect destination (only for full-page login)
+        $rawRedirect = $this->query('redirect');
+        if (! is_string($rawRedirect) && session()->isStarted()) {
+            $rawRedirect = session()->pull('url.intended');
+        }
+
+        if (is_string($rawRedirect) && $rawRedirect !== '' && ! str_contains($rawRedirect, '/auth/login')) {
+            if (str_starts_with($rawRedirect, '/') && ! str_starts_with($rawRedirect, '//')) {
+                $this->redirect($rawRedirect);
+
+                return;
+            }
+        }
+
         if (\is_string($homeScreen) && class_exists($homeScreen) && is_subclass_of($homeScreen, Screen::class)) {
             $this->showInto($homeScreen, force: true, updateBrowserUrl: true);
         }
@@ -238,6 +245,6 @@ class Login extends Screen
             return;
         }
 
-        $this->navigate(Home::class);
+        $this->showInto(\App\UI\Screens\Home::class, force: true, updateBrowserUrl: true);
     }
 }
