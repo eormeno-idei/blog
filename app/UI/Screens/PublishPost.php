@@ -7,8 +7,8 @@ use App\DTOs\Posts\WorkflowStateDTO;
 use App\Services\Post\PostWorkflowService;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\JustifyContent;
+use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
@@ -31,16 +31,9 @@ class PublishPost extends Screen
         parent::__construct();
     }
 
-    protected function buildBaseUI(Container $container, ...$params): void
+    protected function buildBaseUI(Container $container, int $postId): void
     {
-
-        $postId = $this->resolvePostId($params);
         $stepIndex = $this->resolveCurrentStepIndex();
-        if ($postId === null) {
-            $this->navigate(Home::class);
-            return;
-        }
-
         $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
 
         $this->demo_container = UI::container('demo_container')
@@ -57,33 +50,19 @@ class PublishPost extends Screen
         $wrapper->add($this->demo_container);
         $wrapper->add($this->buildNavigation($workflow));
 
+        $container->add($this->buildHeader());
         $container->add($wrapper);
     }
 
-    protected function postLoadUI(): void
+    protected function postLoadUI(int $postId): void
     {
-        $postId = $this->resolvePostId();
-        $stepIndex = $this->resolveCurrentStepIndex();
-        if ($postId === null) {
-            return;
-        }
-
-        $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
+        $workflow = $this->workflowService->getWorkflowState($postId, 0);
         $this->demo_container->embed($workflow->currentStep()->screenClass);
     }
 
-    /**
-     * @param array<string, mixed> $params
-     */
-    public function onGoToNextStep(array $params): void
+    public function onGoToNextStep(int $postId): void
     {
-        $postId = $this->resolvePostId();
-        if ($postId === null) {
-            return;
-        }
-
         $stepIndex = $this->resolveCurrentStepIndex();
-
         $workflow = $this->workflowService->getWorkflowState($postId, $stepIndex);
 
         if (!$workflow->canAdvance) {
@@ -99,43 +78,13 @@ class PublishPost extends Screen
         $this->refreshNavigationState($newWorkflow);
     }
 
-    /**
-     * @param array<string, mixed> $params
-     */
-    public function onGoToPreviousStep(array $params): void
+    public function onGoToPreviousStep(int $postId): void
     {
-        if ($this->state_currentStepIndex <= 0) {
-            return;
-        }
-
-        $postId = $this->resolvePostId();
-        if ($postId === null) {
-            return;
-        }
-
         $this->state_currentStepIndex--;
         $newWorkflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
 
         $this->demo_container->embed($newWorkflow->currentStep()->screenClass);
         $this->refreshNavigationState($newWorkflow);
-    }
-
-    /**
-     * @param array<string, mixed> $params
-     * @return ?int
-     */
-    private function resolvePostId(array $params = []): ?int
-    {
-        if (isset($params['post_id']) && is_numeric($params['post_id']) && (int) $params['post_id'] > 0) {
-            $this->state_post_id = (int) $params['post_id'];
-            return $this->state_post_id;
-        }
-        
-        $rawPostId = $this->getQueryParams()['post_id'] ?? null;
-        if (is_numeric($rawPostId) && (int) $rawPostId > 0) {
-            $this->state_post_id = (int) $rawPostId;
-        }
-        return $this->state_post_id > 0 ? $this->state_post_id : null;
     }
 
     private function resolveCurrentStepIndex(): int
@@ -205,5 +154,28 @@ class PublishPost extends Screen
                 $btn->style($step->isCurrent ? 'primary' : ($step->isCompleted ? 'success' : 'secondary'));
             }
         }
+    }
+
+    private function buildHeader(): Container
+    {
+        $header = UI::container('publish_header')
+            ->width(Size::full())
+            ->layout(LayoutType::HORIZONTAL)
+            ->add(
+                UI::button('btn_back_home')
+                    ->label('← Inicio')
+                    ->action('go_home')
+                    ->style('secondary')
+            );
+
+        return $header;
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function onGoHome(array $params): void
+    {
+        $this->navigate(Home::class);
     }
 }

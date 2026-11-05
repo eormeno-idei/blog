@@ -4,7 +4,6 @@ namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
-use App\Enums\PostStatus;
 use App\Http\Requests\PostIdRequest;
 use App\Models\User;
 use App\Services\User\UserService;
@@ -368,7 +367,7 @@ class Home extends Screen
         if (($user instanceOf User) && $user->can('delete', $post)) {
             $postActionBox->add(
                 UI::button("btn_delete_post_{$post->id}")
-                    ->label('🗑️')
+                    ->icon('🗑️')
                     ->action('delete_post', ['post_id' => (int) $post->id])
                     ->style('danger')
                     ->size('small')
@@ -404,9 +403,6 @@ class Home extends Screen
         }
 
         $user = Auth::user();
-        if ($user === null) {
-            return;
-        }
 
         $draftId = $this->postService->createPost([
             'user_id' => is_numeric($user->getAuthIdentifier()) ? (int) $user->getAuthIdentifier() : 0,
@@ -467,9 +463,6 @@ class Home extends Screen
     public function onDeletePost(PostIdRequest $request): void
     {
         $user = Auth::user();
-        if ($user === null) {
-            return;
-        }
 
         try {
             $this->postService->deletePost($request->getPostId(), $user);
