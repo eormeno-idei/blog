@@ -28,10 +28,10 @@ class PublishPost extends Screen
         parent::__construct();
     }
 
-    protected function buildBaseUI(Container $container, int $postId): void
+    protected function buildBaseUI(Container $container, int $post_id): void
     {
         $container->padding(Spacing::zero());
-        $workflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
+        $workflow = $this->workflowService->getWorkflowState($post_id, $this->state_currentStepIndex);
 
         $this->demo_container = UI::container('demo_container')
             ->card()
@@ -44,20 +44,20 @@ class PublishPost extends Screen
             ->padding(Spacing::zero())
             ->gap(Spacing::px(4));
 
-        $wrapper->add($this->buildStepsBar($workflow));
+        $wrapper->add($this->buildStepsBar($post_id, $workflow));
         $wrapper->add($this->demo_container);
 
         $container->add($this->buildHeader());
         $container->add($wrapper);
     }
 
-    protected function postLoadUI(int $postId): void
+    protected function postLoadUI(int $post_id): void
     {
-        $workflow = $this->workflowService->getWorkflowState($postId, $this->state_currentStepIndex);
+        $workflow = $this->workflowService->getWorkflowState($post_id, $this->state_currentStepIndex);
         $this->demo_container->embed($workflow->currentStep()->screenClass);
     }
 
-    private function buildStepsBar(WorkflowStateDTO $workflow): Container
+    private function buildStepsBar(int $post_id, WorkflowStateDTO $workflow): Container
     {
         $this->buttons_container = UI::container('buttons_container')
             ->layout(LayoutType::HORIZONTAL)
@@ -72,11 +72,12 @@ class PublishPost extends Screen
                 ->label("{$index_inc}. {$step->label}")
                 ->status($step->isCurrent)
                 ->enabled($step->canAccess)
-                ->style($style);
-
-            if ($step->canAccess) {
-                $button->action('on_select_step', ['index' => $index]);
-            }
+                ->icon($step->isCompleted ? '✅' : '🔲')
+                ->style($style)
+                ->action('on_select_step', [
+                    'post_id' => $post_id,
+                    'index' => $index
+                ]);
 
             $this->buttons_container->add($button);
         }
@@ -84,9 +85,9 @@ class PublishPost extends Screen
         return $this->buttons_container;
     }
 
-    public function onSelectStep(int $postId, int $index): void
+    public function onSelectStep(int $post_id, int $index): void
     {
-        $workflow = $this->workflowService->getWorkflowState($postId, $index);
+        $workflow = $this->workflowService->getWorkflowState($post_id, $index);
         if (!$workflow->steps[$index]->canAccess) {
             $this->toast('No puedes acceder a este paso. Completa los pasos anteriores primero.', 'warning');
             return;
@@ -121,7 +122,7 @@ class PublishPost extends Screen
             if ($btn instanceof Button && isset($workflow->steps[$index])) {
                 $step = $workflow->steps[$index];
                 $btn->status($step->isCurrent);
-                $btn->icon($step->isCompleted ? '✅' : '');
+                $btn->icon($step->isCompleted ? '✅' : '🔲');
                 $btn->style($step->isCurrent ? 'primary' : 'secondary');
             }
         }
@@ -143,10 +144,7 @@ class PublishPost extends Screen
         return $header;
     }
 
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    public function onGoHome(array $params): void
+    public function onGoHome(): void
     {
         $this->navigate(Home::class);
     }

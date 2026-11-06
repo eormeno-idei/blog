@@ -5,7 +5,7 @@
 }
 
 :root {
-    --ui-bg: var(--usim-color-bg, #f5f7fa);
+    --ui-bg: var(--usim-color-bg, #ccced1);
     --ui-surface: var(--usim-color-surface, #ffffff);
     --ui-surface-muted: var(--usim-color-surface-muted, #f8f9fa);
     --ui-surface-hover: var(--usim-color-surface-hover, #e9ecef);
@@ -20,7 +20,7 @@
 }
 
 html[data-theme="dark"] {
-    --ui-bg: var(--usim-color-bg, #0f1724);
+    --ui-bg: var(--usim-color-bg, #0c131e);
     --ui-surface: var(--usim-color-surface, #162033);
     --ui-surface-muted: var(--usim-color-surface-muted, #1b263a);
     --ui-surface-hover: var(--usim-color-surface-hover, #24314a);
@@ -58,9 +58,9 @@ body {
 .ui-container.ui-container-card {
     background: var(--usim-container-bg, var(--ui-surface));
     border: 1px solid var(--usim-container-border, var(--ui-border));
-    border-radius: 5px;
+    border-radius: 3px;
     padding: 5px;
-    box-shadow: var(--usim-container-shadow, 0 2px 5px rgba(15, 23, 36, 0.1));
+    /* box-shadow: var(--usim-container-shadow, 0 2px 5px rgba(15, 23, 36, 0.1)); */
     margin-bottom: 5px;
 }
 
@@ -68,13 +68,13 @@ body {
     background: transparent;
     border: none;
     border-radius: 0;
-    padding: 4px;
+    padding: 5px;
     box-shadow: none;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
 }
 
 .ui-container.ui-container-card:hover {
-    box-shadow: var(--usim-container-shadow-hover, var(--usim-container-shadow, 0 2px 6px rgba(15, 23, 36, 0.1)));
+    border-color: var(--usim-container-border-hover, var(--ui-border));
 }
 
 .ui-container.ui-container-plain:hover {
@@ -1598,7 +1598,7 @@ body.modal-open #menu {
 /* Base Card */
 .ui-card {
     background: var(--usim-card-bg, var(--ui-surface));
-    border-radius: 12px;
+    border-radius: 4px;
     overflow: hidden;
     transition: all 0.3s ease;
     position: relative;

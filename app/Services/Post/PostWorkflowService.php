@@ -70,10 +70,10 @@ class PostWorkflowService
         return match ($step) {
             PostWorkflowStep::INITIAL_DATA => $this->initialDataStepCompleted($post),
             PostWorkflowStep::DATE_TIME => $this->dateTimeStepCompleted($post),
-            PostWorkflowStep::REEL_STUDIO => $post->aiScript !== null || $post->reelVideo !== null,
+            PostWorkflowStep::REEL_STUDIO => $post->aiScript !== null,
             PostWorkflowStep::REVIEWER_CHAT => false,
             PostWorkflowStep::VIDEO_STUDIO => $post->reelVideo !== null,
-            PostWorkflowStep::SUMMARY_PUBLISH => true,
+            PostWorkflowStep::SUMMARY_PUBLISH => false,
         };
     }
 
