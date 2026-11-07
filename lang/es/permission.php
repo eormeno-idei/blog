@@ -203,6 +203,18 @@ return [
                     'description' => 'Permite acceder a la pantalla Post Parts Video Studio.',
                 ],
             ],
+            'a_i_reel_studio' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts A I Reel Studio',
+                    'description' => 'Permite acceder a la pantalla Post Parts A I Reel Studio.',
+                ],
+            ],
+            'old_reel_studio' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Old Reel Studio',
+                    'description' => 'Permite acceder a la pantalla Post Parts Old Reel Studio.',
+                ],
+            ],
         ],
     ],
     'registered_home' => [

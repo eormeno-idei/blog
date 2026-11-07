@@ -4,7 +4,8 @@ namespace App\UI\Screens\Post\Parts;
 
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
-use App\UI\Requests\PostRequest;
+use App\UI\Requests\InitialDataRequest;
+use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Textarea;
@@ -21,6 +22,7 @@ class InitialData extends Screen
 {
     protected Input $post_title;
     protected Textarea $post_content;
+    protected Button $confirm_button;
 
     public function __construct(
         protected PostServiceInterface $postService
@@ -73,8 +75,7 @@ class InitialData extends Screen
             ->helpText('El título debe ser conciso y reflejar el contenido del post. Mínimo 10 caracteres, máximo 100.')
             ->value($initialTitle)
             ->required(true)
-            ->width(Size::full())
-            ->onInput('on_title_changed');
+            ->width(Size::full());
 
         $this->post_content = UI::textarea('post_content')
             ->label('Contexto para generar el Reel')
@@ -84,42 +85,35 @@ class InitialData extends Screen
             ->required(true)
             ->width(Size::full())
             ->height(Size::px(400))
-            ->helpText('La IA utilizará estas notas para redactar las escenas del Reel.')
-            ->onInput('on_content_changed');
+            ->helpText('La IA utilizará estas notas para redactar las escenas del Reel.');
+
+        $this->confirm_button = UI::button('confirm_button')
+            ->label('Confirmar datos iniciales')
+            ->action('on_confirm_initial_data')
+            ->style('primary')
+            ->width(Size::full());
 
         $card->add($this->post_title);
         $card->add($this->post_content);
+        $card->add($this->confirm_button);
 
         return $card;
     }
 
-    /**
-     * @param int $post_id
-     * @param PostRequest $postRequest
-     * @return void
-     */
-    public function onTitleChanged(int $post_id, PostRequest $postRequest): void
+    public function onConfirmInitialData(int $post_id, InitialDataRequest $postRequest): void
     {
-        $post_title = $postRequest->validated()['title'] ?? '';
-        $this->postService->updatePost($post_id, ['title' => $post_title,], Auth::user());
+        $post_title = $postRequest->title;
+        $post_content = $postRequest->content;
+
+        $this->postService->updatePost($post_id, [
+            'title' => $post_title,
+            'content' => $post_content
+        ], Auth::user());
+
         event(new UsimEvent('post_changed', [
             'postId' => $post_id,
             'stepIndex' => 0,
         ]));
     }
 
-    /**
-     * @param int $post_id
-     * @param PostRequest $postRequest
-     * @return void
-     */
-    public function onContentChanged(int $post_id, PostRequest $postRequest): void
-    {
-        $post_content = $postRequest->validated()['content'] ?? '';
-        $this->postService->updatePost($post_id, ['content' => $post_content,], Auth::user());
-        event(new UsimEvent('post_changed', [
-            'postId' => $post_id,
-            'stepIndex' => 0,
-        ]));
-    }
 }

@@ -4,7 +4,7 @@ namespace App\UI\Screens\Post\Parts;
 
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
-use App\UI\Requests\PostRequest;
+use App\UI\Requests\DateTimeDataRequest;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
@@ -102,7 +102,7 @@ class DateTimeData extends Screen
         return $row;
     }
 
-    public function onConfirmDates(int $post_id, PostRequest $postRequest): void
+    public function onConfirmDates(int $post_id, DateTimeDataRequest $postRequest): void
     {
         $post_from = $postRequest->from;
         $post_to = $postRequest->to;
