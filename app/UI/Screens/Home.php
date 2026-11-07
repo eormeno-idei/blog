@@ -393,10 +393,7 @@ class Home extends Screen
         $this->openModal(Register::class);
     }
 
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    public function onGoToPublish(array $params): void
+    public function onGoToPublish(): void
     {
         if ($this->postService->getLatestPosts(Auth::user())->isEmpty()) {
             $this->posts_list_container->clear();
@@ -407,8 +404,6 @@ class Home extends Screen
         $draftId = $this->postService->createPost([
             'user_id' => is_numeric($user->getAuthIdentifier()) ? (int) $user->getAuthIdentifier() : 0,
             'status' => 'draft',
-            'from' => now()->format('Y-m-d'),
-            'to' => now()->addDays(14)->format('Y-m-d'),
         ]);
         $post = $this->postService->findById($draftId);
         if ($post === null) {

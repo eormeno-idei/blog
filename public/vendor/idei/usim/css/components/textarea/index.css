@@ -93,11 +93,16 @@
 }
 
 /* ── Body ─────────────────────────────────────────────────── */
+.usim-textarea-body-container {
+    position: relative;
+    width: 100%;
+}
+
 .usim-textarea-body {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--usim-form-control-border, var(--ui-border));
-    border-radius: 10px;
+    border-radius: 6px;
     overflow: hidden;
     background: var(--usim-form-control-bg, var(--ui-surface));
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -109,7 +114,30 @@
 }
 
 .usim-textarea-wrapper.has-error .usim-textarea-body {
-    border-color: var(--usim-error-color, #e53e3e);
+    border-color: var(--usim-form-control-error-border, var(--usim-color-danger)) !important;
+}
+
+.usim-textarea-wrapper.has-error .usim-textarea-body:focus-within {
+    border-color: var(--usim-form-control-error-border, var(--usim-color-danger)) !important;
+    box-shadow: 0 0 0 3px var(--usim-form-control-error-ring, rgba(231, 76, 60, 0.18)) !important;
+}
+
+.usim-textarea-wrapper.has-error .usim-textarea-el {
+    padding-right: 40px !important;
+}
+
+.usim-textarea-error-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+    cursor: help;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
 }
 
 /* ── Native textarea element ──────────────────────────────── */
@@ -139,7 +167,7 @@
     background: color-mix(in srgb, var(--usim-bg-secondary) 92%, var(--usim-bg-primary));
     width: 100%;
     overflow: hidden;
-    border-radius: 10px;
+    border-radius: 6px;
 }
 
 .usim-textarea-body.mode-plain .usim-textarea-el {
@@ -388,13 +416,13 @@
 }
 
 .usim-textarea-counter.at-limit {
-    color: var(--usim-error-color, #e53e3e);
+    color: var(--usim-form-control-error-border, var(--usim-color-danger));
     font-weight: 600;
 }
 
 .usim-textarea-error-msg {
     font-size: 0.78rem;
-    color: var(--usim-error-color, #e53e3e);
+    color: var(--usim-form-control-error-border, var(--usim-color-danger));
     flex: 1;
 }
 

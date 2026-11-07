@@ -6,16 +6,33 @@ class UsimInputComponent extends UIComponent {
         const group = document.createElement('div');
         group.className = 'ui-input-group';
 
-        if (this.config.label) {
-            const label = document.createElement('label');
-            label.textContent = this.config.label;
-            if (this.config.required) {
-                label.className = 'required';
+        if (this.config.label || this.config.help_text) {
+            const labelRow = document.createElement('div');
+            labelRow.className = 'ui-input-label-row';
+
+            if (this.config.label) {
+                const label = document.createElement('label');
+                label.textContent = this.config.label;
+                if (this.config.required) {
+                    label.className = 'required';
+                }
+                if (this.config.name) {
+                    label.setAttribute('for', this.config.name);
+                }
+                labelRow.appendChild(label);
             }
-            if (this.config.name) {
-                label.setAttribute('for', this.config.name);
+
+            if (this.config.help_text) {
+                const helpIcon = document.createElement('span');
+                helpIcon.className = 'ui-input-help-icon';
+                helpIcon.textContent = '?';
+                helpIcon.setAttribute('role', 'img');
+                helpIcon.setAttribute('aria-label', 'Ayuda');
+                helpIcon.setAttribute('data-tooltip', this.config.help_text);
+                labelRow.appendChild(helpIcon);
             }
-            group.appendChild(label);
+
+            group.appendChild(labelRow);
         }
 
         const inputWrapper = document.createElement('div');
@@ -60,7 +77,72 @@ class UsimInputComponent extends UIComponent {
         }
 
         group.appendChild(inputWrapper);
+        this.element = group;
         return this.applyCommonAttributes(group);
+    }
+
+    update(newConfig) {
+        this.config = { ...this.config, ...newConfig };
+        if (!this.element) return;
+
+        const input = this.element.querySelector('input');
+        const inputWrapper = this.element.querySelector('.ui-input-wrapper');
+
+        if (input && newConfig.value !== undefined) {
+            input.value = this.config.value ?? '';
+        }
+
+        if (input && newConfig.disabled !== undefined) {
+            input.disabled = !!this.config.disabled;
+        }
+
+        if (newConfig.error !== undefined && inputWrapper && input) {
+            const existingIcon = inputWrapper.querySelector('.ui-input-error-icon');
+            if (existingIcon) {
+                existingIcon.remove();
+            }
+
+            if (this.config.error) {
+                input.classList.add('ui-input-error');
+                const errorIcon = document.createElement('span');
+                errorIcon.className = 'ui-input-error-icon';
+                errorIcon.innerHTML = '⚠️';
+                errorIcon.setAttribute('data-tooltip', this.config.error);
+                inputWrapper.appendChild(errorIcon);
+            } else {
+                input.classList.remove('ui-input-error');
+            }
+        }
+
+        if (newConfig.help_text !== undefined) {
+            let labelRow = this.element.querySelector('.ui-input-label-row');
+            let helpIcon = this.element.querySelector('.ui-input-help-icon');
+
+            if (this.config.help_text) {
+                if (!helpIcon) {
+                    if (!labelRow) {
+                        labelRow = document.createElement('div');
+                        labelRow.className = 'ui-input-label-row';
+                        const label = this.element.querySelector('label');
+                        if (label) {
+                            label.parentNode.insertBefore(labelRow, label);
+                            labelRow.appendChild(label);
+                        } else {
+                            this.element.insertBefore(labelRow, this.element.firstChild);
+                        }
+                    }
+                    helpIcon = document.createElement('span');
+                    helpIcon.className = 'ui-input-help-icon';
+                    helpIcon.textContent = '?';
+                    helpIcon.setAttribute('role', 'img');
+                    helpIcon.setAttribute('aria-label', 'Ayuda');
+                    labelRow.appendChild(helpIcon);
+                }
+                helpIcon.setAttribute('data-tooltip', this.config.help_text);
+            } else if (helpIcon) {
+                helpIcon.remove();
+            }
+        }
     }
 
     attachInputEvents(input) {

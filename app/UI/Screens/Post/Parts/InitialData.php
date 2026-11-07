@@ -2,19 +2,20 @@
 
 namespace App\UI\Screens\Post\Parts;
 
-use Idei\Usim\Screen;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
+use App\UI\Requests\PostRequest;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Textarea;
+use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
+use Idei\Usim\Events\UsimEvent;
+use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
-use Idei\Usim\Enums\JustifyContent;
-use Idei\Usim\Events\UsimEvent;
 
 class InitialData extends Screen
 {
@@ -54,14 +55,14 @@ class InitialData extends Screen
         }
     }
 
-    protected function buildDataStepCard(?PostDTO $post = null): Container
+    protected function buildDataStepCard(?PostDTO $post): Container
     {
         $card = UI::container('step_data_card')
             ->width(Size::full())
             ->centerHorizontal()
+            ->gap(Spacing::px(20))
             ->layout(LayoutType::VERTICAL)
-            ->padding(Spacing::px(5))
-            ->gap(Spacing::px(5));
+            ->padding(Spacing::px(5));
 
         $initialTitle = $post !== null ? $post->title : '';
         $initialContent = $post !== null ? $post->content : '';
@@ -69,13 +70,14 @@ class InitialData extends Screen
         $this->post_title = UI::input('post_title')
             ->label('Título del Post')
             ->placeholder('Escribe un título claro y atractivo...')
+            ->helpText('El título debe ser conciso y reflejar el contenido del post. Mínimo 10 caracteres, máximo 100.')
             ->value($initialTitle)
             ->required(true)
             ->width(Size::full())
             ->onInput('on_title_changed');
 
         $this->post_content = UI::textarea('post_content')
-            ->label('Información textual (Notas base para el Post y el Reel)')
+            ->label('Contexto para generar el Reel')
             ->placeholder(t('post.default_content'))
             ->value($initialContent)
             ->plainText()
@@ -93,11 +95,12 @@ class InitialData extends Screen
 
     /**
      * @param int $post_id
-     * @param string $post_title
+     * @param PostRequest $postRequest
      * @return void
      */
-    public function onTitleChanged(int $post_id, string $post_title = ''): void
+    public function onTitleChanged(int $post_id, PostRequest $postRequest): void
     {
+        $post_title = $postRequest->validated()['title'] ?? '';
         $this->postService->updatePost($post_id, ['title' => $post_title,], Auth::user());
         event(new UsimEvent('post_changed', [
             'postId' => $post_id,
@@ -107,11 +110,12 @@ class InitialData extends Screen
 
     /**
      * @param int $post_id
-     * @param string $post_content
+     * @param PostRequest $postRequest
      * @return void
      */
-    public function onContentChanged(int $post_id, string $post_content = ''): void
+    public function onContentChanged(int $post_id, PostRequest $postRequest): void
     {
+        $post_content = $postRequest->validated()['content'] ?? '';
         $this->postService->updatePost($post_id, ['content' => $post_content,], Auth::user());
         event(new UsimEvent('post_changed', [
             'postId' => $post_id,

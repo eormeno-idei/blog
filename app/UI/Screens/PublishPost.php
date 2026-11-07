@@ -12,7 +12,6 @@ use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use Illuminate\Support\Facades\Log;
 
 class PublishPost extends Screen
 {
@@ -35,9 +34,8 @@ class PublishPost extends Screen
 
         $this->demo_container = UI::container('demo_container')
             ->card()
-            ->shadow(false)
             ->width(Size::full())
-            ->height(Size::px(500));
+            ->height(Size::px(550));
 
         $wrapper = UI::container('wrapper')
             ->width(Size::full())

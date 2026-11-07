@@ -60,6 +60,10 @@ class UsimTextareaComponent extends UIComponent {
             this._syncErrorState();
         }
 
+        if (newConfig.help_text !== undefined) {
+            this._syncHelpText();
+        }
+
         if (newConfig.disabled !== undefined) {
             if (this._textarea) this._textarea.disabled = !!this.config.disabled;
         }
@@ -107,14 +111,19 @@ class UsimTextareaComponent extends UIComponent {
             wrapper.appendChild(labelRow);
         }
 
+        // Body container
+        const bodyContainer = document.createElement('div');
+        bodyContainer.className = 'usim-textarea-body-container';
+
         // Body
         const body = document.createElement('div');
         body.className = `usim-textarea-body mode-${this.config.mode || 'plain'}`;
-        wrapper.appendChild(body);
+        bodyContainer.appendChild(body);
 
         // Apply border styles
         this._applyBorderStyles(body);
         this._bodyElement = body;
+        this._bodyContainer = bodyContainer;
 
         if (this.config.mode === 'markdown') {
             this._buildMarkdownEditor(body);
@@ -124,7 +133,17 @@ class UsimTextareaComponent extends UIComponent {
 
         this._applyBackgroundStyles();
 
-        // Footer: counter + error
+        if (this.config.error) {
+            const errorIcon = document.createElement('span');
+            errorIcon.className = 'ui-input-error-icon usim-textarea-error-icon';
+            errorIcon.innerHTML = '⚠️';
+            errorIcon.setAttribute('data-tooltip', this.config.error);
+            bodyContainer.appendChild(errorIcon);
+        }
+
+        wrapper.appendChild(bodyContainer);
+
+        // Footer: counter
         const footer = document.createElement('div');
         footer.className = 'usim-textarea-footer';
 
@@ -133,13 +152,6 @@ class UsimTextareaComponent extends UIComponent {
             this._counter.className = 'usim-textarea-counter';
             this._updateCounter();
             footer.appendChild(this._counter);
-        }
-
-        if (this.config.error) {
-            const errMsg = document.createElement('span');
-            errMsg.className = 'usim-textarea-error-msg';
-            errMsg.textContent = this.config.error;
-            footer.appendChild(errMsg);
         }
 
         wrapper.appendChild(footer);
@@ -426,18 +438,53 @@ class UsimTextareaComponent extends UIComponent {
         if (!this.element) return;
         this.element.classList.toggle('has-error', !!this.config.error);
 
-        // Update or remove error message in footer
-        let errEl = this.element.querySelector('.usim-textarea-error-msg');
+        const container = this._bodyContainer || this.element.querySelector('.usim-textarea-body-container') || this.element;
+        let errorIcon = container.querySelector('.usim-textarea-error-icon');
+
         if (this.config.error) {
-            if (!errEl) {
-                errEl = document.createElement('span');
-                errEl.className = 'usim-textarea-error-msg';
-                const footer = this.element.querySelector('.usim-textarea-footer');
-                if (footer) footer.appendChild(errEl);
+            if (!errorIcon) {
+                errorIcon = document.createElement('span');
+                errorIcon.className = 'ui-input-error-icon usim-textarea-error-icon';
+                errorIcon.innerHTML = '⚠️';
+                container.appendChild(errorIcon);
             }
-            errEl.textContent = this.config.error;
-        } else if (errEl) {
-            errEl.remove();
+            errorIcon.setAttribute('data-tooltip', this.config.error);
+        } else if (errorIcon) {
+            errorIcon.remove();
+        }
+
+        const oldErrEl = this.element.querySelector('.usim-textarea-error-msg');
+        if (oldErrEl) oldErrEl.remove();
+    }
+
+    _syncHelpText() {
+        if (!this.element) return;
+        let labelRow = this.element.querySelector('.usim-textarea-label-row');
+        let helpIcon = this.element.querySelector('.usim-textarea-help-icon');
+
+        if (this.config.help_text) {
+            if (!helpIcon) {
+                if (!labelRow) {
+                    labelRow = document.createElement('div');
+                    labelRow.className = 'usim-textarea-label-row';
+                    const label = this.element.querySelector('.usim-textarea-label');
+                    if (label) {
+                        label.parentNode.insertBefore(labelRow, label);
+                        labelRow.appendChild(label);
+                    } else {
+                        this.element.insertBefore(labelRow, this.element.firstChild);
+                    }
+                }
+                helpIcon = document.createElement('span');
+                helpIcon.className = 'usim-textarea-help-icon';
+                helpIcon.textContent = '?';
+                helpIcon.setAttribute('role', 'img');
+                helpIcon.setAttribute('aria-label', 'Ayuda');
+                labelRow.appendChild(helpIcon);
+            }
+            helpIcon.setAttribute('data-tooltip', this.config.help_text);
+        } else if (helpIcon) {
+            helpIcon.remove();
         }
     }
 

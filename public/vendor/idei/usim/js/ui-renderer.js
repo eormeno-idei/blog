@@ -2592,6 +2592,37 @@ class UIRenderer {
                 }
             }
 
+            // Help text (inputs)
+            if (changes.help_text !== undefined) {
+                let labelRow = element.querySelector('.ui-input-label-row');
+                let helpIcon = element.querySelector('.ui-input-help-icon');
+
+                if (changes.help_text) {
+                    if (!helpIcon) {
+                        if (!labelRow) {
+                            labelRow = document.createElement('div');
+                            labelRow.className = 'ui-input-label-row';
+                            const label = element.querySelector('label');
+                            if (label) {
+                                label.parentNode.insertBefore(labelRow, label);
+                                labelRow.appendChild(label);
+                            } else {
+                                element.insertBefore(labelRow, element.firstChild);
+                            }
+                        }
+                        helpIcon = document.createElement('span');
+                        helpIcon.className = 'ui-input-help-icon';
+                        helpIcon.textContent = '?';
+                        helpIcon.setAttribute('role', 'img');
+                        helpIcon.setAttribute('aria-label', 'Ayuda');
+                        labelRow.appendChild(helpIcon);
+                    }
+                    helpIcon.setAttribute('data-tooltip', changes.help_text);
+                } else if (helpIcon) {
+                    helpIcon.remove();
+                }
+            }
+
             // Existing file (uploader)
             if (changes.existing_file !== undefined) {
                 // The element might be the uploader itself or a parent

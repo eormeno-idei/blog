@@ -2,22 +2,25 @@
 
 namespace App\UI\Screens\Post\Parts;
 
-use Idei\Usim\Screen;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
+use App\UI\Requests\PostRequest;
+use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
+use Idei\Usim\Events\UsimEvent;
+use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use Idei\Usim\Events\UsimEvent;
 
 class DateTimeData extends Screen
 {
     protected ?Input $post_from;
     protected ?Input $post_to;
+    protected ?Button $confirm_dates;
 
     public function __construct(
         protected PostServiceInterface $postService
@@ -55,6 +58,12 @@ class DateTimeData extends Screen
             ->gap(Spacing::px(16));
 
         $card->add($this->buildDateRangeRow($post));
+        $card->add(
+            $this->confirm_dates = UI::button('confirm_dates')
+                ->label('Confirmar fechas')
+                ->action('on_confirm_dates')
+                ->width(Size::full())
+        );
 
         return $card;
     }
@@ -70,15 +79,14 @@ class DateTimeData extends Screen
             ->gap(Spacing::px(16))
             ->padding(Spacing::zero());
 
-        $fromVal = $post->from->isoFormat('YYYY-MM-DD');
-        $toVal = $post->to->isoFormat('YYYY-MM-DD');
+        $fromVal = $post->from ? $post->from->isoFormat('YYYY-MM-DD') : null;
+        $toVal = $post->to ? $post->to->isoFormat('YYYY-MM-DD') : null;
 
         $this->post_from = UI::input('post_from')
             ->type('date')
             ->label('Fecha desde la que debe publicarse')
             ->value($fromVal)
             ->required()
-            ->onChange('on_from_changed')
             ->width(Size::full());
 
         $this->post_to = UI::input('post_to')
@@ -86,7 +94,6 @@ class DateTimeData extends Screen
             ->label('Fecha hasta la que debe publicarse')
             ->value($toVal)
             ->required()
-            ->onChange('on_to_changed')
             ->width(Size::full());
 
         $row->add($this->post_from);
@@ -95,34 +102,20 @@ class DateTimeData extends Screen
         return $row;
     }
 
-    public function onFromChanged(int $post_id, string $post_from): void
+    public function onConfirmDates(int $post_id, PostRequest $postRequest): void
     {
-        $post = $this->postService->findById($post_id);
-        if ($post_from > $post->to->isoFormat('YYYY-MM-DD')) {
+        $post_from = $postRequest->from;
+        $post_to = $postRequest->to;
+
+        if ($post_from && $post_to && $post_from > $post_to) {
             $this->toast('La fecha "desde" no puede ser mayor que la fecha "hasta".', 'error');
-            $this->post_from->value($post->from->isoFormat('YYYY-MM-DD'));
-            return;
         }
+
         $this->postService->updatePost($post_id, [
             'from' => $post_from,
-        ]);
-        event(new UsimEvent('post_changed', [
-            'postId' => $post_id,
-            'stepIndex' => 1,
-        ]));
-    }
-
-    public function onToChanged(int $post_id, string $post_to): void
-    {
-        $post = $this->postService->findById($post_id);
-        if ($post_to < $post->from->isoFormat('YYYY-MM-DD')) {
-            $this->toast('La fecha "hasta" no puede ser menor que la fecha "desde".', 'error');
-            $this->post_to->value($post->to->isoFormat('YYYY-MM-DD'));
-            return;
-        }
-        $this->postService->updatePost($post_id, [
             'to' => $post_to,
         ]);
+
         event(new UsimEvent('post_changed', [
             'postId' => $post_id,
             'stepIndex' => 1,

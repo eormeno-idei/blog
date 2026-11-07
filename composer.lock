@@ -1182,16 +1182,16 @@
         },
         {
             "name": "idei/usim",
-            "version": "2.2.0",
+            "version": "2.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/idei/usim.git",
-                "reference": "598cd7473ace12a542d506dbe6619004f08d4da2"
+                "reference": "764bce0b277eae0b5afd30bc67abf032df9b5f3d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/idei/usim/zipball/598cd7473ace12a542d506dbe6619004f08d4da2",
-                "reference": "598cd7473ace12a542d506dbe6619004f08d4da2",
+                "url": "https://api.github.com/repos/idei/usim/zipball/764bce0b277eae0b5afd30bc67abf032df9b5f3d",
+                "reference": "764bce0b277eae0b5afd30bc67abf032df9b5f3d",
                 "shasum": ""
             },
             "require": {
@@ -1201,7 +1201,7 @@
                 "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
                 "laravel/sanctum": "^3.0|^4.0",
                 "nikic/php-parser": "^5.7",
-                "php": "^8.2",
+                "php": "^8.5",
                 "symfony/finder": "^6.0|^7.0|^8.0",
                 "symfony/var-dumper": "^6.0|^7.0|^8.0"
             },
@@ -1248,7 +1248,7 @@
                 "issues": "https://github.com/idei/usim/issues",
                 "source": "https://github.com/idei/usim"
             },
-            "time": "2026-11-06T20:13:54+00:00"
+            "time": "2026-11-07T15:25:10+00:00"
         },
         {
             "name": "laminas/laminas-diactoros",
