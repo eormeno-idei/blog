@@ -6,13 +6,12 @@ use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
 use App\Jobs\StructureReelScriptJob;
 use App\UI\Screens\Post\Parts\ReelSceneViewer;
-use Idei\Usim\Components\Button;
+use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasEditPanel;
+use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasFirstDraftPanel;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Components\Textarea;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
-use Idei\Usim\Enums\Style;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
@@ -24,19 +23,19 @@ use Illuminate\Support\Facades\Log;
 
 class ReelStudio extends Screen
 {
-    protected Container $context_received_card;
-
-    protected Textarea $initial_instructions;
-
-    protected Button $btn_generate_first_structure;
+    use HasFirstDraftPanel, HasEditPanel;
 
     protected Container $reel_scene_viewer_slot;
+
+    protected Container $first_draft_panel;
+
+    protected Container $edit_panel;
 
     protected int $state_post_id = 0;
 
     protected int $state_current_scene_index = 0;
 
-    protected bool $state_firt_draft_generated = false;
+    protected bool $state_first_draft_generated = false;
 
     protected array $state_scenes = [];
 
@@ -95,77 +94,14 @@ class ReelStudio extends Screen
 
     protected function buildLeftControlsPanel(): Container
     {
+        $this->first_draft_panel = $this->buildFirstDraftPanel();
+        $this->edit_panel = $this->buildEditReelPanel();
+
         return UI::container('left_controls_panel')
-            ->add($this->buildFirstDraftPanel())
-            ->add($this->buildEditReelPanel());
+            ->add($this->first_draft_panel)
+            ->add($this->edit_panel);
     }
 
-    protected function buildFirstDraftPanel(): Container
-    {
-        $leftCol = UI::container('first_draft_panel')
-            ->layout(LayoutType::VERTICAL)
-            ->width(Size::px(320))
-            ->maxWidth(Size::px(320))
-            ->gap(Spacing::px(14))
-            ->padding(Spacing::zero());
-
-        $this->initial_instructions = UI::textarea('initial_instructions')
-            ->placeholder('Agrega instrucciones adicionales para el primer borrador (Opcional)')
-            ->width(Size::full());
-
-        $this->btn_generate_first_structure = UI::button('btn_generate_first_structure')
-            ->label('Generar Primera Estructura')
-            ->icon('✨')
-            ->style('primary')
-            ->fullWidth(true)
-            ->action('generate_first_structure');
-
-        $leftCol->add($this->contextReceivedCard());
-        $leftCol->add($this->initial_instructions);
-        $leftCol->add($this->btn_generate_first_structure);
-
-        return $leftCol;
-    }
-
-    protected function buildEditReelPanel(): Container
-    {
-        $editPanel = UI::container('edit_panel')
-            ->layout(LayoutType::VERTICAL)
-            ->width(Size::px(320))
-            ->maxWidth(Size::px(320))
-            ->gap(Spacing::px(14))
-            ->padding(Spacing::zero())
-            ->visible(false)
-            ->add(
-                UI::newLabel('edit_panel_title')
-                    ->text('Editar Reel')
-                    ->style(Style::INFO)
-            );
-
-        return $editPanel;
-    }
-
-    private function contextReceivedCard(): Container
-    {
-        return $this->context_received_card
-            ->card()
-            ->layout(LayoutType::VERTICAL)
-            ->width(Size::full())
-            ->padding(Spacing::px(5))
-            ->gap(Spacing::px(5))
-            ->justifyContent(JustifyContent::START)
-            ->add(
-                UI::newLabel('context_received_title')
-                    ->text('✅ Contexto recibido')
-            )
-            ->add(
-                UI::newLabel('context_received_content')
-                    ->text('✅ Texto Markdown cargado')
-            )->add(
-                UI::newLabel('context_received_images')
-                    ->text('✅ Imágenes adjuntas')
-            );
-    }
 
     protected function buildRightPreviewPanel(): Container
     {
@@ -209,6 +145,10 @@ class ReelStudio extends Screen
                     $this->state_scenes = $decoded['scenes'];
                     $this->updateScenePreview();
                     $this->toast('Estructura de Reel generada exitosamente.', 'success');
+
+                    $this->state_first_draft_generated = true;
+                    $this->first_draft_panel->visible(false);
+                    $this->edit_panel->visible(true);
 
                     return;
                 }
