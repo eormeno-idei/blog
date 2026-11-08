@@ -35,7 +35,7 @@ class PublishPost extends Screen
         $this->demo_container = UI::container('demo_container')
             ->card()
             ->width(Size::full())
-            ->height(Size::px(550));
+            ->height(Size::px(650));
 
         $wrapper = UI::container('wrapper')
             ->width(Size::full())

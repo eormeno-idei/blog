@@ -64,6 +64,7 @@ class InitialData extends Screen
             ->centerHorizontal()
             ->gap(Spacing::px(20))
             ->layout(LayoutType::VERTICAL)
+            ->justifyContent(JustifyContent::START)
             ->padding(Spacing::px(5));
 
         $initialTitle = $post !== null ? $post->title : '';
@@ -84,8 +85,7 @@ class InitialData extends Screen
             ->plainText()
             ->required(true)
             ->width(Size::full())
-            ->height(Size::px(400))
-            ->helpText('La IA utilizará estas notas para redactar las escenas del Reel.');
+            ->helpText('La IA utilizará estas notas para generar las escenas del Reel.');
 
         $this->confirm_button = UI::button('confirm_button')
             ->label('Confirmar datos iniciales')

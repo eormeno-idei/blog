@@ -22,7 +22,7 @@ class PostsSeeder extends Seeder
             ],
             [
                 'user_id' => 1,
-                'title' => 'Componentes UI::uploader() y UI::image()',
+                'title' => 'Componentes UI::uploader()',
                 'content' => 'Estos componentes permiten gestionar archivos temporales y confirmar la carga de imágenes de manera reactiva.',
                 'image' => 'uploads/images/uploader.svg',
             ],

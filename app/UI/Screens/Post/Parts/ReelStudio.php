@@ -60,7 +60,7 @@ class ReelStudio extends Screen
         $container
             ->width(Size::full())
             ->height(Size::full())
-            ->justifyContent(JustifyContent::CENTER)
+            ->justifyContent(JustifyContent::START)
             ->alignItems(AlignItems::CENTER)
             ->add($this->buildMainRow());
     }
@@ -101,7 +101,6 @@ class ReelStudio extends Screen
             ->add($this->first_draft_panel)
             ->add($this->edit_panel);
     }
-
 
     protected function buildRightPreviewPanel(): Container
     {
