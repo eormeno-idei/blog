@@ -215,6 +215,12 @@ return [
                     'description' => 'Permite acceder a la pantalla Post Parts Old Reel Studio.',
                 ],
             ],
+            'reel_scene_viewer' => [
+                'access' => [
+                    'name' => 'Acceder a Post Parts Reel Scene Viewer',
+                    'description' => 'Permite acceder a la pantalla Post Parts Reel Scene Viewer.',
+                ],
+            ],
         ],
     ],
     'registered_home' => [

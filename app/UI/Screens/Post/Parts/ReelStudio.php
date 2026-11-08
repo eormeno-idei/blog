@@ -5,57 +5,38 @@ namespace App\UI\Screens\Post\Parts;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
 use App\Jobs\StructureReelScriptJob;
+use App\UI\Screens\Post\Parts\ReelSceneViewer;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Components\Label;
 use Idei\Usim\Components\Textarea;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
+use Idei\Usim\Enums\Style;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
 class ReelStudio extends Screen
 {
-    // Left column components
-    protected Textarea $ai_instructions;
+    protected Container $context_received_card;
 
-    protected Button $btn_summarize;
+    protected Textarea $initial_instructions;
 
-    protected Button $btn_expand;
+    protected Button $btn_generate_first_structure;
 
-    protected Button $btn_reduce_time;
+    protected Container $reel_scene_viewer_slot;
 
-    protected Button $btn_increase_time;
-
-    protected Label $scope_selector;
-
-    protected Button $btn_structure_reel;
-
-    // Right column components
-    protected Container $scene_preview_card;
-
-    protected Label $scene_accent;
-
-    protected Label $scene_headline;
-
-    protected Label $scene_subheadline;
-
-    protected Button $btn_prev_scene;
-
-    protected Button $scene_indicator;
-
-    protected Button $btn_next_scene;
-
-    // State properties
     protected int $state_post_id = 0;
 
     protected int $state_current_scene_index = 0;
+
+    protected bool $state_firt_draft_generated = false;
 
     protected array $state_scenes = [];
 
@@ -72,8 +53,10 @@ class ReelStudio extends Screen
 
     protected function buildBaseUI(Container $container, int $post_id = 0): void
     {
-        // $this->state_post_id = $post_id > 0 ? $post_id : (int) request()->query('post_id', request('post_id', 0));
-        // $this->loadScenesFromPost($this->state_post_id);
+        $this->state_post_id = $post_id > 0 ? $post_id : (int) request()->query('post_id', request('post_id', 0));
+        if ($this->state_post_id > 0) {
+            $this->loadScenesFromPost($this->state_post_id);
+        }
 
         $container
             ->width(Size::full())
@@ -85,21 +68,23 @@ class ReelStudio extends Screen
 
     protected function postLoadUI(int $post_id = 0): void
     {
-        // if ($post_id > 0) {
-        //     $this->state_post_id = $post_id;
-        // }
-        // $this->loadScenesFromPost($this->state_post_id);
-        // $this->updateScenePreview();
+        if ($post_id > 0) {
+            $this->state_post_id = $post_id;
+            $this->loadScenesFromPost($this->state_post_id);
+            $this->updateScenePreview();
+        }
     }
 
     protected function buildMainRow(): Container
     {
         $mainRow = UI::container('reel_studio_main_row')
+            ->card()
             ->layout(LayoutType::HORIZONTAL)
             ->justifyContent(JustifyContent::CENTER)
             ->alignItems(AlignItems::START)
             ->gap(Spacing::px(28))
             ->width(Size::full())
+            ->maxWidth(Size::px(800))
             ->padding(Spacing::px(16));
 
         $mainRow->add($this->buildLeftControlsPanel());
@@ -110,225 +95,125 @@ class ReelStudio extends Screen
 
     protected function buildLeftControlsPanel(): Container
     {
-        $leftCol = UI::container('left_controls_panel')
+        return UI::container('left_controls_panel')
+            ->add($this->buildFirstDraftPanel())
+            ->add($this->buildEditReelPanel());
+    }
+
+    protected function buildFirstDraftPanel(): Container
+    {
+        $leftCol = UI::container('first_draft_panel')
             ->layout(LayoutType::VERTICAL)
             ->width(Size::px(320))
-            ->gap(Spacing::px(10))
+            ->maxWidth(Size::px(320))
+            ->gap(Spacing::px(14))
             ->padding(Spacing::zero());
 
-        $this->ai_instructions = UI::textarea('ai_instructions')
-            ->placeholder('Cambiar el título por "XXXXX"')
-            ->width(Size::full())
-            ->height(Size::px(85));
+        $this->initial_instructions = UI::textarea('initial_instructions')
+            ->placeholder('Agrega instrucciones adicionales para el primer borrador (Opcional)')
+            ->width(Size::full());
 
-        $this->btn_summarize = UI::button('btn_summarize')
-            ->label('Resumir más')
-            ->style('success')
-            ->fullWidth(true)
-            ->action('on_summarize');
-
-        $this->btn_expand = UI::button('btn_expand')
-            ->label('Ampliar con más detalles')
-            ->style('success')
-            ->fullWidth(true)
-            ->action('on_expand');
-
-        $this->btn_reduce_time = UI::button('btn_reduce_time')
-            ->label('Reducir tiempo')
+        $this->btn_generate_first_structure = UI::button('btn_generate_first_structure')
+            ->label('Generar Primera Estructura')
+            ->icon('✨')
             ->style('primary')
             ->fullWidth(true)
-            ->action('on_reduce_time');
+            ->action('generate_first_structure');
 
-        $this->btn_increase_time = UI::button('btn_increase_time')
-            ->label('Aumentar duración')
-            ->style('primary')
-            ->fullWidth(true)
-            ->action('on_increase_time');
-
-        $this->scope_selector = UI::label('scope_selector')
-            ->html('
-                <div style="display:flex; align-items:center; gap:24px; padding: 6px 8px; font-size:14px; font-weight:500; color:#374151;">
-                    <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="radio" name="refine_scope" value="reel" checked style="cursor:pointer; width:16px; height:16px;" /> Reel
-                    </label>
-                    <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="radio" name="refine_scope" value="scene" style="cursor:pointer; width:16px; height:16px;" /> Escena
-                    </label>
-                </div>
-            ');
-
-        $this->btn_structure_reel = UI::button('btn_structure_reel')
-            ->label('Estructurar Reel')
-            ->style('info')
-            ->fullWidth(true)
-            ->action('on_structure_reel');
-
-        $leftCol->add($this->ai_instructions);
-        $leftCol->add($this->btn_summarize);
-        $leftCol->add($this->btn_expand);
-        $leftCol->add($this->btn_reduce_time);
-        $leftCol->add($this->btn_increase_time);
-        $leftCol->add($this->scope_selector);
-        $leftCol->add($this->btn_structure_reel);
+        $leftCol->add($this->contextReceivedCard());
+        $leftCol->add($this->initial_instructions);
+        $leftCol->add($this->btn_generate_first_structure);
 
         return $leftCol;
+    }
+
+    protected function buildEditReelPanel(): Container
+    {
+        $editPanel = UI::container('edit_panel')
+            ->layout(LayoutType::VERTICAL)
+            ->width(Size::px(320))
+            ->maxWidth(Size::px(320))
+            ->gap(Spacing::px(14))
+            ->padding(Spacing::zero())
+            ->visible(false)
+            ->add(
+                UI::newLabel('edit_panel_title')
+                    ->text('Editar Reel')
+                    ->style(Style::INFO)
+            );
+
+        return $editPanel;
+    }
+
+    private function contextReceivedCard(): Container
+    {
+        return $this->context_received_card
+            ->card()
+            ->layout(LayoutType::VERTICAL)
+            ->width(Size::full())
+            ->padding(Spacing::px(5))
+            ->gap(Spacing::px(5))
+            ->justifyContent(JustifyContent::START)
+            ->add(
+                UI::newLabel('context_received_title')
+                    ->text('✅ Contexto recibido')
+            )
+            ->add(
+                UI::newLabel('context_received_content')
+                    ->text('✅ Texto Markdown cargado')
+            )->add(
+                UI::newLabel('context_received_images')
+                    ->text('✅ Imágenes adjuntas')
+            );
     }
 
     protected function buildRightPreviewPanel(): Container
     {
         $rightCol = UI::container('right_preview_panel')
             ->layout(LayoutType::VERTICAL)
-            ->width(Size::px(260))
+            ->width(Size::px(320))
             ->alignItems(AlignItems::CENTER)
             ->gap(Spacing::px(10))
             ->padding(Spacing::zero());
 
-        $this->scene_preview_card = UI::container('scene_preview_card')
-            ->backgroundColor('#0b2545')
-            ->borderRadius('8px')
-            ->width(Size::px(260))
-            ->height(Size::px(390))
-            ->padding(Spacing::px(20))
-            ->layout(LayoutType::VERTICAL)
-            ->justifyContent(JustifyContent::CENTER)
-            ->alignItems(AlignItems::CENTER)
-            ->gap(Spacing::px(16));
+        $this->reel_scene_viewer_slot = UI::container('reel_scene_viewer_slot');
+        $rightCol->add($this->reel_scene_viewer_slot);
 
-        $this->scene_accent = UI::label('scene_accent')
-            ->text('—')
-            ->color('#f59e0b')
-            ->fontSize('24')
-            ->bold()
-            ->center();
-
-        $this->scene_headline = UI::label('scene_headline')
-            ->text('INNOVACIÓN EN SOFTWARE BACKEND-DRIVEN')
-            ->color('#ffffff')
-            ->fontSize('18')
-            ->bold()
-            ->uppercase()
-            ->center();
-
-        $this->scene_subheadline = UI::label('scene_subheadline')
-            ->text('PDTS Convocatoria 2025 - Universidad Nacional de San Juan')
-            ->color('#facc15')
-            ->fontSize('12')
-            ->center();
-
-        $this->scene_preview_card->add($this->scene_accent);
-        $this->scene_preview_card->add($this->scene_headline);
-        $this->scene_preview_card->add($this->scene_subheadline);
-
-        $navRow = UI::container('scene_nav_row')
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->alignItems(AlignItems::CENTER)
-            ->width(Size::px(260))
-            ->gap(Spacing::px(8))
-            ->padding(Spacing::zero());
-
-        $this->btn_prev_scene = UI::button('btn_prev_scene')
-            ->label('◀')
-            ->style('info')
-            ->variant('outline')
-            ->action('on_prev_scene')
-            ->enabled(false);
-
-        $this->scene_indicator = UI::button('scene_indicator')
-            ->label('Escena 1/5')
-            ->variant('outline')
-            ->style('secondary');
-
-        $this->btn_next_scene = UI::button('btn_next_scene')
-            ->label('▶')
-            ->style('info')
-            ->variant('outline')
-            ->action('on_next_scene')
-            ->enabled(true);
-
-        $navRow->add($this->btn_prev_scene);
-        $navRow->add($this->scene_indicator);
-        $navRow->add($this->btn_next_scene);
-
-        $rightCol->add($this->scene_preview_card);
-        $rightCol->add($navRow);
+        $this->updateScenePreview();
 
         return $rightCol;
     }
 
-    public function onPrevScene(): void
+    public function onGenerateFirstStructure(array $params = []): void
     {
-        if ($this->state_current_scene_index > 0) {
-            $this->state_current_scene_index--;
-            $this->updateScenePreview();
-        }
-    }
+        $rawInstructions = $params['initial_instructions']
+            ?? (isset($this->initial_instructions) ? $this->initial_instructions->getValue() : '');
+        $instructions = is_string($rawInstructions) ? trim($rawInstructions) : '';
 
-    public function onNextScene(): void
-    {
-        if ($this->state_current_scene_index < count($this->state_scenes) - 1) {
-            $this->state_current_scene_index++;
-            $this->updateScenePreview();
-        }
-    }
-
-    public function onSummarize(array $params = []): void
-    {
-        $scope = $params['refine_scope'] ?? 'reel';
-        $instruction = $scope === 'scene'
-            ? 'Resumir más el contenido de la escena actual.'
-            : 'Resumir más el contenido de todo el Reel.';
-
-        $this->ai_instructions->value($instruction);
-        $this->executeStructureReel($instruction, $scope);
-    }
-
-    public function onExpand(array $params = []): void
-    {
-        $scope = $params['refine_scope'] ?? 'reel';
-        $instruction = $scope === 'scene'
-            ? 'Ampliar con más detalles la escena actual.'
-            : 'Ampliar con más detalles todo el Reel.';
-
-        $this->ai_instructions->value($instruction);
-        $this->executeStructureReel($instruction, $scope);
-    }
-
-    public function onReduceTime(array $params = []): void
-    {
-        $scope = $params['refine_scope'] ?? 'reel';
-        $instruction = $scope === 'scene'
-            ? 'Reducir el tiempo y duración de la escena actual.'
-            : 'Reducir el tiempo y duración total del Reel.';
-
-        $this->ai_instructions->value($instruction);
-        $this->executeStructureReel($instruction, $scope);
-    }
-
-    public function onIncreaseTime(array $params = []): void
-    {
-        $scope = $params['refine_scope'] ?? 'reel';
-        $instruction = $scope === 'scene'
-            ? 'Aumentar la duración de la escena actual.'
-            : 'Aumentar la duración de todo el Reel.';
-
-        $this->ai_instructions->value($instruction);
-        $this->executeStructureReel($instruction, $scope);
+        $this->executeStructureReel($instructions, 'reel');
     }
 
     public function onStructureReel(array $params = []): void
     {
-        $rawInstructions = $params['ai_instructions'] ?? (isset($this->ai_instructions) ? $this->ai_instructions->getValue() : '');
-        $instructions = is_string($rawInstructions) ? trim($rawInstructions) : '';
-        $scope = $params['refine_scope'] ?? 'reel';
-
-        $this->executeStructureReel($instructions, $scope);
+        $this->onGenerateFirstStructure($params);
     }
 
     protected function executeStructureReel(string $instructions, string $scope): void
     {
         $postId = $this->resolvePostId();
         if ($postId <= 0) {
+            // Standalone or demo fallback: Load structure from _data.json if exists
+            if (File::exists(base_path('_data.json'))) {
+                $decoded = json_decode(File::get(base_path('_data.json')), true);
+                if (is_array($decoded) && !empty($decoded['scenes'])) {
+                    $this->state_scenes = $decoded['scenes'];
+                    $this->updateScenePreview();
+                    $this->toast('Estructura de Reel generada exitosamente.', 'success');
+
+                    return;
+                }
+            }
+
             $this->toast('Post no identificado.', 'warning');
 
             return;
@@ -343,7 +228,7 @@ class ReelStudio extends Screen
 
         $notes = trim((string) ($post->content ?: $post->title));
         $previousJson = $post->aiScript;
-        if ($previousJson === null && ! empty($this->state_scenes)) {
+        if ($previousJson === null && !empty($this->state_scenes)) {
             $previousJson = json_encode([
                 'metadata' => ['autor' => 'UNSJ', 'tema' => $post->title, 'duracion_total_segundos' => 30],
                 'scenes' => $this->state_scenes,
@@ -352,10 +237,7 @@ class ReelStudio extends Screen
 
         $feedback = null;
         if ($instructions !== '') {
-            $sceneNum = $this->state_current_scene_index + 1;
-            $feedback = $scope === 'scene'
-                ? "Ajustar únicamente la Escena {$sceneNum}: {$instructions}"
-                : "Ajustar en todo el Reel: {$instructions}";
+            $feedback = "Instrucciones del borrador: {$instructions}";
         }
 
         try {
@@ -368,7 +250,7 @@ class ReelStudio extends Screen
             );
             $job->handle();
         } catch (\Throwable $e) {
-            Log::warning('[ReelStudio] StructureReelScriptJob failed: '.$e->getMessage());
+            Log::warning('[ReelStudio] StructureReelScriptJob failed: ' . $e->getMessage());
         }
 
         $refreshedPost = $this->postService->findById($postId);
@@ -376,7 +258,7 @@ class ReelStudio extends Screen
 
         if ($aiScript !== null && $aiScript !== '') {
             $decoded = json_decode($aiScript, true);
-            if (is_array($decoded) && ! empty($decoded['scenes'])) {
+            if (is_array($decoded) && !empty($decoded['scenes'])) {
                 $this->state_scenes = $decoded['scenes'];
             }
         } else {
@@ -410,27 +292,9 @@ class ReelStudio extends Screen
             $this->state_scenes = $this->getDefaultScenes($post);
         }
 
-        $idx = $this->state_current_scene_index;
         if ($instructions !== '') {
             if (preg_match('/["\']([^"\']+)["\']/', $instructions, $matches)) {
-                $newHeadline = $matches[1];
-                if ($scope === 'scene' && isset($this->state_scenes[$idx])) {
-                    $this->state_scenes[$idx]['text_content']['headline'] = $newHeadline;
-                } else {
-                    $this->state_scenes[0]['text_content']['headline'] = $newHeadline;
-                }
-            } elseif (str_contains(strtolower($instructions), 'resumir')) {
-                if ($scope === 'scene' && isset($this->state_scenes[$idx])) {
-                    $this->state_scenes[$idx]['text_content']['subheadline'] = 'Versión resumida';
-                }
-            } elseif (str_contains(strtolower($instructions), 'reducir')) {
-                if ($scope === 'scene' && isset($this->state_scenes[$idx])) {
-                    $this->state_scenes[$idx]['duration_seconds'] = max(2, ($this->state_scenes[$idx]['duration_seconds'] ?? 5) - 2);
-                }
-            } elseif (str_contains(strtolower($instructions), 'aumentar')) {
-                if ($scope === 'scene' && isset($this->state_scenes[$idx])) {
-                    $this->state_scenes[$idx]['duration_seconds'] = ($this->state_scenes[$idx]['duration_seconds'] ?? 5) + 2;
-                }
+                $this->state_scenes[0]['text_content']['headline'] = $matches[1];
             }
         }
     }
@@ -454,86 +318,49 @@ class ReelStudio extends Screen
     protected function loadScenesFromPost(int $postId): void
     {
         if ($postId <= 0) {
-            if (empty($this->state_scenes)) {
-                $this->state_scenes = $this->getDefaultScenes();
-            }
-
             return;
         }
 
         $post = $this->postService->findById($postId);
-        if ($post !== null && ! empty($post->aiScript)) {
+        if ($post !== null && !empty($post->aiScript)) {
             $decoded = json_decode((string) $post->aiScript, true);
-            if (is_array($decoded) && ! empty($decoded['scenes'])) {
+            if (is_array($decoded) && !empty($decoded['scenes'])) {
                 $this->state_scenes = $decoded['scenes'];
 
                 return;
             }
         }
-
-        if (empty($this->state_scenes)) {
-            $this->state_scenes = $this->getDefaultScenes($post);
-        }
     }
 
     protected function updateScenePreview(): void
     {
-        if (empty($this->state_scenes)) {
-            $this->state_scenes = $this->getDefaultScenes();
+        if (!isset($this->reel_scene_viewer_slot)) {
+            return;
         }
 
-        $totalScenes = count($this->state_scenes);
-        if ($this->state_current_scene_index >= $totalScenes) {
-            $this->state_current_scene_index = max(0, $totalScenes - 1);
-        }
-        if ($this->state_current_scene_index < 0) {
-            $this->state_current_scene_index = 0;
-        }
-
-        $currentScene = $this->state_scenes[$this->state_current_scene_index] ?? null;
-        $sceneNumber = $this->state_current_scene_index + 1;
-
-        if (isset($this->scene_indicator)) {
-            $this->scene_indicator->label("Escena {$sceneNumber}/{$totalScenes}");
-        }
-
-        if (isset($this->btn_prev_scene)) {
-            $this->btn_prev_scene->enabled($this->state_current_scene_index > 0);
-        }
-        if (isset($this->btn_next_scene)) {
-            $this->btn_next_scene->enabled($this->state_current_scene_index < $totalScenes - 1);
+        $params = [];
+        if (!empty($this->state_scenes)) {
+            $params['data'] = [
+                'metadata' => [
+                    'autor' => 'UNSJ',
+                    'tema' => 'Reel Preview',
+                    'duracion_total_segundos' => 30,
+                ],
+                'scenes' => $this->state_scenes,
+            ];
+            $params['initial_scene'] = $this->state_current_scene_index;
+        } elseif ($this->state_post_id > 0) {
+            $params['post_id'] = $this->state_post_id;
         }
 
-        $headline = '';
-        $subheadline = '';
-        if ($currentScene !== null && isset($currentScene['text_content'])) {
-            $headline = (string) ($currentScene['text_content']['headline'] ?? '');
-            $subheadline = (string) ($currentScene['text_content']['subheadline'] ?? '');
-            if ($subheadline === '' && ! empty($currentScene['text_content']['body'])) {
-                $subheadline = implode(' • ', (array) $currentScene['text_content']['body']);
-            }
-        }
-
-        if ($headline === '') {
-            $headline = 'INNOVACIÓN EN SOFTWARE BACKEND-DRIVEN';
-        }
-        if ($subheadline === '') {
-            $subheadline = 'PDTS Convocatoria 2025 - Universidad Nacional de San Juan';
-        }
-
-        if (isset($this->scene_headline)) {
-            $this->scene_headline->text($headline);
-        }
-        if (isset($this->scene_subheadline)) {
-            $this->scene_subheadline->text($subheadline);
-        }
+        $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, $params);
     }
 
     protected function getDefaultScenes(?PostDTO $post = null): array
     {
-        $title = $post !== null && ! empty(trim($post->title))
+        $title = $post !== null && !empty(trim($post->title))
             ? trim($post->title)
-            : 'INNOVACIÓN EN SOFTWARE BACKEND-DRIVEN';
+            : 'Título del Reel';
 
         return [
             [
@@ -542,48 +369,8 @@ class ReelStudio extends Screen
                 'duration_seconds' => 6,
                 'text_content' => [
                     'headline' => $title,
-                    'subheadline' => 'PDTS Convocatoria 2025 - Universidad Nacional de San Juan',
-                    'body' => ['Beca disponible', 'Inscripción abierta'],
-                ],
-            ],
-            [
-                'scene_index' => 2,
-                'layout_template' => 'bullet_points',
-                'duration_seconds' => 5,
-                'text_content' => [
-                    'headline' => 'REQUISITOS Y ALCANCE',
-                    'subheadline' => 'Estudiantes avanzados de Informática',
-                    'body' => ['Dedicación 20hs', 'Plan de trabajo'],
-                ],
-            ],
-            [
-                'scene_index' => 3,
-                'layout_template' => 'bullet_points',
-                'duration_seconds' => 5,
-                'text_content' => [
-                    'headline' => 'OBJETIVOS DEL PROYECTO',
-                    'subheadline' => 'Desarrollo ágil de plataformas distribuidas',
-                    'body' => ['Arquitectura backend-driven', 'Transferencia'],
-                ],
-            ],
-            [
-                'scene_index' => 4,
-                'layout_template' => 'bullet_points',
-                'duration_seconds' => 6,
-                'text_content' => [
-                    'headline' => 'CRONOGRAMA Y FASES',
-                    'subheadline' => 'Convocatoria Noviembre 2026',
-                    'body' => ['Evaluación técnica', 'Entrevistas'],
-                ],
-            ],
-            [
-                'scene_index' => 5,
-                'layout_template' => 'call_to_action',
-                'duration_seconds' => 5,
-                'text_content' => [
-                    'headline' => 'POSTÚLATE HOY',
-                    'subheadline' => 'Instituto de Informática - UNSJ',
-                    'body' => ['Formulario disponible', 'Cierre próximo'],
+                    'subheadline' => 'Hubo un problema al generar el Reel',
+                    'body' => ['API Key vencida'],
                 ],
             ],
         ];

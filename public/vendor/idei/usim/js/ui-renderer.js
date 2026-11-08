@@ -521,11 +521,20 @@ class UIComponent {
             element.id = this.config.name;
         }
 
-        // Ensure layout-specific spacing works even when CSS only defines part of the layouts.
-        if (layout === 'grid') {
-            element.style.setProperty('display', 'grid', 'important');
-        } else if (layout === 'flex') {
-            element.style.setProperty('display', 'flex', 'important');
+        // Visibility and layout display handling
+        const isHidden = this.config.visible === false || this.config.visible === 'false';
+        if (isHidden) {
+            element.style.setProperty('display', 'none', 'important');
+        } else {
+            if (element.style.getPropertyValue('display') === 'none') {
+                element.style.removeProperty('display');
+            }
+            // Ensure layout-specific spacing works even when CSS only defines part of the layouts.
+            if (layout === 'grid') {
+                element.style.setProperty('display', 'grid', 'important');
+            } else if (layout === 'flex') {
+                element.style.setProperty('display', 'flex', 'important');
+            }
         }
 
         if (this.config.flex_direction) {
@@ -552,6 +561,15 @@ class UIComponent {
         }
         if (this.config.grid_auto_flow) {
             element.style.setProperty('grid-auto-flow', this.config.grid_auto_flow, 'important');
+        }
+        if (this.config.grid_column) {
+            element.style.setProperty('grid-column', this.config.grid_column, 'important');
+        }
+        if (this.config.grid_row) {
+            element.style.setProperty('grid-row', this.config.grid_row, 'important');
+        }
+        if (this.config.grid_area) {
+            element.style.setProperty('grid-area', this.config.grid_area, 'important');
         }
 
         // Apply visual styling if specified
@@ -2532,7 +2550,24 @@ class UIRenderer {
 
             // Visibility
             if (changes.visible !== undefined) {
-                element.style.display = (changes.visible === false) ? 'none' : '';
+                const runtimeComponent = componentId ? this.components?.get(String(componentId)) : null;
+                if (runtimeComponent && runtimeComponent.config) {
+                    runtimeComponent.config.visible = (changes.visible === null ? true : changes.visible);
+                }
+
+                const isHidden = changes.visible === false || changes.visible === 'false';
+                if (isHidden) {
+                    element.style.setProperty('display', 'none', 'important');
+                } else {
+                    const layout = (runtimeComponent?.config?.layout || '').toLowerCase();
+                    if (layout === 'grid') {
+                        element.style.setProperty('display', 'grid', 'important');
+                    } else if (layout === 'flex') {
+                        element.style.setProperty('display', 'flex', 'important');
+                    } else {
+                        element.style.removeProperty('display');
+                    }
+                }
             }
 
             // Enabled/disabled state

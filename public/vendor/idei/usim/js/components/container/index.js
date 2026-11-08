@@ -25,6 +25,10 @@ class UsimContainerComponent extends UIComponent {
             ...newConfig,
         };
 
+        if (this.config.visible === null) {
+            this.config.visible = true;
+        }
+
         if (!this.element) {
             return;
         }
