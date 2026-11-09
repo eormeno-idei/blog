@@ -2,9 +2,13 @@
 
 namespace App\UI\Screens\Post\Parts\ReelStudioConcerns;
 
+use App\DTOs\Posts\PostDTO;
+use App\DTOs\ReelStructureGenerationStatus;
+use App\Jobs\GenerateReelStructureJob;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Textarea;
+use Idei\Usim\Components\Timer;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\UI;
@@ -16,6 +20,8 @@ trait HasFirstDraftPanel
     protected Container $context_received_card;
     protected Textarea $initial_instructions;
     protected Button $btn_generate_first_structure;
+    protected Timer $tmr_reel_poll;
+
 
     protected function buildFirstDraftPanel(): Container
     {
@@ -40,8 +46,19 @@ trait HasFirstDraftPanel
         $leftCol->add($this->contextReceivedCard());
         $leftCol->add($this->initial_instructions);
         $leftCol->add($this->btn_generate_first_structure);
+        $leftCol->add($this->buildReelPollTimer());
 
         return $leftCol;
+    }
+
+    protected function buildReelPollTimer(): Timer
+    {
+        $this->tmr_reel_poll = UI::timer('tmr_reel_poll')
+            ->action('check_reel_status')
+            ->every(2500)
+            ->enabled(false);
+
+        return $this->tmr_reel_poll;
     }
 
     private function contextReceivedCard(): Container
@@ -63,5 +80,36 @@ trait HasFirstDraftPanel
                 UI::newLabel('context_received_images')
                     ->text('✅ Imágenes adjuntas')
             );
+    }
+
+    public function onGenerateFirstStructure(int $postId, ?string $initialInstructions): void
+    {
+        $post = $this->postService->findById($postId);
+        if (!$post) {
+            $this->toast('No se encontró el post.', 'error');
+            return;
+        }
+        $this->toast('Generando primera estructura de guion con IA...', 'info');
+        $this->btn_generate_first_structure->enabled(false);
+        $this->startReelGenerationJob($post, $initialInstructions);
+    }
+
+    protected function startReelGenerationJob(PostDTO $post, ?string $initialInstructions): void
+    {
+        GenerateReelStructureJob::putStatus(
+            $post->id,
+            ReelStructureGenerationStatus::generatingFirstScript(),
+        );
+
+        GenerateReelStructureJob::dispatch($post->id, $initialInstructions);
+        $this->tmr_reel_poll->start();
+    }
+
+    public function onCheckReelStatus(int $post_id): void
+    {
+        $status = GenerateReelStructureJob::getStatus($post_id);
+        if ($status === null) {
+            return;
+        }
     }
 }

@@ -17,8 +17,7 @@ class PublishPost extends Screen
 {
     protected Container $buttons_container;
     protected Container $demo_container;
-
-    protected int $state_currentStepIndex = 0;
+    protected ?int $state_currentStepIndex = null;
 
     public function __construct(
         protected PostServiceInterface $postService,

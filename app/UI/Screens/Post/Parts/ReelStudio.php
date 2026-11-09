@@ -119,19 +119,19 @@ class ReelStudio extends Screen
         return $rightCol;
     }
 
-    public function onGenerateFirstStructure(array $params = []): void
-    {
-        $rawInstructions = $params['initial_instructions']
-            ?? (isset($this->initial_instructions) ? $this->initial_instructions->getValue() : '');
-        $instructions = is_string($rawInstructions) ? trim($rawInstructions) : '';
+    // public function onGenerateFirstStructure(array $params = []): void
+    // {
+    //     $rawInstructions = $params['initial_instructions']
+    //         ?? (isset($this->initial_instructions) ? $this->initial_instructions->getValue() : '');
+    //     $instructions = is_string($rawInstructions) ? trim($rawInstructions) : '';
 
-        $this->executeStructureReel($instructions, 'reel');
-    }
+    //     $this->executeStructureReel($instructions, 'reel');
+    // }
 
-    public function onStructureReel(array $params = []): void
-    {
-        $this->onGenerateFirstStructure($params);
-    }
+    // public function onStructureReel(array $params = []): void
+    // {
+    //     $this->onGenerateFirstStructure($params);
+    // }
 
     protected function executeStructureReel(string $instructions, string $scope): void
     {
