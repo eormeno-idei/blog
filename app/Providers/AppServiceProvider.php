@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Contracts\LogServiceInterface;
+use App\Contracts\PostReelGenerationStatusInterface;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
 use App\Policies\PostPolicy;
 use App\Repositories\Contracts\PostRepositoryInterface;
 use App\Repositories\Eloquent\EloquentPostRepository;
 use App\Services\Log\LogService;
+use App\Services\Post\PostReelGenerationStatusService;
 use App\Services\Post\PostService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -35,6 +37,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(
             PostServiceInterface::class,
             PostService::class
+        );
+
+        // 3. Enlazar el Servicio de Estado de Generación de Reel
+        $this->app->singleton(
+            PostReelGenerationStatusInterface::class,
+            PostReelGenerationStatusService::class
         );
     }
 

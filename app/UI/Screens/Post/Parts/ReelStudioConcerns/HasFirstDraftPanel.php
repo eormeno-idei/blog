@@ -11,6 +11,7 @@ use Idei\Usim\Components\Textarea;
 use Idei\Usim\Components\Timer;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
+use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
@@ -97,11 +98,13 @@ trait HasFirstDraftPanel
     protected function startReelGenerationJob(PostDTO $post, ?string $initialInstructions): void
     {
         GenerateReelStructureJob::putStatus(
-            $post->id,
-            ReelStructureGenerationStatus::generatingFirstScript(),
+            ReelStructureGenerationStatus::generatingFirstScript(
+                $post->id,
+                $initialInstructions
+            ),
         );
 
-        GenerateReelStructureJob::dispatch($post->id, $initialInstructions);
+        GenerateReelStructureJob::dispatch($post->id, $post->content, $initialInstructions);
         $this->tmr_reel_poll->start();
     }
 
@@ -111,5 +114,22 @@ trait HasFirstDraftPanel
         if ($status === null) {
             return;
         }
+        match ($status->status) {
+            // 'generating_script' => $this->handleGeneratingScriptStatus($status),
+            // 'rendering_video' => $this->handleRenderingVideoStatus($status),
+            'completed' => $this->handleCompletedStatus($status),
+            // 'failed' => $this->handleFailedStatus($status),
+            default => null,
+        };
+    }
+
+    private function handleCompletedStatus(ReelStructureGenerationStatus $status): void
+    {
+        $this->tmr_reel_poll->stop();
+        $jsonScript = $status->jsonScript ?? '';
+        event(new UsimEvent('ai_first_structure_completed', [
+            'postId' => $status->postId,
+            'json' => $jsonScript,
+        ]));
     }
 }

@@ -29,7 +29,6 @@ use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class Home extends Screen
 {
@@ -315,7 +314,6 @@ class Home extends Screen
     {
         $status = is_string($post->status) ? $post->status : $post->status->value;
         $jobStatus = (string) ($post->ai_job_status ?? 'idle');
-        Log::info("Post ID: {$post->id}, Status: {$status}, AI Job Status: {$jobStatus}");
 
         if ($status === 'draft' && in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
             return ['⚙️ Procesando IA', 'info'];

@@ -38,16 +38,14 @@ class GenerateReelStructureJob implements ShouldQueue
     /**
      * Persiste el estado del procesamiento en la tabla `posts`.
      */
-    public static function putStatus(int $postId, ReelStructureGenerationStatus $payload): void
+    public static function putStatus(ReelStructureGenerationStatus $payload): void
     {
         $postReelGenerationStatusService = app()->make(PostReelGenerationStatusInterface::class);
-        $postReelGenerationStatusService->putStatus($postId, $payload);
+        $postReelGenerationStatusService->putStatus($payload);
     }
 
     public function handle(): void
     {
-        $this->reportGeneratingScriptStatus();
-
         $jsonPath = null;
 
         try {
@@ -55,17 +53,12 @@ class GenerateReelStructureJob implements ShouldQueue
             $decoded = $this->parseAndValidateScript($jsonString);
             [$sceneCount, $totalSeconds] = $this->calculateMetrics($decoded);
 
-            $this->reportCompletedStatus($sceneCount, $totalSeconds, $jsonString, $decoded);
+            $this->reportCompletedStatus($this->postId,$sceneCount, $totalSeconds, $jsonString, $decoded);
         } catch (\Throwable $e) {
             Log::error('[GenerateReelPreviewJob] Error: ' . $e->getMessage());
         } finally {
             $this->deleteTempJsonFile($jsonPath);
         }
-    }
-
-    private function reportGeneratingScriptStatus(): void
-    {
-        self::putStatus($this->postId, ReelStructureGenerationStatus::generatingFirstScript());
     }
 
     private function generateJsonScript(): string
@@ -118,12 +111,14 @@ class GenerateReelStructureJob implements ShouldQueue
      * @param  array<string, mixed>  $decoded
      */
     private function reportCompletedStatus(
+        int $postId,
         int $sceneCount,
         int $totalSeconds,
         string $jsonString,
         array $decoded,
     ): void {
-        self::putStatus($this->postId, ReelStructureGenerationStatus::completed(
+        self::putStatus(ReelStructureGenerationStatus::completed(
+            $postId,
             $sceneCount,
             $totalSeconds,
             $jsonString,
