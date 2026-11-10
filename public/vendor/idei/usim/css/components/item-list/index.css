@@ -331,6 +331,37 @@
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
+    scrollbar-color: var(--usim-color-border-strong, #cbd5e1) transparent;
+}
+
+.usim-item-list-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.usim-item-list-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.usim-item-list-body::-webkit-scrollbar-thumb {
+    background: var(--usim-color-border-strong, #cbd5e1);
+    border-radius: 4px;
+}
+
+.usim-item-list-body::-webkit-scrollbar-thumb:hover {
+    background: var(--usim-color-text-muted, #94a3b8);
+}
+
+.usim-item-list-body.scrollbar-always {
+    overflow-y: scroll;
+}
+
+.usim-item-list-body.scrollbar-hidden {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.usim-item-list-body.scrollbar-hidden::-webkit-scrollbar {
+    display: none;
 }
 
 /* ── Row Anatomy ──────────────────────────────────────────── */

@@ -223,7 +223,6 @@ class UsimItemListComponent extends UIComponent {
         // 2c. Body Wrapper (Scrollable list + loading spinner host)
         this.bodyWrapperElement = document.createElement('div');
         this.bodyWrapperElement.className = 'usim-item-list-body-wrapper';
-        this._applyBodyDimensions();
 
         this.listElement = document.createElement('div');
         this.listElement.className = 'usim-item-list-body';
@@ -233,6 +232,8 @@ class UsimItemListComponent extends UIComponent {
         }
         this.bodyWrapperElement.appendChild(this.listElement);
         box.appendChild(this.bodyWrapperElement);
+
+        this._applyBodyDimensions();
 
         // 2d. Error Icon (consistent with USIM Input/Textarea)
         this._syncErrorState();
@@ -308,7 +309,7 @@ class UsimItemListComponent extends UIComponent {
             this._syncErrorState();
         }
 
-        if (changes.max_height !== undefined || changes.min_height !== undefined) {
+        if (changes.max_height !== undefined || changes.min_height !== undefined || changes.scrollbar !== undefined) {
             this._applyBodyDimensions();
         }
 
@@ -414,7 +415,7 @@ class UsimItemListComponent extends UIComponent {
     }
 
     _applyBodyDimensions() {
-        if (!this.bodyWrapperElement) return;
+        if (!this.bodyWrapperElement || !this.listElement) return;
         const normalizeSize = (val) => {
             if (val === null || val === undefined || val === '') return '';
             if (typeof val === 'number') return `${val}px`;
@@ -422,8 +423,15 @@ class UsimItemListComponent extends UIComponent {
             return /^\d+$/.test(str) ? `${str}px` : str;
         };
 
-        this.listElement && (this.listElement.style.maxHeight = normalizeSize(this.config.max_height) || '420px');
-        this.listElement && (this.listElement.style.minHeight = normalizeSize(this.config.min_height) || '');
+        this.listElement.style.maxHeight = normalizeSize(this.config.max_height) || '420px';
+        this.listElement.style.minHeight = normalizeSize(this.config.min_height) || '';
+
+        const scrollbarMode = this.config.scrollbar;
+        const isAlways = scrollbarMode === true || scrollbarMode === 'always' || scrollbarMode === 'visible';
+        const isHidden = scrollbarMode === false || scrollbarMode === 'hidden';
+
+        this.listElement.classList.toggle('scrollbar-always', isAlways);
+        this.listElement.classList.toggle('scrollbar-hidden', isHidden);
     }
 
     // ─── Header & Toolbar Rendering ───────────────────────────────────────────
