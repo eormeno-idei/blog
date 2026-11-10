@@ -96,11 +96,15 @@
 .usim-textarea-body-container {
     position: relative;
     width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .usim-textarea-body {
     display: flex;
     flex-direction: column;
+    flex: 1;
     border: 1px solid var(--usim-form-control-border, var(--ui-border));
     border-radius: 6px;
     overflow: hidden;
@@ -173,6 +177,7 @@
 .usim-textarea-body.mode-plain .usim-textarea-el {
     display: block;
     width: 100%;
+    flex: 1;
     min-height: 150px;
     resize: none;
 }

@@ -1182,16 +1182,16 @@
         },
         {
             "name": "idei/usim",
-            "version": "2.3.1",
+            "version": "2.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/idei/usim.git",
-                "reference": "f81aea4a3e5ce037151453f3e9fce5c969607eba"
+                "reference": "b9646ed7ea3755aabd1f6c41f9f1da47503d8cd6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/idei/usim/zipball/f81aea4a3e5ce037151453f3e9fce5c969607eba",
-                "reference": "f81aea4a3e5ce037151453f3e9fce5c969607eba",
+                "url": "https://api.github.com/repos/idei/usim/zipball/b9646ed7ea3755aabd1f6c41f9f1da47503d8cd6",
+                "reference": "b9646ed7ea3755aabd1f6c41f9f1da47503d8cd6",
                 "shasum": ""
             },
             "require": {
@@ -1203,7 +1203,8 @@
                 "nikic/php-parser": "^5.7",
                 "php": "^8.5",
                 "symfony/finder": "^6.0|^7.0|^8.0",
-                "symfony/var-dumper": "^6.0|^7.0|^8.0"
+                "symfony/var-dumper": "^6.0|^7.0|^8.0",
+                "symfony/yaml": "^6.0|^7.0|^8.0"
             },
             "suggest": {
                 "laravel/octane": "Required to handle state reset in long-running processes."
@@ -1248,7 +1249,7 @@
                 "issues": "https://github.com/idei/usim/issues",
                 "source": "https://github.com/idei/usim"
             },
-            "time": "2026-11-08T14:49:17+00:00"
+            "time": "2026-11-09T23:47:55+00:00"
         },
         {
             "name": "laminas/laminas-diactoros",

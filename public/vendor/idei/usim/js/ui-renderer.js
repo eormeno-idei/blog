@@ -618,6 +618,12 @@ class UIComponent {
         if (this.config.align_items) {
             element.style.setProperty('align-items', this.config.align_items, 'important');
         }
+        if (this.config.justify_self) {
+            element.style.setProperty('justify-self', this.config.justify_self, 'important');
+        }
+        if (this.config.align_self) {
+            element.style.setProperty('align-self', this.config.align_self, 'important');
+        }
         if (this.config.gap !== undefined && this.config.gap !== null && this.config.gap !== '') {
             element.style.setProperty('gap', normalizeSizeValue(this.config.gap), 'important');
         }
