@@ -24,45 +24,37 @@ trait HasFirstDraftPanel
     protected Timer $tmr_reel_poll;
 
 
+    /**
+     * Configure the first-draft panel and attach its declarative grid layout.
+     */
     protected function buildFirstDraftPanel(): Container
     {
-        $leftCol = UI::container('first_draft_panel')
-            ->layout(LayoutType::VERTICAL)
-            ->width(Size::px(320))
-            ->maxWidth(Size::px(320))
-            ->gap(Spacing::px(14))
-            ->padding(Spacing::zero());
+        $this->configureContextReceivedCard();
 
-        $this->initial_instructions = UI::textarea('initial_instructions')
-            ->placeholder('Agrega instrucciones adicionales para el primer borrador (Opcional)')
-            ->width(Size::full());
+        $this->initial_instructions
+            ->placeholder('Agrega instrucciones adicionales para el primer borrador (Opcional)');
 
-        $this->btn_generate_first_structure = UI::button('btn_generate_first_structure')
+        $this->btn_generate_first_structure
             ->label('Generar Primera Estructura')
             ->icon('✨')
             ->style('primary')
-            ->fullWidth(true)
             ->action('generate_first_structure');
 
-        $leftCol->add($this->contextReceivedCard());
-        $leftCol->add($this->initial_instructions);
-        $leftCol->add($this->btn_generate_first_structure);
-        $leftCol->add($this->buildReelPollTimer());
-
-        return $leftCol;
+        // Timer is non-visual and not a layout slot, so attach it explicitly.
+        return $this->first_draft_panel
+            ->layoutFile('reel-studio-first-draft.layout.yaml')
+            ->add($this->buildReelPollTimer());
     }
 
     protected function buildReelPollTimer(): Timer
     {
-        $this->tmr_reel_poll = UI::timer('tmr_reel_poll')
+        return $this->tmr_reel_poll
             ->action('check_reel_status')
             ->every(2500)
             ->enabled(false);
-
-        return $this->tmr_reel_poll;
     }
 
-    private function contextReceivedCard(): Container
+    private function configureContextReceivedCard(): Container
     {
         return $this->context_received_card
             ->card()

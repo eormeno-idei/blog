@@ -1,0 +1,17 @@
+grid:
+  appearance: card
+  width: 100%
+  max_width: 800
+  padding: 20
+  gap: 28
+  cols: [1fr, 320px]
+  children:
+    - slot: first_draft_panel
+      at: [1, 1]
+    - slot: edit_panel
+      at: [1, 1]
+    - slot: reel_scene_viewer_slot
+      at: [1, 2]
+      align: center
+      justify: center
+      width: full
