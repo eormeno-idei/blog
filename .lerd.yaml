@@ -11,3 +11,13 @@ services:
 workers:
   - queue
   - schedule
+worker_options:
+  queue:
+    queue: videos
+    timeout: "1200"
+  queue:
+    queue: default
+    timeout: "60"
+  queue:
+    queue: emails
+    timeout: "60"

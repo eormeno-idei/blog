@@ -7,22 +7,24 @@ use App\DTOs\ReelStructureGenerationStatus;
 use App\Jobs\GenerateReelStructureJob;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
+use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Components\Textarea;
 use Idei\Usim\Components\Timer;
 use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Events\UsimEvent;
-use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 
 trait HasFirstDraftPanel
 {
     protected Container $context_received_card;
+    protected NewLabel $context_received_title;
+    protected NewLabel $context_received_content;
+    protected NewLabel $context_received_images;
     protected Textarea $initial_instructions;
     protected Button $btn_generate_first_structure;
     protected Timer $tmr_reel_poll;
-
 
     /**
      * Configure the first-draft panel and attach its declarative grid layout.
@@ -30,15 +32,6 @@ trait HasFirstDraftPanel
     protected function buildFirstDraftPanel(): Container
     {
         $this->configureContextReceivedCard();
-
-        $this->initial_instructions
-            ->placeholder('Agrega instrucciones adicionales para el primer borrador (Opcional)');
-
-        $this->btn_generate_first_structure
-            ->label('Generar Primera Estructura')
-            ->icon('✨')
-            ->style('primary')
-            ->action('generate_first_structure');
 
         // Timer is non-visual and not a layout slot, so attach it explicitly.
         return $this->first_draft_panel
@@ -63,26 +56,19 @@ trait HasFirstDraftPanel
             ->padding(Spacing::px(5))
             ->gap(Spacing::px(5))
             ->justifyContent(JustifyContent::START)
-            ->add(
-                UI::newLabel('context_received_title')
-                    ->text('✅ Contexto recibido')
-            )->add(
-                UI::newLabel('context_received_content')
-                    ->text('✅ Texto Markdown cargado')
-            )->add(
-                UI::newLabel('context_received_images')
-                    ->text('✅ Imágenes adjuntas')
-            );
+            ->add($this->context_received_title->text($this->t('.context_received.title')))
+            ->add($this->context_received_content->text($this->t('.context_received.content')))
+            ->add($this->context_received_images->text($this->t('.context_received.images')));
     }
 
     public function onGenerateFirstStructure(int $postId, ?string $initialInstructions): void
     {
         $post = $this->postService->findById($postId);
         if (!$post) {
-            $this->toast('No se encontró el post.', 'error');
+            $this->toast($this->t('.toast.post_not_found'), 'error');
             return;
         }
-        $this->toast('Generando primera estructura de guion con IA...', 'info');
+        $this->toast($this->t('.toast.generating_first_structure'), 'info');
         $this->btn_generate_first_structure->enabled(false);
         $this->startReelGenerationJob($post, $initialInstructions);
     }
@@ -110,7 +96,7 @@ trait HasFirstDraftPanel
             // 'generating_script' => $this->handleGeneratingScriptStatus($status),
             // 'rendering_video' => $this->handleRenderingVideoStatus($status),
             'completed' => $this->handleCompletedStatus($status),
-            // 'failed' => $this->handleFailedStatus($status),
+            'failed' => $this->handleFailedStatus($status),
             default => null,
         };
     }
@@ -123,5 +109,12 @@ trait HasFirstDraftPanel
             'postId' => $status->postId,
             'json' => $jsonScript,
         ]));
+    }
+
+    private function handleFailedStatus(ReelStructureGenerationStatus $status): void
+    {
+        $this->tmr_reel_poll->stop();
+        $errorMessage = $status->errorMessage ?? $this->t('.toast.unknown_error');
+        $this->toast($this->t('.toast.generation_failed', ['message' => $errorMessage]), 'error');
     }
 }

@@ -8,11 +8,8 @@ use App\Jobs\StructureReelScriptJob;
 use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasEditPanel;
 use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasFirstDraftPanel;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Screen;
-use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -21,8 +18,6 @@ use Illuminate\Support\Facades\Log;
 class ReelStudio extends Screen
 {
     use HasFirstDraftPanel, HasEditPanel;
-
-    protected Container $reel_studio_main_row;
 
     protected Container $reel_scene_viewer_slot;
 
@@ -50,7 +45,7 @@ class ReelStudio extends Screen
         return self::requireAuth();
     }
 
-    protected function buildBaseUI(Container $container, int $post_id = 0): void
+    protected function startingUI(int $post_id = 0): Container
     {
         $rawPostId = request()->query('post_id', request('post_id', 0));
         $this->state_post_id = $post_id > 0 ? $post_id : (is_numeric($rawPostId) ? (int) $rawPostId : 0);
@@ -58,12 +53,14 @@ class ReelStudio extends Screen
             $this->loadScenesFromPost($this->state_post_id);
         }
 
-        $container
-            ->width(Size::full())
-            ->height(Size::full())
-            ->justifyContent(JustifyContent::START)
-            ->alignItems(AlignItems::CENTER)
-            ->add($this->buildMainRow());
+        $this->buildFirstDraftPanel();
+        $this->buildEditReelPanel();
+
+        $this->reel_scene_viewer_slot
+            ->plain()
+            ->padding(Spacing::zero());
+
+        return $this->layoutContainer();
     }
 
     protected function postLoadUI(int $post_id = 0): void
@@ -74,22 +71,6 @@ class ReelStudio extends Screen
         }
 
         $this->updateScenePreview();
-    }
-
-    /**
-     * Configure the studio's main 2-column grid container and its left/right slots.
-     */
-    protected function buildMainRow(): Container
-    {
-        $this->buildFirstDraftPanel();
-        $this->buildEditReelPanel();
-
-        $this->reel_scene_viewer_slot
-            ->plain()
-            ->padding(Spacing::zero());
-
-        return $this->reel_studio_main_row
-            ->layoutFile('reel-studio.layout.yaml');
     }
 
     public function onAiFirstStructureCompleted(int $postId, string $json): void

@@ -1,42 +1,21 @@
+appearance: plain
+width: 100%
+height: 100%
+
 grid:
-  appearance: plain
-  width: 100%
-  height: 100%
-  padding: 0
-  gap: 12
   cols: [1fr, 1fr]
   rows: [auto, 1fr, auto, auto, auto, auto]
+  padding: 0
+  gap: 12
+
   children:
-    - slot: btn_edit_scene
-      at: [1, 1]
-      width: full
-    - slot: btn_edit_all_reel
-      at: [1, 2]
-      width: full
-    - slot: edit_prompt_input
-      at: [2, 1]
-      span: [1, 2]
-      width: full
-    - slot: btn_submit_prompt
-      at: [2, 2]
-      align: end
-      justify: end
-    - slot: lbl_quick_actions
-      at: [3, 1]
-      span: [1, 2]
-    - slot: btn_summarize_text
-      at: [4, 1]
-      width: full
-    - slot: btn_expand_details
-      at: [4, 2]
-      width: full
-    - slot: btn_reduce_time
-      at: [5, 1]
-      width: full
-    - slot: btn_increase_time
-      at: [5, 2]
-      width: full
-    - slot: btn_continue_to_design
-      at: [6, 1]
-      span: [1, 2]
-      width: full
+    - btn_edit_scene:         { at: [1, 1], width: full }
+    - btn_edit_all_reel:      { at: [1, 2], width: full }
+    - edit_prompt_input:      { at: [2, 1], span: full, width: full }
+    - btn_submit_prompt:      { at: [2, 2], align: end, justify: end }
+    - lbl_quick_actions:      { at: [3, 1], span: full }
+    - btn_summarize_text:     { at: [4, 1], width: full }
+    - btn_expand_details:     { at: [4, 2], width: full }
+    - btn_reduce_time:        { at: [5, 1], width: full }
+    - btn_increase_time:      { at: [5, 2], width: full }
+    - btn_continue_to_design: { at: [6, 1], span: full, width: full }

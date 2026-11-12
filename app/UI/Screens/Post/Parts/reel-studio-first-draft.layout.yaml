@@ -1,17 +1,15 @@
+appearance: plain
+width: 100%
+height: 90%
+i18n: auto
+
 grid:
-  appearance: plain
-  width: 100%
-  height: 100%
-  padding: 0
-  gap: 14
   cols: [1fr]
   rows: [auto, 1fr, auto]
+  padding: none
+  gap: s
+
   children:
-    - slot: context_received_card
-      at: [1, 1]
-    - slot: initial_instructions
-      at: [2, 1]
-      width: full
-    - slot: btn_generate_first_structure
-      at: [3, 1]
-      width: full
+    - context_received_card:        { at: [1, 1] }
+    - initial_instructions:         { at: [2, 1], width: full }
+    - btn_generate_first_structure: { at: [3, 1], width: full, style: primary, icon: "✨", action: generate_first_structure }
