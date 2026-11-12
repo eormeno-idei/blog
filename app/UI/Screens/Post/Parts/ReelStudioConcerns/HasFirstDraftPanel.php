@@ -94,7 +94,6 @@ trait HasFirstDraftPanel
         }
         match ($status->status) {
             // 'generating_script' => $this->handleGeneratingScriptStatus($status),
-            // 'rendering_video' => $this->handleRenderingVideoStatus($status),
             'completed' => $this->handleCompletedStatus($status),
             'failed' => $this->handleFailedStatus($status),
             default => null,

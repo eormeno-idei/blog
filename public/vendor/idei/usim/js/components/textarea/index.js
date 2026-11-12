@@ -15,6 +15,7 @@
  *    value       : string|null,
  *    width       : string|null,   // CSS value e.g. "100%"
  *    height      : string|null,   // CSS value e.g. "200px"
+ *    min_length  : int|null,
  *    max_length  : int|null,
  *    mode        : "plain"|"markdown",
  *    required    : bool,
@@ -32,6 +33,7 @@ class UsimTextareaComponent extends UIComponent {
         super(id, config);
         this._debounceTimer = null;
         this._textarea = null;
+        this._fieldElement = null;
         this._preview = null;
         this._counter = null;
         this._activeTab = 'edit'; // 'edit' | 'preview' (mobile)
@@ -66,6 +68,11 @@ class UsimTextareaComponent extends UIComponent {
 
         if (newConfig.disabled !== undefined) {
             if (this._textarea) this._textarea.disabled = !!this.config.disabled;
+        }
+
+        if (newConfig.min_length !== undefined || newConfig.max_length !== undefined) {
+            this._syncLengthConstraints();
+            this._updateCounter();
         }
 
         // Sync border styles if they changed
@@ -143,19 +150,6 @@ class UsimTextareaComponent extends UIComponent {
 
         wrapper.appendChild(bodyContainer);
 
-        // Footer: counter
-        const footer = document.createElement('div');
-        footer.className = 'usim-textarea-footer';
-
-        if (this.config.max_length) {
-            this._counter = document.createElement('span');
-            this._counter.className = 'usim-textarea-counter';
-            this._updateCounter();
-            footer.appendChild(this._counter);
-        }
-
-        wrapper.appendChild(footer);
-
         this.element = wrapper;
         return wrapper;
     }
@@ -163,9 +157,8 @@ class UsimTextareaComponent extends UIComponent {
     // ─── Plain editor ─────────────────────────────────────────────────────────
 
     _buildPlainEditor(container) {
-        const ta = this._createTextareaEl(false);
-        container.appendChild(ta);
-        this._textarea = ta;
+        const field = this._createFieldContainer(false);
+        container.appendChild(field);
     }
 
     // ─── Markdown editor ──────────────────────────────────────────────────────
@@ -193,9 +186,8 @@ class UsimTextareaComponent extends UIComponent {
         editorTitle.textContent = 'Editor';
         editorPane.appendChild(editorTitle);
 
-        const ta = this._createTextareaEl(true);
-        editorPane.appendChild(ta);
-        this._textarea = ta;
+        const field = this._createFieldContainer(true);
+        editorPane.appendChild(field);
 
         // Preview pane
         const previewPane = document.createElement('div');
@@ -321,6 +313,21 @@ class UsimTextareaComponent extends UIComponent {
 
     // ─── Textarea element ─────────────────────────────────────────────────────
 
+    _createFieldContainer(inMarkdownMode = false) {
+        const field = document.createElement('div');
+        field.className = 'usim-textarea-field';
+
+        const ta = this._createTextareaEl(inMarkdownMode);
+        field.appendChild(ta);
+        this._textarea = ta;
+        this._fieldElement = field;
+
+        this._syncLengthConstraints();
+        this._updateCounter();
+
+        return field;
+    }
+
     _createTextareaEl(inMarkdownMode = false) {
         const ta = document.createElement('textarea');
         ta.className = 'usim-textarea-el';
@@ -336,7 +343,6 @@ class UsimTextareaComponent extends UIComponent {
         ta.disabled = !!this.config.disabled;
         ta.readOnly = !!this.config.readonly;
         ta.required = !!this.config.required;
-        if (this.config.max_length) ta.maxLength = this.config.max_length;
         if (!inMarkdownMode && this.config.height) ta.style.height = this.config.height;
 
         ta.addEventListener('input', () => {
@@ -423,13 +429,106 @@ class UsimTextareaComponent extends UIComponent {
 
     // ─── Counter ──────────────────────────────────────────────────────────────
 
+    _getLengthConstraints() {
+        const rawMin = this.config.min_length;
+        const rawMax = this.config.max_length;
+        const hasMin = rawMin !== null && rawMin !== undefined && rawMin !== '';
+        const hasMax = rawMax !== null && rawMax !== undefined && rawMax !== '';
+        const min = hasMin ? Number(rawMin) : null;
+        const max = hasMax ? Number(rawMax) : null;
+
+        if (hasMin && hasMax && Number.isFinite(min) && Number.isFinite(max) && min >= max) {
+            return { min: null, max: null, invalid: true };
+        }
+
+        return {
+            min: hasMin && Number.isFinite(min) ? min : null,
+            max: hasMax && Number.isFinite(max) ? max : null,
+            invalid: false,
+        };
+    }
+
+    _syncLengthConstraints() {
+        if (!this._textarea) return;
+        const { min, max } = this._getLengthConstraints();
+
+        if (min !== null && min >= 0) {
+            this._textarea.minLength = min;
+        } else {
+            this._textarea.removeAttribute('minlength');
+        }
+
+        if (max !== null && max >= 0) {
+            this._textarea.maxLength = max;
+        } else {
+            this._textarea.removeAttribute('maxlength');
+        }
+    }
+
     _updateCounter() {
-        if (!this._counter || !this._textarea) return;
+        if (!this._textarea) return;
+
+        const { min, max, invalid } = this._getLengthConstraints();
         const len = this._textarea.value.length;
-        const max = this.config.max_length;
-        this._counter.textContent = max ? `${len} / ${max}` : `${len}`;
-        this._counter.classList.toggle('near-limit', max && len >= max * 0.9);
-        this._counter.classList.toggle('at-limit', max && len >= max);
+
+        if (!invalid && min === null && max === null) {
+            if (this._counter) {
+                this._counter.hidden = true;
+                this._counter.style.display = 'none';
+                this._counter.textContent = '';
+                this._counter.classList.remove('is-error', 'is-warning');
+                this._counter.removeAttribute('title');
+            }
+            this._fieldElement?.classList.remove('has-counter');
+            return;
+        }
+
+        if (!this._counter && this._fieldElement) {
+            this._counter = document.createElement('span');
+            this._counter.className = 'usim-textarea-counter';
+            this._fieldElement.appendChild(this._counter);
+        }
+
+        if (!this._counter) return;
+
+        if (invalid) {
+            this._counter.hidden = false;
+            this._counter.style.display = '';
+            this._counter.textContent = '?';
+            this._counter.classList.remove('is-error');
+            this._counter.classList.add('is-warning');
+            this._counter.title = 'min_length debe ser menor que max_length';
+            this._fieldElement?.classList.add('has-counter');
+            return;
+        }
+
+        this._counter.removeAttribute('title');
+        this._counter.classList.remove('is-warning');
+
+        if (min !== null && len < min) {
+            this._counter.hidden = false;
+            this._counter.style.display = '';
+            this._counter.textContent = `${len - min}`;
+            this._counter.classList.add('is-error');
+            this._fieldElement?.classList.add('has-counter');
+            return;
+        }
+
+        if (max !== null) {
+            const remaining = max - len;
+            this._counter.hidden = false;
+            this._counter.style.display = '';
+            this._counter.textContent = `${remaining}`;
+            this._counter.classList.toggle('is-error', remaining < 0);
+            this._fieldElement?.classList.add('has-counter');
+            return;
+        }
+
+        this._counter.hidden = true;
+        this._counter.style.display = 'none';
+        this._counter.textContent = '';
+        this._counter.classList.remove('is-error');
+        this._fieldElement?.classList.remove('has-counter');
     }
 
     // ─── Error sync ───────────────────────────────────────────────────────────

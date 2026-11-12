@@ -144,6 +144,62 @@
     height: 24px;
 }
 
+/* ── Field wrapper & subtle in-textarea counter ─────────── */
+.usim-textarea-field {
+    position: relative;
+    display: flex;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+}
+
+.usim-textarea-field.has-counter .usim-textarea-el {
+    padding-right: 48px;
+}
+
+.usim-textarea-wrapper.has-error .usim-textarea-body.mode-plain .usim-textarea-field.has-counter .usim-textarea-el {
+    padding-right: 76px !important;
+}
+
+.usim-textarea-counter {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--usim-color-text-muted, var(--usim-text-muted, #9ca3af));
+    opacity: 0.85;
+    pointer-events: none;
+    user-select: none;
+    z-index: 5;
+    transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.usim-textarea-counter[hidden] {
+    display: none !important;
+}
+
+.usim-textarea-wrapper.has-error .usim-textarea-body.mode-plain .usim-textarea-counter {
+    top: 14px;
+    right: 40px;
+}
+
+.usim-textarea-counter.is-error {
+    color: var(--usim-form-control-error-border, var(--usim-color-danger, #e74c3c));
+    font-weight: 600;
+    opacity: 1;
+}
+
+.usim-textarea-counter.is-warning {
+    color: var(--usim-color-warning, #f39c12);
+    font-weight: 700;
+    opacity: 1;
+    pointer-events: auto;
+    cursor: help;
+}
+
 /* ── Native textarea element ──────────────────────────────── */
 .usim-textarea-el {
     width: 100%;
@@ -396,45 +452,6 @@
 .usim-md-preview a {
     color: var(--usim-accent, var(--usim-primary));
     text-decoration: underline;
-}
-
-/* ── Footer ───────────────────────────────────────────────── */
-.usim-textarea-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    min-height: 18px;
-    flex-wrap: wrap;
-    padding: 0 2px;
-}
-
-.usim-textarea-counter {
-    font-size: 0.75rem;
-    color: var(--usim-text-muted);
-    margin-left: auto;
-    transition: color 0.15s;
-}
-
-.usim-textarea-counter.near-limit {
-    color: var(--usim-warning-color, #d97706);
-}
-
-.usim-textarea-counter.at-limit {
-    color: var(--usim-form-control-error-border, var(--usim-color-danger));
-    font-weight: 600;
-}
-
-.usim-textarea-error-msg {
-    font-size: 0.78rem;
-    color: var(--usim-form-control-error-border, var(--usim-color-danger));
-    flex: 1;
-}
-
-.usim-textarea-help {
-    font-size: 0.78rem;
-    color: var(--usim-text-muted);
-    flex: 1;
 }
 
 /* ── Responsive: single-column on narrow screens ──────────── */

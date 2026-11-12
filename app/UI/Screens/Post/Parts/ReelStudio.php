@@ -75,7 +75,8 @@ class ReelStudio extends Screen
 
     public function onAiFirstStructureCompleted(int $postId, string $json): void
     {
-        $this->toast("¡Estructura del Reel {$postId} lista!", 'success');
+        $this->edit_panel->visible(true);
+        $this->first_draft_panel->visible(false);
         $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'post_id' => $postId,
         ]);
