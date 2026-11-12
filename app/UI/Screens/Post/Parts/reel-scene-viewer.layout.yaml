@@ -1,0 +1,25 @@
+name: phone_mockup_container
+appearance: card
+width: 100%
+max_width: 288
+height: 512
+center_horizontal: true
+i18n: auto
+
+grid:
+  cols: [auto, 1fr, auto]
+  rows: [auto, auto, auto, 1fr, auto]
+  padding: s
+  gap: s
+
+  children:
+    - lbl_scene_meta:        { at: [1, 1], span: 2, align: center, justify: start, variant: badge, style: info, size: xs }
+    - lbl_scene_duration:    { at: [1, 3], align: center, justify: end, variant: pill, style: secondary, size: xs }
+    - lbl_empty_title:       { at: [2, 1], span: full, width: full, font_weight: bold, size: large, center: true }
+    - lbl_scene_headline:    { at: [2, 1], span: full, width: full, font_weight: bold, size: large }
+    - lbl_empty_subtitle:    { at: [3, 1], span: full, width: full, style: muted, size: small, center: true }
+    - lbl_scene_subheadline: { at: [3, 1], span: full, width: full, font_weight: semibold, style: secondary, size: small }
+    - scene_body_list:       { at: [4, 1], span: full, width: full, align: start }
+    - btn_prev_scene:        { at: [5, 1], align: center, justify: start, label: "‹", style: secondary, variant: outline, action: prev_scene }
+    - scene_indicator:       { at: [5, 2], align: center, justify: center, font_weight: bold, center: true }
+    - btn_next_scene:        { at: [5, 3], align: center, justify: end, label: "›", style: secondary, variant: outline, action: next_scene }

@@ -184,8 +184,8 @@ it('preserves reel_scene_viewer_slot grid placement when hot-swapping ReelSceneV
         ->and($slotCfg['align_self'])->toBe('center')
         ->and($slotCfg['justify_self'])->toBe('center');
 
-    $htmlAfter = (string) $harness->getComponent('scene_content_display')->get('html', '');
-    expect($htmlAfter)->toContain('Nueva Beca IDEI');
+    $headlineAfter = (string) $harness->getComponent('lbl_scene_headline')->get('text', '');
+    expect($headlineAfter)->toBe('Nueva Beca IDEI');
 });
 
 it('embeds cleanly inside PublishPost step 2 with declarative layouts preserved', function () {

@@ -6,10 +6,10 @@ center_horizontal: true
 
 grid:
   cols: [1fr, 320px]
-  padding: m
+  padding: s
   gap: m
 
   children:
-    - first_draft_panel:      { at: [1, 1] }
-    - edit_panel:             { at: [1, 1] }
-    - reel_scene_viewer_slot: { at: [1, 2], align: center, justify: center, width: 80% }
+    - first_draft_panel:      { at: [1, 1], align: stretch }
+    - edit_panel:             { at: [1, 1], align: stretch }
+    - reel_scene_viewer_slot: { at: [1, 2], align: stretch, justify: stretch, width: full }
