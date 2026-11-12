@@ -119,13 +119,17 @@ class UsimLabelComponent extends UIComponent {
 
         if (helpers?.renderLabelContent) {
             helpers.renderLabelContent(label, this.config);
-        } else if (hasHtml) {
-            label.innerHTML = String(this.config.html);
-        } else {
-            label.textContent = normalizeTextLineBreaks(this.config.text || '');
+            return;
         }
 
-        if (!hasHtml && this.config.icon) {
+        if (hasHtml) {
+            label.innerHTML = String(this.config.html);
+            return;
+        }
+
+        label.textContent = normalizeTextLineBreaks(this.config.text || '');
+
+        if (this.config.icon) {
             const iconSpan = document.createElement('span');
             iconSpan.className = 'ui-label-icon';
             iconSpan.textContent = String(this.config.icon);

@@ -269,6 +269,7 @@ Cualquier otra clave en la regla de un hijo (que no sea `slot`, `span`, `at`, `r
 3. **Delegación automática `snake_case` → `camelCase`:**
    Convierte la clave con `Str::camel($key)` e invoca `$element->{$methodName}($value)` si el método existe en el componente:
    - `style: primary` → `->style('primary')`
+   - `icon: refresh` → `->icon('refresh')` y `icon_position: right` → `->iconPosition('right')` *(ver [ICONS_GUIDE.md](ICONS_GUIDE.md))*
    - `action: submit_form` → `->action('submit_form')`
    - `required: true` → `->required(true)`
    - `type: email` → `->type('email')`

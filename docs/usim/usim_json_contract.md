@@ -356,6 +356,19 @@ Campos soportados:
 - `inline_create`, `inline_edit` (bool, opcional): Controlan si el alta y la edición se realizan mediante inputs inline dentro del componente (`true`) o disparan directamente el evento al backend para abrir un modal (`false`).
 - `on_select`, `on_create`, `on_update`, `on_edit`, `on_delete`, `on_bulk_delete`, `on_search` (string, opcional): Nombres de las acciones (`snake_case`) invocadas vía `POST /api/ui-event`.
 
+## 5.5 Contrato agnóstico de íconos (`button`, `new_label`, `label`, celdas de `table`)
+
+Los componentes que soportan íconos emiten únicamente propiedades semánticas independientes de colores y dimensiones fijas:
+
+- `icon` (string, opcional): Nombre semántico estándar o personalizado (ej. `"check"`, `"settings"`, `"brand/logo"`), emoji literal (ej. `"🚀"`), o URL/URI explícita (ej. `"/images/custom.png"`, `"data:image/svg+xml..."`).
+- `icon_position` (string, opcional): Posición relativa al texto. En `button`: `"left"` | `"right"` | `"top"` | `"bottom"` (default: `"left"`). En `new_label` / `label`: `"left"` | `"right"` (default: `"left"`).
+
+Reglas de interpretación en cliente:
+
+- **Sin propiedades de presentación acopladas:** El backend **no** emite `icon_color`, `icon_size` ni `icon_only`. El cliente adapta color y escala según el tema activo (`light`/`dark`), el `style` del componente y el `appearance` del contenedor padre (en web mediante `mask-image` + `currentColor` a `1.2em`).
+- **Detección automática de *icon-only* (`button`):** Si `icon` está presente y `label` está vacío (`""` o `null`), el cliente aplica el layout compacto *icon-only* y utiliza `aria_label` o `tooltip` para accesibilidad.
+- **Resolución de nombres:** El shell web recibe `window.USIM_ICONS` generado por `UsimIconRegistry` (`public/images/icons` con prioridad sobre `public/vendor/idei/usim/icons` publicado vía `vendor:publish --tag=usim-icons`), con soporte de variantes por tema (`{nombre}-light.{ext}` / `{nombre}-dark.{ext}`) y fallback Unicode si la biblioteca aún no fue publicada. Ver catálogo completo en [ICONS_GUIDE.md](ICONS_GUIDE.md).
+
 ## 6. Snapshot inicial vs delta
 
 USIM puede responder de dos formas:

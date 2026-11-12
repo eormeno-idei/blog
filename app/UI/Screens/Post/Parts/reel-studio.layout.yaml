@@ -5,7 +5,7 @@ max_width: 800
 center_horizontal: true
 
 grid:
-  cols: [1fr, 320px]
+  cols: [1fr, 1fr]
   padding: s
   gap: m
 

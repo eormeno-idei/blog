@@ -4,7 +4,9 @@
 class UsimButtonComponent extends UIComponent {
     render() {
         const button = document.createElement('button');
-        button.className = `ui-button ${this.config.style || 'primary'}`;
+        const style = this.config.style || 'primary';
+        const size = this.config.size || 'medium';
+        button.className = `ui-button ${style} size-${size}`;
         if (this.config.no_background) button.classList.add('ui-button-no-background');
         if (this.config.no_hover) button.classList.add('ui-button-no-hover');
         this._applyContent(button);
@@ -20,6 +22,10 @@ class UsimButtonComponent extends UIComponent {
 
         if (this.config.tooltip) {
             button.title = this.config.tooltip;
+        }
+
+        if (this.config.aria_label) {
+            button.setAttribute('aria-label', String(this.config.aria_label));
         }
 
         return this.applyCommonAttributes(button);

@@ -13,7 +13,9 @@ class UsimTableCellComponent extends UIComponent {
 
         if (this.config.button) {
             const btn = document.createElement('button');
-            btn.className = `ui-button ${this.config.button.style || 'default'}`;
+            const style = this.config.button.style || 'default';
+            const size = this.config.button.size || 'small';
+            btn.className = `ui-button ${style} size-${size}`;
             if (this.config.button.no_background) btn.classList.add('ui-button-no-background');
             if (this.config.button.no_hover) btn.classList.add('ui-button-no-hover');
             this.applyTableButtonContent(btn, this.config.button);
@@ -90,7 +92,6 @@ class UsimTableCellComponent extends UIComponent {
         if (helpers?.renderButtonContent) {
             helpers.renderButtonContent(button, buttonConfig, {
                 defaultLabel: 'Action',
-                forceImageIcon: true,
             });
             return;
         }

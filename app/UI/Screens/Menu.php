@@ -101,8 +101,7 @@ class Menu extends Screen
     {
         $icon = $this->store_theme === 'light' ? 'theme-icon-light' : 'theme-icon-dark';
         $this->theme_toggle->icon("/vendor/idei/usim/images/$icon.svg");
-        $this->theme_toggle->iconColor('var(--usim-menu-trigger-text)');
-        $this->theme_toggle->iconSize(24);
+        $this->theme_toggle->size('large');
         $this->theme_toggle->tooltip(t('screens.menu.theme_switch_to', ['theme' => $this->store_theme === 'light' ? 'dark' : 'light']));
     }
 

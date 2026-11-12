@@ -2239,41 +2239,25 @@ class UIRenderer {
                 }
 
                 const btn = document.createElement('button');
-                btn.className = `ui-button ${changes.button.style || 'default'}`;
+                const btnStyle = changes.button.style || 'default';
+                const btnSize = changes.button.size || 'small';
+                btn.className = `ui-button ${btnStyle} size-${btnSize}`;
                 if (changes.button.no_background) btn.classList.add('ui-button-no-background');
                 if (changes.button.no_hover) btn.classList.add('ui-button-no-hover');
 
-                btn.innerHTML = '';
-                if (changes.button.icon) {
-                    const iconElement = document.createElement('img');
-                    iconElement.className = 'ui-button-icon';
-                    iconElement.src = String(changes.button.icon);
-                    iconElement.alt = changes.button.label || '';
-
-                    if (changes.button.icon_size !== undefined && changes.button.icon_size !== null && changes.button.icon_size !== '') {
-                        const rawSize = String(changes.button.icon_size).trim();
-                        const normalizedSize = (typeof changes.button.icon_size === 'number' || /^\d+(\.\d+)?$/.test(rawSize))
-                            ? `${rawSize}px`
-                            : rawSize;
-                        iconElement.style.width = normalizedSize;
-                        iconElement.style.height = normalizedSize;
-                    }
-
-                    if (changes.button.icon_only) {
-                        btn.appendChild(iconElement);
-                    } else if ((changes.button.icon_position || 'left') === 'right') {
-                        btn.appendChild(document.createTextNode(changes.button.label || ''));
-                        btn.appendChild(iconElement);
-                    } else {
-                        btn.appendChild(iconElement);
-                        btn.appendChild(document.createTextNode(changes.button.label || ''));
-                    }
+                const helpers = window.USIM_COMPONENT_HELPERS;
+                if (helpers?.renderButtonContent) {
+                    helpers.renderButtonContent(btn, changes.button, { defaultLabel: 'Action' });
                 } else {
                     btn.textContent = changes.button.label || 'Action';
                 }
 
                 if (changes.button.tooltip) {
                     btn.title = changes.button.tooltip;
+                }
+
+                if (changes.button.aria_label) {
+                    btn.setAttribute('aria-label', String(changes.button.aria_label));
                 }
 
                 // Handle button click
@@ -2337,17 +2321,22 @@ class UIRenderer {
             }
 
             // Label / icon (buttons)
-            if (changes.label !== undefined || changes.icon !== undefined || changes.icon_color !== undefined || changes.icon_size !== undefined) {
+            if (changes.label !== undefined || changes.icon !== undefined || changes.icon_position !== undefined) {
                 const btnComponent = componentId ? this.components?.get(String(componentId)) : null;
                 if (btnComponent && typeof btnComponent._applyContent === 'function') {
                     if (changes.label !== undefined) btnComponent.config.label = changes.label;
                     if (changes.icon !== undefined) btnComponent.config.icon = changes.icon;
-                    if (changes.icon_color !== undefined) btnComponent.config.icon_color = changes.icon_color;
-                    if (changes.icon_size !== undefined) btnComponent.config.icon_size = changes.icon_size;
+                    if (changes.icon_position !== undefined) btnComponent.config.icon_position = changes.icon_position;
                     btnComponent._applyContent(element);
                 } else {
                     element.textContent = changes.label ?? element.textContent;
                 }
+            }
+
+            // Size (buttons)
+            if (changes.size !== undefined && element.classList.contains('ui-button')) {
+                element.classList.remove('size-xs', 'size-small', 'size-medium', 'size-large', 'size-xl');
+                element.classList.add(`size-${changes.size || 'medium'}`);
             }
 
             // Trigger (menudropdown)

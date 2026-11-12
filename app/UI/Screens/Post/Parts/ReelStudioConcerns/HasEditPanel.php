@@ -57,7 +57,6 @@ trait HasEditPanel
         // ContainerLayoutLoader forwards child `margin` without converting scalars to Spacing.
         $this->btn_submit_prompt
             ->icon('✨')
-            ->iconOnly(true)
             ->style('primary')
             ->shape('rounded')
             ->marginRight(Spacing::px(12))
@@ -73,10 +72,10 @@ trait HasEditPanel
 
         // 4. Acciones rápidas (2x2 en el grid del panel)
         $quickActions = [
-            [$this->btn_summarize_text, 'Resumir texto', '✏️', 'quick_action_summarize'],
-            [$this->btn_expand_details, 'Ampliar detalles', '➕', 'quick_action_expand'],
-            [$this->btn_reduce_time, 'Reducir tiempo', '⏱️', 'quick_action_reduce_time'],
-            [$this->btn_increase_time, 'Aumentar tiempo', '⏳', 'quick_action_increase_time'],
+            [$this->btn_summarize_text, 'Resumir texto', 'edit', 'quick_action_summarize'],
+            [$this->btn_expand_details, 'Ampliar detalles', 'plus', 'quick_action_expand'],
+            [$this->btn_reduce_time, 'Reducir tiempo', 'clock', 'quick_action_reduce_time'],
+            [$this->btn_increase_time, 'Aumentar tiempo', 'clock', 'quick_action_increase_time'],
         ];
 
         foreach ($quickActions as [$button, $label, $icon, $action]) {
