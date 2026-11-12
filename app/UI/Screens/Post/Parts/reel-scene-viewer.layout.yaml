@@ -1,5 +1,5 @@
 name: phone_mockup_container
-appearance: card
+appearance: contrast
 width: 100%
 max_width: 288
 height: 512

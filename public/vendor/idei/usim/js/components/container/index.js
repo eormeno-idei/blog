@@ -105,7 +105,19 @@ class UsimContainerComponent extends UIComponent {
         const layout = this.config.layout || 'vertical';
         const appearance = this._normalizeAppearance(this.config.appearance);
 
-        this.element.classList.remove('vertical', 'horizontal', 'grid', 'flex', 'ui-container-card', 'ui-container-plain', 'ui-container--tabs');
+        this.element.classList.remove(
+            'vertical',
+            'horizontal',
+            'grid',
+            'flex',
+            'ui-container-plain',
+            'ui-container-subtle',
+            'ui-container-card',
+            'ui-container-elevated',
+            'ui-container-highlight',
+            'ui-container-contrast',
+            'ui-container--tabs'
+        );
         this.element.classList.add('ui-container', layout, `ui-container-${appearance}`);
         if (this._hasTabs()) {
             this.element.classList.add('ui-container--tabs');
@@ -391,8 +403,9 @@ class UsimContainerComponent extends UIComponent {
     }
 
     _normalizeAppearance(appearance) {
+        const supported = ['plain', 'subtle', 'card', 'elevated', 'highlight', 'contrast'];
         const normalized = typeof appearance === 'string' ? appearance.trim().toLowerCase() : 'plain';
-        return normalized === 'card' ? 'card' : 'plain';
+        return supported.includes(normalized) ? normalized : 'plain';
     }
 }
 

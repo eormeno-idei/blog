@@ -82,7 +82,16 @@ class UsimSplitComponent extends UIComponent {
         const orientation = this._normalizeOrientation(this.config.split_orientation);
         const appearance = this._normalizeAppearance(this.config.appearance);
 
-        this.element.classList.remove('ui-container-card', 'ui-container-plain', 'ui-split--horizontal', 'ui-split--vertical');
+        this.element.classList.remove(
+            'ui-container-plain',
+            'ui-container-subtle',
+            'ui-container-card',
+            'ui-container-elevated',
+            'ui-container-highlight',
+            'ui-container-contrast',
+            'ui-split--horizontal',
+            'ui-split--vertical'
+        );
         this.element.classList.add(`ui-container-${appearance}`);
         this.element.classList.add(`ui-split--${orientation}`);
 
@@ -395,7 +404,9 @@ class UsimSplitComponent extends UIComponent {
     }
 
     _normalizeAppearance(value) {
-        return String(value || 'card').toLowerCase() === 'plain' ? 'plain' : 'card';
+        const supported = ['plain', 'subtle', 'card', 'elevated', 'highlight', 'contrast'];
+        const normalized = typeof value === 'string' ? value.trim().toLowerCase() : 'card';
+        return supported.includes(normalized) ? normalized : 'card';
     }
 
     _normalizeCollapseTarget(value) {

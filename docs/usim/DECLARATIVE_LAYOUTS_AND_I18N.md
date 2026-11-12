@@ -160,7 +160,7 @@ Aplicadas por `ContainerLayoutLoader::applyBoxProperties()` tanto en la raíz de
 |---|---|---|---|
 | `name` | `string` | `$wrapperName` en `Screen::layoutContainer()` | Nombre del contenedor raíz (`$ui->component('...')`). Si se omite: `<screen_snake>_wrapper`. |
 | `card` | `bool` | `$container->card()` | Si es `true`, asigna `appearance: 'card'`. |
-| `appearance` | `string` | `$container->appearance($val)` | Ej. `'card'`, `'flat'`, `'outlined'`, etc. |
+| `appearance` | `string` | `$container->appearance($val)` | Valores soportados: `'plain'`, `'subtle'`, `'card'`, `'elevated'`, `'highlight'`, `'contrast'`. |
 | `center_horizontal` | `bool` | `$container->centerHorizontal()` | Si es `true`, centra horizontalmente (`margin_left: auto`, `margin_right: auto`). |
 | `center` | `bool` | `$container->centerHorizontal()` | Alias de `center_horizontal` a nivel contenedor. |
 | `width` | `int\|string` | `$container->width(Size::from(...))` | Acepta `500`, `'500px'`, `'100%'`, `'50rem'`. |

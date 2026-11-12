@@ -73,12 +73,90 @@ body {
     margin-bottom: 5px;
 }
 
+.ui-container.ui-container-subtle {
+    background: var(--usim-container-subtle-bg, var(--ui-surface-muted));
+    border: 1px solid var(--usim-container-subtle-border, transparent);
+    border-radius: 6px;
+    padding: 5px;
+    box-shadow: none;
+    margin-bottom: 5px;
+}
+
+.ui-container.ui-container-elevated {
+    background: var(--usim-container-elevated-bg, var(--usim-container-bg, var(--ui-surface)));
+    border: 1px solid var(--usim-container-elevated-border, var(--usim-container-border, var(--ui-border)));
+    border-radius: 6px;
+    padding: 5px;
+    box-shadow: var(--usim-container-elevated-shadow, var(--ui-shadow-medium));
+    margin-bottom: 5px;
+}
+
+.ui-container.ui-container-highlight {
+    background: var(--usim-container-highlight-bg, rgba(52, 152, 219, 0.1));
+    border: 1px solid var(--usim-container-highlight-border, var(--usim-color-primary, #3498db));
+    border-left: 4px solid var(--usim-container-highlight-accent, var(--usim-color-primary, #3498db));
+    border-radius: 6px;
+    padding: 5px;
+    box-shadow: var(--usim-container-highlight-shadow, var(--ui-shadow-soft));
+    margin-bottom: 5px;
+}
+
+.ui-container.ui-container-contrast {
+    --ui-surface: var(--usim-container-contrast-surface, #24314a);
+    --ui-surface-muted: var(--usim-container-contrast-surface-muted, #1b263a);
+    --ui-surface-hover: var(--usim-container-contrast-surface-hover, #2d3c59);
+    --ui-border: var(--usim-container-contrast-control-border, rgba(148, 163, 184, 0.32));
+    --ui-border-strong: var(--usim-container-contrast-border-hover, rgba(148, 163, 184, 0.44));
+    --ui-text: var(--usim-container-contrast-text, #d7e0ef);
+    --ui-text-strong: var(--usim-container-contrast-text-strong, #f8fafc);
+    --ui-text-muted: var(--usim-container-contrast-text-muted, #a3b3cc);
+    --ui-text-inverse: var(--usim-container-contrast-text-inverse, #0f1724);
+    --usim-color-surface: var(--ui-surface);
+    --usim-color-surface-muted: var(--ui-surface-muted);
+    --usim-color-surface-hover: var(--ui-surface-hover);
+    --usim-color-border: var(--ui-border);
+    --usim-color-border-strong: var(--ui-border-strong);
+    --usim-color-text: var(--ui-text);
+    --usim-color-text-strong: var(--ui-text-strong);
+    --usim-color-text-muted: var(--ui-text-muted);
+    --usim-container-bg: var(--ui-surface);
+    --usim-container-border: var(--ui-border);
+    --usim-container-title-text: var(--ui-text-strong);
+    --usim-card-bg: var(--ui-surface);
+    --usim-card-border: var(--ui-border);
+    --usim-form-control-bg: var(--ui-surface);
+    --usim-form-control-border: var(--ui-border);
+    --usim-form-control-text: var(--ui-text);
+    --usim-form-control-disabled-bg: var(--ui-surface-muted);
+
+    background: var(--usim-container-contrast-bg, #1e293b);
+    border: 1px solid var(--usim-container-contrast-border, rgba(148, 163, 184, 0.28));
+    border-radius: 6px;
+    padding: 5px;
+    box-shadow: var(--usim-container-contrast-shadow, var(--ui-shadow-medium));
+    color: var(--ui-text);
+    margin-bottom: 5px;
+}
+
 .ui-container.ui-container-card:hover {
     border-color: var(--usim-container-border-hover, var(--ui-border));
 }
 
 .ui-container.ui-container-plain:hover {
     box-shadow: none;
+}
+
+.ui-container.ui-container-elevated:hover {
+    border-color: var(--usim-container-elevated-border-hover, var(--usim-container-border-hover, var(--ui-border)));
+}
+
+.ui-container.ui-container-highlight:hover {
+    border-color: var(--usim-container-highlight-border-hover, var(--usim-color-primary, #3498db));
+    border-left-color: var(--usim-container-highlight-accent, var(--usim-color-primary, #3498db));
+}
+
+.ui-container.ui-container-contrast:hover {
+    border-color: var(--usim-container-contrast-border-hover, rgba(148, 163, 184, 0.44));
 }
 
 .ui-container.vertical {
