@@ -1,21 +1,40 @@
 appearance: plain
 width: 100%
 height: 100%
+i18n: auto
 
 grid:
-  cols: [1fr, 1fr]
-  rows: [auto, 1fr, auto, auto, auto, auto]
-  padding: 0
-  gap: 12
+  cols: [1fr]
+  rows: [auto, auto, 1fr, auto]
+  padding: none
+  gap: m
 
   children:
-    - btn_edit_scene:         { at: [1, 1], width: full }
-    - btn_edit_all_reel:      { at: [1, 2], width: full }
-    - edit_prompt_input:      { at: [2, 1], span: full, width: full }
-    - btn_submit_prompt:      { at: [2, 2], align: end, justify: end }
-    - lbl_quick_actions:      { at: [3, 1], span: full }
-    - btn_summarize_text:     { at: [4, 1], width: full }
-    - btn_expand_details:     { at: [4, 2], width: full }
-    - btn_reduce_time:        { at: [5, 1], width: full }
-    - btn_increase_time:      { at: [5, 2], width: full }
-    - btn_continue_to_design: { at: [6, 1], span: full, width: full }
+    - lbl_post_title:
+        at: [1, 1]
+        width: full
+        size: xl
+        font_weight: bold
+        text: .post_title
+
+    - cnt_status_row:
+        at: [2, 1]
+        width: full
+
+    - lst_history:
+        at: [3, 1]
+        width: full
+        title: .history.title
+        selection_mode: single
+        variant: card
+        creatable: false
+        editable: false
+        deletable: false
+        searchable: false
+        show_select_all: false
+        on_select: select_history_event
+
+    - cnt_waiting_creator:
+        at: [4, 1]
+        width: full
+        appearance: card

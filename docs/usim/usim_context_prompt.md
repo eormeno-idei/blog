@@ -44,7 +44,7 @@ Created with fluent builders, for example:
 - `UI::carousel(...)`
 
 ### Agnostic Icons (`HasIcon`)
-- Components (`Button`, `NewLabel`, `Label`) accept `->icon('check', Align::LEFT)` with semantic names (from the 48-icon library published via `php artisan vendor:publish --tag=usim-icons` or custom files in `public/images/icons/`), `BackedEnum`, emojis (`'🚀'`), or explicit URLs/URIs.
+- Components (`Button`, `NewLabel`, `Label`) accept `->icon('check', Align::LEFT)` with semantic names (from the 80-icon library published via `php artisan vendor:publish --tag=usim-icons` or custom files in `public/images/icons/`), `BackedEnum`, emojis (`'🚀'`), or explicit URLs/URIs.
 - **Do NOT use or reintroduce** `iconColor()`, `iconSize()`, or `iconOnly()` (`icon_color`, `icon_size`, `icon_only`): theme/style/container-appearance color, size, and icon-only detection are handled automatically by the client renderer. See `ICONS_GUIDE.md` in `vendor/idei/usim/docs/` (or published `docs/usim/`).
 
 ### Event handling

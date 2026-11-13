@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\User\UsimUserService;
 use App\UI\Screens\Post\Parts\ReelStudio;
 use App\UI\Screens\PublishPost;
-use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
@@ -38,8 +37,18 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         'mode_switch_container',
         'prompt_box_container',
         'quick_actions_grid',
-    ] as $removedWrapper) {
-        expect($harness->findComponent($removedWrapper))->toBeNull();
+        'btn_edit_scene',
+        'btn_edit_all_reel',
+        'edit_prompt_input',
+        'btn_submit_prompt',
+        'lbl_quick_actions',
+        'btn_summarize_text',
+        'btn_expand_details',
+        'btn_reduce_time',
+        'btn_increase_time',
+        'btn_continue_to_design',
+    ] as $removedComponent) {
+        expect($harness->findComponent($removedComponent))->toBeNull();
     }
 
     // 1. Main 2-column grid container (reel-studio.layout.yaml)
@@ -51,9 +60,9 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($mainCfg['appearance'])->toBe('card')
         ->and($mainCfg['width'])->toBe('100%')
         ->and($mainCfg['max_width'])->toBe('800px')
-        ->and($mainCfg['padding'])->toBe('20px')
-        ->and($mainCfg['gap'])->toBe('28px')
-        ->and($mainCfg['grid_template_columns'])->toBe('1fr 320px');
+        ->and($mainCfg['padding'])->toBe('8px')
+        ->and($mainCfg['gap'])->toBe('16px')
+        ->and($mainCfg['grid_template_columns'])->toBe('1fr 1fr');
 
     // Direct children of reel_studio_main_row
     /** @var Container $firstDraftPanel */
@@ -79,8 +88,8 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($editPanel->isVisible())->toBeFalse()
         ->and($viewerSlotCfg['grid_column'])->toBe('2')
         ->and($viewerSlotCfg['grid_row'])->toBe('1')
-        ->and($viewerSlotCfg['align_self'])->toBe('center')
-        ->and($viewerSlotCfg['justify_self'])->toBe('center')
+        ->and($viewerSlotCfg['align_self'])->toBe('stretch')
+        ->and($viewerSlotCfg['justify_self'])->toBe('stretch')
         ->and($viewerSlotCfg['width'])->toBe('100%');
 
     // 2. First-draft panel declarative layout (reel-studio-first-draft.layout.yaml)
@@ -88,8 +97,8 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($firstDraftCfg['appearance'])->toBe('plain')
         ->and($firstDraftCfg['width'])->toBe('100%')
         ->and($firstDraftCfg['height'])->toBe('100%')
-        ->and($firstDraftCfg['padding'])->toBe('0px')
-        ->and($firstDraftCfg['gap'])->toBe('14px')
+        ->and($firstDraftCfg['padding'])->toBe('0')
+        ->and($firstDraftCfg['gap'])->toBe('8px')
         ->and($firstDraftCfg['grid_template_columns'])->toBe('1fr')
         ->and($firstDraftCfg['grid_template_rows'])->toBe('auto 1fr auto');
 
@@ -109,27 +118,21 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($json[$btnGenerate->getId()]['grid_row'])->toBe('3')
         ->and($json[$btnGenerate->getId()]['width'])->toBe('100%');
 
-    // 3. Edit panel flat 2-column grid layout (reel-studio-edit.layout.yaml)
+    // 3. Edit panel grid layout (reel-studio-edit.layout.yaml)
     expect($editCfg['layout'])->toBe('grid')
         ->and($editCfg['appearance'])->toBe('plain')
         ->and($editCfg['width'])->toBe('100%')
         ->and($editCfg['height'])->toBe('100%')
-        ->and($editCfg['padding'])->toBe('0px')
-        ->and($editCfg['gap'])->toBe('12px')
-        ->and($editCfg['grid_template_columns'])->toBe('1fr 1fr')
-        ->and($editCfg['grid_template_rows'])->toBe('auto 1fr auto auto auto auto');
+        ->and($editCfg['padding'])->toBe('0')
+        ->and($editCfg['gap'])->toBe('16px')
+        ->and($editCfg['grid_template_columns'])->toBe('1fr')
+        ->and($editCfg['grid_template_rows'])->toBe('auto auto 1fr auto');
 
     $expectedEditPlacement = [
-        'btn_edit_scene' => ['1', '1'],
-        'btn_edit_all_reel' => ['2', '1'],
-        'edit_prompt_input' => ['1 / span 2', '2'],
-        'btn_submit_prompt' => ['2', '2'],
-        'lbl_quick_actions' => ['1 / span 2', '3'],
-        'btn_summarize_text' => ['1', '4'],
-        'btn_expand_details' => ['2', '4'],
-        'btn_reduce_time' => ['1', '5'],
-        'btn_increase_time' => ['2', '5'],
-        'btn_continue_to_design' => ['1 / span 2', '6'],
+        'lbl_post_title' => ['1', '1'],
+        'cnt_status_row' => ['1', '2'],
+        'lst_history' => ['1', '3'],
+        'cnt_waiting_creator' => ['1', '4'],
     ];
 
     foreach ($expectedEditPlacement as $name => [$expectedCol, $expectedRow]) {
@@ -141,15 +144,16 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
             ->and($cfg['grid_row'])->toBe($expectedRow);
     }
 
-    /** @var Button $submitPromptBtn */
-    $submitPromptBtn = $harness->getComponent('btn_submit_prompt');
-    $submitCfg = $json[$submitPromptBtn->getId()];
+    $lstHistory = $harness->getComponent('lst_history');
+    $lstCfg = $json[$lstHistory->getId()];
+    expect($lstCfg['selection_mode'])->toBe('single')
+        ->and($lstCfg['variant'])->toBe('card')
+        ->and($lstCfg['title'])->toBe('Historial de versiones')
+        ->and(count($lstCfg['items']))->toBe(3);
 
-    expect($submitCfg['align_self'])->toBe('end')
-        ->and($submitCfg['justify_self'])->toBe('end')
-        ->and($submitCfg['margin_right'])->toBe('12px')
-        ->and($submitCfg['margin_bottom'])->toBe('34px')
-        ->and($submitCfg['z_index'])->toBe(2);
+    $cntWaiting = $harness->getComponent('cnt_waiting_creator');
+    $cntWaitingCfg = $json[$cntWaiting->getId()];
+    expect($cntWaitingCfg['appearance'])->toBe('card');
 });
 
 it('preserves reel_scene_viewer_slot grid placement when hot-swapping ReelSceneViewer on completion', function () {
@@ -181,8 +185,8 @@ it('preserves reel_scene_viewer_slot grid placement when hot-swapping ReelSceneV
 
     expect($slotCfg['grid_column'])->toBe('2')
         ->and($slotCfg['grid_row'])->toBe('1')
-        ->and($slotCfg['align_self'])->toBe('center')
-        ->and($slotCfg['justify_self'])->toBe('center');
+        ->and($slotCfg['align_self'])->toBe('stretch')
+        ->and($slotCfg['justify_self'])->toBe('stretch');
 
     $headlineAfter = (string) $harness->getComponent('lbl_scene_headline')->get('text', '');
     expect($headlineAfter)->toBe('Nueva Beca IDEI');
@@ -217,7 +221,7 @@ it('embeds cleanly inside PublishPost step 2 with declarative layouts preserved'
     $editPanel = $harness->getComponent('edit_panel');
 
     expect($json[$mainRow->getId()]['layout'])->toBe('grid')
-        ->and($json[$mainRow->getId()]['grid_template_columns'])->toBe('1fr 320px')
+        ->and($json[$mainRow->getId()]['grid_template_columns'])->toBe('1fr 1fr')
         ->and($json[$editPanel->getId()]['layout'])->toBe('grid')
-        ->and($json[$editPanel->getId()]['grid_template_columns'])->toBe('1fr 1fr');
+        ->and($json[$editPanel->getId()]['grid_template_columns'])->toBe('1fr');
 });

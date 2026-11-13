@@ -20,4 +20,29 @@ return [
         'unknown_error' => 'Error desconocido',
         'generation_failed' => 'Error al generar la estructura: :message',
     ],
+    'post_title' => 'Innovación Backend',
+    'status_prefix' => 'ESTADO:',
+    'status_badge' => 'BORRADOR',
+    'history' => [
+        'title' => 'Historial de versiones',
+        'empty' => 'No hay eventos en el historial',
+        'items' => [
+            'v1_1' => [
+                'label' => 'Versión 1.1',
+                'badge' => 'En revisión',
+                'subtitle' => 'Se agregó el logotipo de la facultad. · Basada en v1.0 · Generada por IA',
+            ],
+            'rev1' => [
+                'label' => 'Solicitud de revisión',
+                'badge' => 'Cambios solicitados',
+                'subtitle' => 'Juan Pérez: «Agregá el logotipo de la facultad.»',
+            ],
+            'v1_0' => [
+                'label' => 'Versión 1.0',
+                'subtitle' => 'Borrador inicial generado',
+            ],
+        ],
+    ],
+    'waiting_title' => 'Esperando al creador',
+    'waiting_desc' => 'El creador está editando el post. Recibirás una notificación cuando lo envíe a revisión.',
 ];

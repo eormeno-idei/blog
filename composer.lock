@@ -1182,16 +1182,16 @@
         },
         {
             "name": "idei/usim",
-            "version": "2.10.0",
+            "version": "2.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/idei/usim.git",
-                "reference": "d1bad7dc0fa3d0e90834d14f8d219b4616f15ec7"
+                "reference": "e50458c09d989c56ee90b99aff7a2063e7f47ec0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/idei/usim/zipball/d1bad7dc0fa3d0e90834d14f8d219b4616f15ec7",
-                "reference": "d1bad7dc0fa3d0e90834d14f8d219b4616f15ec7",
+                "url": "https://api.github.com/repos/idei/usim/zipball/e50458c09d989c56ee90b99aff7a2063e7f47ec0",
+                "reference": "e50458c09d989c56ee90b99aff7a2063e7f47ec0",
                 "shasum": ""
             },
             "require": {
@@ -1249,7 +1249,8 @@
                 "issues": "https://github.com/idei/usim/issues",
                 "source": "https://github.com/idei/usim"
             },
-            "time": "2026-11-12T21:48:57+00:00"
+            "time": "2026-11-13T15:04:17+00:00",
+            "published-time": "2026-11-13T15:03:48+00:00"
         },
         {
             "name": "laminas/laminas-diactoros",
@@ -11661,5 +11662,5 @@
         "php": "^8.4"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.11.0"
 }

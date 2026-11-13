@@ -8,13 +8,13 @@ El cliente web adapta automáticamente tamaño, color, contraste y modo *icon-on
 
 ## 1. Publicación de la Biblioteca Estándar (`--tag=usim-icons`)
 
-El paquete `idei/usim` incluye una biblioteca estándar de **48 íconos SVG vectoriales** pensados para ser coloreables mediante CSS. Para publicarlos en tu aplicación Laravel ejecutá:
+El paquete `idei/usim` incluye una biblioteca estándar de **80 íconos SVG vectoriales** pensados para ser coloreables mediante CSS. Para publicarlos en tu aplicación Laravel ejecutá:
 
 ```bash
 php artisan vendor:publish --tag=usim-icons --force
 ```
 
-Esto copia los 48 archivos `.svg` a:
+Esto copia los 80 archivos `.svg` a:
 
 ```text
 public/vendor/idei/usim/icons/
@@ -109,17 +109,19 @@ A partir de esta versión **se eliminaron** los métodos y claves de contrato `i
 
 ---
 
-## 4. Biblioteca de Íconos Estándar (48 íconos)
+## 4. Biblioteca de Íconos Estándar (80 íconos)
 
 Todos los archivos viven en `packages/idei/usim/resources/icons/{nombre}.svg` y se publican en `public/vendor/idei/usim/icons/{nombre}.svg`:
 
 | Categoría | Nombres disponibles |
 |---|---|
-| **Navegación y Layout** | `home`, `menu`, `search`, `settings`, `filter`, `refresh`, `external-link`, `link`, `chevron-left`, `chevron-right`, `chevron-up`, `chevron-down` |
-| **Acciones CRUD** | `plus`, `minus`, `edit`, `trash`, `save`, `copy`, `download`, `upload`, `share`, `print` |
-| **Estado y Feedback** | `check`, `close`, `info`, `warning`, `error`, `help`, `bell`, `star`, `heart`, `bolt` |
-| **Seguridad y Usuarios** | `shield`, `user`, `users`, `lock`, `unlock`, `login`, `logout`, `eye`, `eye-off` |
-| **Tiempo, Archivos y Tema** | `calendar`, `clock`, `file`, `folder`, `mail`, `sun`, `moon` |
+| **Inteligencia Artificial y Asistencia** | `sparkles` (alias: `ai`), `bot` |
+| **Navegación, Vistas y Layout** | `home`, `menu`, `search`, `settings`, `filter`, `sliders` (alias: `sliders-horizontal`), `columns`, `grid` (alias: `layout-grid`), `list`, `grip-vertical` (alias: `drag`), `refresh`, `maximize`, `minimize`, `external-link`, `link`, `chevron-left`, `chevron-right`, `chevron-up`, `chevron-down` |
+| **Acciones y Productividad** | `plus`, `minus`, `edit`, `trash`, `save`, `copy`, `download`, `upload`, `share`, `print`, `pin`, `bookmark`, `tag`, `history`, `undo`, `redo`, `send` |
+| **Colaboración y Mensajería** | `message-square` (alias: `chat`), `mail` |
+| **Seguridad, Identidad y Passkeys** | `shield`, `shield-check`, `user`, `users`, `lock`, `unlock`, `key`, `login`, `logout`, `eye`, `eye-off` |
+| **Dispositivos, Cloud y Datos** | `monitor`, `smartphone`, `cloud`, `cloud-off`, `database`, `file`, `folder` |
+| **Negocio, Feedback y Multimedia** | `credit-card`, `crown`, `mic`, `check`, `close`, `info`, `warning`, `error`, `help`, `bell`, `star`, `heart`, `bolt`, `calendar`, `clock`, `sun`, `moon` |
 
 ---
 
