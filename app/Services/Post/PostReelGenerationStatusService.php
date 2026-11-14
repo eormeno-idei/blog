@@ -4,7 +4,7 @@ namespace App\Services\Post;
 
 use App\Contracts\PostReelGenerationStatusInterface;
 use App\Contracts\PostServiceInterface;
-use App\DTOs\ReelStructureGenerationStatus;
+use App\DTOs\ReelJobStatusDTO;
 
 class PostReelGenerationStatusService implements PostReelGenerationStatusInterface
 {
@@ -13,7 +13,7 @@ class PostReelGenerationStatusService implements PostReelGenerationStatusInterfa
     ) {
     }
 
-    public function getStatus(int $postId): ?ReelStructureGenerationStatus
+    public function getStatus(int $postId): ?ReelJobStatusDTO
     {
         $post = $this->postService->findById($postId);
         if ($post === null) {
@@ -28,14 +28,14 @@ class PostReelGenerationStatusService implements PostReelGenerationStatusInterfa
             : [];
         $decoded['post_id'] = $postId;
 
-        return ReelStructureGenerationStatus::fromArray(
+        return ReelJobStatusDTO::fromArray(
             is_array($decoded) ? $decoded : [],
             is_string($ai_job_status ?? null) ? $ai_job_status : null
         );
 
     }
 
-    public function putStatus(ReelStructureGenerationStatus $payload): void
+    public function putStatus(ReelJobStatusDTO $payload): void
     {
         $post = $this->postService->findById($payload->postId);
         if ($post === null) {

@@ -3,7 +3,7 @@
 namespace App\UI\Screens\Post\Parts\ReelStudioConcerns;
 
 use App\DTOs\Posts\PostDTO;
-use App\DTOs\ReelStructureGenerationStatus;
+use App\DTOs\ReelJobStatusDTO;
 use App\Jobs\GenerateReelStructureJob;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
@@ -75,12 +75,12 @@ trait HasFirstDraftPanel
 
     protected function startReelGenerationJob(PostDTO $post, ?string $initialInstructions): void
     {
-        GenerateReelStructureJob::putStatus(
-            ReelStructureGenerationStatus::generatingFirstScript(
-                $post->id,
-                $initialInstructions
-            ),
+        $generatingFirstScriptStatus = ReelJobStatusDTO::generatingFirstScript(
+            $post->id,
+            $initialInstructions
         );
+
+        $this->postReelGenerationStatusService->putStatus($generatingFirstScriptStatus);
 
         GenerateReelStructureJob::dispatch($post->id, $post->content, $initialInstructions);
         $this->tmr_reel_poll->start();
@@ -88,7 +88,8 @@ trait HasFirstDraftPanel
 
     public function onCheckReelStatus(int $post_id): void
     {
-        $status = GenerateReelStructureJob::getStatus($post_id);
+        $status = $this->postReelGenerationStatusService->getStatus($post_id);
+
         if ($status === null) {
             return;
         }
@@ -100,7 +101,7 @@ trait HasFirstDraftPanel
         };
     }
 
-    private function handleCompletedStatus(ReelStructureGenerationStatus $status): void
+    private function handleCompletedStatus(ReelJobStatusDTO $status): void
     {
         $this->tmr_reel_poll->stop();
         $jsonScript = $status->jsonScript ?? '';
@@ -110,7 +111,7 @@ trait HasFirstDraftPanel
         ]));
     }
 
-    private function handleFailedStatus(ReelStructureGenerationStatus $status): void
+    private function handleFailedStatus(ReelJobStatusDTO $status): void
     {
         $this->tmr_reel_poll->stop();
         $errorMessage = $status->errorMessage ?? $this->t('.toast.unknown_error');

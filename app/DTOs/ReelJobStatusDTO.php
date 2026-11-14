@@ -2,7 +2,7 @@
 
 namespace App\DTOs;
 
-final readonly class ReelStructureGenerationStatus
+final readonly class ReelJobStatusDTO
 {
     /**
      * @param  array<string, mixed>|null  $parsedScript

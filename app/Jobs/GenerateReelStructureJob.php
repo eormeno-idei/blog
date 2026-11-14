@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Ai\Agents\PostAgent;
-use App\DTOs\ReelStructureGenerationStatus;
+use App\DTOs\ReelJobStatusDTO;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,21 +27,6 @@ class GenerateReelStructureJob implements ShouldQueue
         public ?string $initialInstructions,
     ) {
         $this->onQueue('videos');
-    }
-
-    public static function getStatus(int $postId): ?ReelStructureGenerationStatus
-    {
-        $postReelGenerationStatusService = app()->make(PostReelGenerationStatusInterface::class);
-        return $postReelGenerationStatusService->getStatus($postId);
-    }
-
-    /**
-     * Persiste el estado del procesamiento en la tabla `posts`.
-     */
-    public static function putStatus(ReelStructureGenerationStatus $payload): void
-    {
-        $postReelGenerationStatusService = app()->make(PostReelGenerationStatusInterface::class);
-        $postReelGenerationStatusService->putStatus($payload);
     }
 
     public function handle(): void
@@ -117,13 +102,16 @@ class GenerateReelStructureJob implements ShouldQueue
         string $jsonString,
         array $decoded,
     ): void {
-        self::putStatus(ReelStructureGenerationStatus::completed(
+        $reelCompletedStatus = ReelJobStatusDTO::completed(
             $postId,
             $sceneCount,
             $totalSeconds,
             $jsonString,
             $decoded,
-        ));
+        );
+        // Persistir el estado en la tabla `posts` usando el servicio
+        $postReelGenerationStatusService = app()->make(PostReelGenerationStatusInterface::class);
+        $postReelGenerationStatusService->putStatus($reelCompletedStatus);
     }
 
     private function deleteTempJsonFile(?string $jsonPath): void

@@ -2,10 +2,10 @@
 
 namespace App\Contracts;
 
-use App\DTOs\ReelStructureGenerationStatus;
+use App\DTOs\ReelJobStatusDTO;
 
 interface PostReelGenerationStatusInterface
 {
-    public function getStatus(int $postId): ?ReelStructureGenerationStatus;
-    public function putStatus(ReelStructureGenerationStatus $payload): void;
+    public function getStatus(int $postId): ?ReelJobStatusDTO;
+    public function putStatus(ReelJobStatusDTO $payload): void;
 }

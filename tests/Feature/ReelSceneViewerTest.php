@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Contracts\PostReelGenerationStatusInterface;
 use App\Contracts\PostServiceInterface;
-use App\DTOs\ReelStructureGenerationStatus;
+use App\DTOs\ReelJobStatusDTO;
 use App\Jobs\GenerateReelStructureJob;
 use App\Services\User\UsimUserService;
 use App\UI\Screens\Post\Parts\ReelSceneViewer;
@@ -225,13 +226,24 @@ it('embeds ReelSceneViewer in ReelStudio replacing old preview and supports gene
     /** @var array<int, array<string, mixed>> $scenes */
     $scenes = is_array($decoded['scenes'] ?? null) ? $decoded['scenes'] : [];
 
-    GenerateReelStructureJob::putStatus(ReelStructureGenerationStatus::completed(
+    $reelCompletedStatus = ReelJobStatusDTO::completed(
         postId: $postId,
         sceneCount: count($scenes),
         durationSeconds: 30,
         jsonScript: $sampleJson,
         parsedScript: $decoded,
-    ));
+    );
+
+    // GenerateReelStructureJob::putStatus(ReelStructureGenerationStatus::completed(
+    //     postId: $postId,
+    //     sceneCount: count($scenes),
+    //     durationSeconds: 30,
+    //     jsonScript: $sampleJson,
+    //     parsedScript: $decoded,
+    // ));
+
+    $postReelGenerationStatusService = app()->make(PostReelGenerationStatusInterface::class);
+    $postReelGenerationStatusService->putStatus($reelCompletedStatus);
 
     $harness->call('check_reel_status', ['post_id' => $postId]);
     $harness->call('ai_first_structure_completed', [

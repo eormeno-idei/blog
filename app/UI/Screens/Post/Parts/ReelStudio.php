@@ -2,6 +2,7 @@
 
 namespace App\UI\Screens\Post\Parts;
 
+use App\Contracts\PostReelGenerationStatusInterface;
 use App\Contracts\PostServiceInterface;
 use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasEditPanel;
 use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasFirstDraftPanel;
@@ -29,7 +30,8 @@ class ReelStudio extends Screen
     protected array $state_scenes = [];
 
     public function __construct(
-        protected PostServiceInterface $postService
+        protected PostServiceInterface $postService,
+        protected PostReelGenerationStatusInterface $postReelGenerationStatusService
     ) {
         parent::__construct();
     }
