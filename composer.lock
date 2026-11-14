@@ -1249,8 +1249,7 @@
                 "issues": "https://github.com/idei/usim/issues",
                 "source": "https://github.com/idei/usim"
             },
-            "time": "2026-11-13T15:04:17+00:00",
-            "published-time": "2026-11-13T15:03:48+00:00"
+            "time": "2026-11-13T15:04:17+00:00"
         },
         {
             "name": "laminas/laminas-diactoros",
@@ -11662,5 +11661,5 @@
         "php": "^8.4"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.11.0"
+    "plugin-api-version": "2.9.0"
 }

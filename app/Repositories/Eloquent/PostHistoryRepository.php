@@ -2,19 +2,19 @@
 
 namespace App\Repositories\Eloquent;
 
-use App\Models\PostHistory;
-use App\Models\User;
 use App\DTOs\Posts\PostHistoryEventDTO;
-use App\DTOs\User\UserDTO;
 use App\Enums\PostHistoryEventType;
+use App\Models\PostHistory;
 use App\Repositories\Contracts\PostHistoryRepositoryInterface;
-use Illuminate\Support\Collection;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
+use App\Repositories\Eloquent\Concerns\HasUserDTO;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
-class EloquentPostHistoryRepository implements PostHistoryRepositoryInterface
+class PostHistoryRepository implements PostHistoryRepositoryInterface
 {
+    use HasUserDTO;
+
     /** @var array<int, string> */
     private static array $defaultWith = ['actor'];
 
@@ -59,30 +59,6 @@ class EloquentPostHistoryRepository implements PostHistoryRepositoryInterface
     }
 
     /**
-     * @param array<string, mixed> $filters
-     * @return LengthAwarePaginator<int, PostHistoryEventDTO>
-     */
-    public function paginate(
-        array $filters = [],
-        int $perPage = 15
-    ): LengthAwarePaginator {
-        $query = $this->buildFilterQuery($filters);
-
-        $paginator = $query
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-
-        $histories = $paginator->getCollection()->map(
-            fn(PostHistory $history) => $this->toDTO($history)
-        );
-
-        $paginator->setCollection($histories);
-
-        /** @var LengthAwarePaginator<int, PostHistoryEventDTO> $paginator */
-        return $paginator;
-    }
-
-    /**
      * Obtiene exclusivamente las versiones generadas de un post.
      *
      * @return Collection<int, PostHistoryEventDTO>
@@ -114,20 +90,15 @@ class EloquentPostHistoryRepository implements PostHistoryRepositoryInterface
             id: $history->id,
             postId: $history->post_id,
             eventType: $history->event_type,
-            actorRole: $history->actor_role,
-            versionMajor: $history->version_major,
-            versionMinor: $history->version_minor,
+            version: $history->version,
             basedOnHistoryId: $history->based_on_history_id,
             relatedVersionId: $history->related_version_id,
             summary: $history->summary,
             instruction: $history->instruction,
             reviewComment: $history->review_comment,
-            contentSnapshot: is_array($history->content_snapshot)
+            contentSnapshot: \is_array($history->content_snapshot)
             ? (json_encode($history->content_snapshot) ?: null)
-            : (is_string($history->content_snapshot) ? $history->content_snapshot : null),
-            metadata: is_array($history->metadata)
-            ? (json_encode($history->metadata) ?: null)
-            : (is_string($history->metadata) ? $history->metadata : null),
+            : (\is_string($history->content_snapshot) ? $history->content_snapshot : null),
             createdAt: $history->created_at
             ? CarbonImmutable::parse($history->created_at)
             : null,
@@ -168,12 +139,8 @@ class EloquentPostHistoryRepository implements PostHistoryRepositoryInterface
             $query->where('event_type', $eventType);
         }
 
-        if (isset($filters['version_major'])) {
-            $query->where('version_major', $filters['version_major']);
-        }
-
-        if (isset($filters['version_minor'])) {
-            $query->where('version_minor', $filters['version_minor']);
+        if (isset($filters['version'])) {
+            $query->where('version', $filters['version']);
         }
 
         if (isset($filters['based_on_history_id'])) {
@@ -199,33 +166,5 @@ class EloquentPostHistoryRepository implements PostHistoryRepositoryInterface
         }
 
         return $query;
-    }
-
-    private function toUserDTO(?User $user): ?UserDTO
-    {
-        if (!$user) {
-            return null;
-        }
-
-        return new UserDTO(
-            id: $user->id,
-            name: $user->name,
-            email: $user->email,
-            emailVerifiedAt: $user->email_verified_at
-            ? CarbonImmutable::parse($user->email_verified_at)
-            : null,
-            termsAcceptedAt: $user->terms_accepted_at
-            ? CarbonImmutable::parse($user->terms_accepted_at)
-            : null,
-            isRoot: $user->isRoot(),
-            isRegisteredInLobby: $user->isRegisteredInLobby(),
-            displayName: $user->getDisplayName(),
-            createdAt: $user->created_at
-            ? CarbonImmutable::parse($user->created_at)
-            : null,
-            updatedAt: $user->updated_at
-            ? CarbonImmutable::parse($user->updated_at)
-            : null,
-        );
     }
 }

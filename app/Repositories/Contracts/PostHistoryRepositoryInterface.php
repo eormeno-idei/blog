@@ -3,7 +3,6 @@
 namespace App\Repositories\Contracts;
 
 use App\DTOs\Posts\PostHistoryEventDTO;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface PostHistoryRepositoryInterface
@@ -22,17 +21,6 @@ interface PostHistoryRepositoryInterface
      * @return Collection<int, PostHistoryEventDTO>
      */
     public function get(array $filters = []): Collection;
-
-    /**
-     * Obtiene los eventos históricos paginados.
-     *
-     * @param array<string, mixed> $filters
-     * @return LengthAwarePaginator<int, PostHistoryEventDTO>
-     */
-    public function paginate(
-        array $filters = [],
-        int $perPage = 15
-    ): LengthAwarePaginator;
 
     /**
      * Obtiene exclusivamente las versiones generadas de un post.

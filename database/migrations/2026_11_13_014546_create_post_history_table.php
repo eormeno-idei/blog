@@ -15,25 +15,19 @@ return new class extends Migration {
             $table->id();
 
             // Post al que pertenece el evento.
-            $table->foreignId('post_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->foreignId('post_id')->constrained()->cascadeOnDelete();
 
             // Usuario que realizó la acción.
             // NULL cuando la acción es ejecutada automáticamente por el sistema.
-            $table->foreignId('actor_id')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
+            $table->foreignId('actor_id')->nullable()->constrained('users')->nullOnDelete();
 
             // Tipo de evento.
             $table->enum('event_type', $eventTypes)->default($defaultEvent);
 
             // Numeración de versiones.
             // Solo se completan al generar una nueva versión.
-            // Ejemplo: 1.0, 1.1, 1.2.
-            $table->unsignedSmallInteger('version_major')->nullable();
-            $table->unsignedSmallInteger('version_minor')->nullable();
+            // Ejemplo: 1, 2, 3, etc.
+            $table->unsignedSmallInteger('version')->nullable();
 
             // Versión anterior utilizada como base para generar esta versión.
             $table->foreignId('based_on_history_id')
@@ -61,15 +55,11 @@ return new class extends Migration {
             // Se conserva como snapshot inmutable.
             $table->json('content_snapshot')->nullable();
 
-            // Información complementaria:
-            // plantilla aplicada, redes sociales, datos de publicación, etc.
-            $table->json('metadata')->nullable();
-
             $table->timestamps();
 
             // Evita versiones duplicadas dentro de un mismo post.
             $table->unique(
-                ['post_id', 'version_major', 'version_minor'],
+                ['post_id', 'version'],
                 'post_history_version_unique'
             );
 

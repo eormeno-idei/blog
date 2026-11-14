@@ -7,8 +7,10 @@ use App\Contracts\PostReelGenerationStatusInterface;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
 use App\Policies\PostPolicy;
+use App\Repositories\Contracts\PostHistoryRepositoryInterface;
 use App\Repositories\Contracts\PostRepositoryInterface;
-use App\Repositories\Eloquent\EloquentPostRepository;
+use App\Repositories\Eloquent\PostHistoryRepository;
+use App\Repositories\Eloquent\PostRepository;
 use App\Services\Log\LogService;
 use App\Services\Post\PostReelGenerationStatusService;
 use App\Services\Post\PostService;
@@ -27,10 +29,15 @@ class AppServiceProvider extends ServiceProvider
             LogService::class
         );
 
-        // 1. Enlazar el Repositorio
+        // 1. Enlazar los repositorios de Eloquent con sus interfaces
         $this->app->singleton(
             PostRepositoryInterface::class,
-            EloquentPostRepository::class
+            PostRepository::class
+        );
+
+        $this->app->singleton(
+            PostHistoryRepositoryInterface::class,
+            PostHistoryRepository::class
         );
 
         // 2. Enlazar el Servicio de Dominio

@@ -3,18 +3,19 @@
 namespace App\Repositories\Eloquent;
 
 use App\Models\Post;
-use App\Models\User;
 use App\DTOs\Posts\PostDTO;
-use App\DTOs\User\UserDTO;
 use App\Enums\PostStatus;
 use App\Repositories\Contracts\PostRepositoryInterface;
+use App\Repositories\Eloquent\Concerns\HasUserDTO;
 use Illuminate\Support\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\CarbonImmutable;
 
-class EloquentPostRepository implements PostRepositoryInterface
+class PostRepository implements PostRepositoryInterface
 {
+    use HasUserDTO;
+
     /** @var array<int, string> */
     private static array $defaultWith = ['author', 'reviewer'];
 
@@ -166,25 +167,5 @@ class EloquentPostRepository implements PostRepositoryInterface
             ->toArray();
 
         return $titles;
-    }
-
-    private function toUserDTO(?User $user): ?UserDTO
-    {
-        if (!$user) {
-            return null;
-        }
-
-        return new UserDTO(
-            id: $user->id,
-            name: $user->name,
-            email: $user->email,
-            emailVerifiedAt: $user->email_verified_at ? CarbonImmutable::parse($user->email_verified_at) : null,
-            termsAcceptedAt: $user->terms_accepted_at ? CarbonImmutable::parse($user->terms_accepted_at) : null,
-            isRoot: $user->isRoot(),
-            isRegisteredInLobby: $user->isRegisteredInLobby(),
-            displayName: $user->getDisplayName(),
-            createdAt: $user->created_at ? CarbonImmutable::parse($user->created_at) : null,
-            updatedAt: $user->updated_at ? CarbonImmutable::parse($user->updated_at) : null,
-        );
     }
 }

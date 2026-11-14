@@ -3,10 +3,10 @@
 namespace App\Contracts;
 
 use App\DTOs\Posts\PostDTO;
-use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Support\Collection;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
 
 interface PostServiceInterface
 {
