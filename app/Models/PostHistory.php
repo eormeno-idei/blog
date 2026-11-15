@@ -19,16 +19,16 @@ class PostHistory extends Model
         'based_on_history_id',
         'related_version_id',
         'summary',
-        'instruction',
+        'extra_instructions',
         'review_comment',
-        'content_snapshot',
+        'reel_script',
     ];
 
     protected function casts(): array
     {
         return [
             'event_type' => PostHistoryEventType::class,
-            'content_snapshot' => 'array',
+            'reel_script' => 'array',
             'version' => 'integer',
         ];
     }

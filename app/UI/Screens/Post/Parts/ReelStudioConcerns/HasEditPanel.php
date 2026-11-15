@@ -10,47 +10,32 @@ use Idei\Usim\Components\Container;
 use Idei\Usim\Components\ItemList;
 use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\ContainerAppearance;
-use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\SelectionMode;
-use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 
 trait HasEditPanel
 {
-    // Post Title & Status row
     protected NewLabel $lbl_post_title;
     protected Container $cnt_status_row;
     protected NewLabel $lbl_status_prefix;
     protected NewLabel $lbl_status_badge;
-
-    // Version History List
     protected ItemList $lst_history;
-
-    // Waiting on Creator Card
-    protected Container $cnt_waiting_creator;
-    protected NewLabel $lbl_waiting_icon;
-    protected NewLabel $lbl_waiting_title;
-    protected NewLabel $lbl_waiting_desc;
 
     /**
      * Configure the edit panel and attach its declarative layout.
      */
-    protected function buildEditReelPanel(): Container
+    protected function buildEditReelPanel(int $post_id): Container
     {
         $this->configureStatusRow();
-        $this->configureWaitingCreatorCard();
         $this->loadHistoryItems();
 
-        if (($this->state_post_id ?? 0) > 0 && isset($this->postService)) {
-            $post = $this->postService->findById($this->state_post_id);
-            if ($post !== null && !empty($post->title)) {
-                $this->lbl_post_title->text($post->title);
-            }
-            if ($post !== null) {
-                $this->lbl_status_badge->text(strtoupper($post->statusValue()));
-            }
+        $post = $this->postService->findById($post_id);
+        if ($post !== null && !empty($post->title)) {
+            $this->lbl_post_title->text($post->title);
+        }
+        if ($post !== null) {
+            $this->lbl_status_badge->text(strtoupper($post->statusValue()));
         }
 
         return $this->edit_panel
@@ -79,41 +64,6 @@ trait HasEditPanel
                     ->pill()
                     ->secondary()
                     ->small()
-            );
-    }
-
-    /**
-     * Configure the waiting on creator status card using semantic container appearance.
-     */
-    protected function configureWaitingCreatorCard(): Container
-    {
-        return $this->cnt_waiting_creator
-            ->appearance(ContainerAppearance::CARD)
-            ->layout(LayoutType::VERTICAL)
-            ->width(Size::full())
-            ->padding(Spacing::m())
-            ->gap(Spacing::xs())
-            ->alignItems(AlignItems::CENTER)
-            ->justifyContent(JustifyContent::CENTER)
-            ->add(
-                $this->lbl_waiting_icon
-                    ->icon('clock')
-                    ->pill()
-                    ->secondary()
-                    ->center()
-            )
-            ->add(
-                $this->lbl_waiting_title
-                    ->text($this->t('.waiting_title', [], 'Esperando al creador'))
-                    ->bold()
-                    ->center()
-            )
-            ->add(
-                $this->lbl_waiting_desc
-                    ->text($this->t('.waiting_desc', [], 'El creador está editando el post. Recibirás una notificación cuando lo envíe a revisión.'))
-                    ->muted()
-                    ->small()
-                    ->center()
             );
     }
 
@@ -196,9 +146,9 @@ trait HasEditPanel
         $label = '';
         $subtitle = '';
 
-        $type = $event->eventType instanceof PostHistoryEventType
-            ? $event->eventType
-            : PostHistoryEventType::tryFrom((string) $event->eventType);
+        $type = $event->event_type instanceof PostHistoryEventType
+            ? $event->event_type
+            : PostHistoryEventType::tryFrom((string) $event->event_type);
 
         switch ($type) {
             case PostHistoryEventType::VERSION_GENERATED:
@@ -216,7 +166,7 @@ trait HasEditPanel
                 $badge = 'Cambios solicitados';
                 $badgeStyle = 'warning';
                 $actor = $event->actor?->displayName ?? $event->actor?->name ?? 'Revisor';
-                $comment = $event->reviewComment ? "«{$event->reviewComment}»" : '';
+                $comment = $event->review_comment ? "«{$event->review_comment}»" : '';
                 $subtitle = trim("{$actor}: {$comment}");
                 break;
 
@@ -250,8 +200,8 @@ trait HasEditPanel
     protected function formatEventMetadata(PostHistoryEventDTO $event): string
     {
         $meta = [];
-        if ($event->basedOnHistoryId) {
-            $meta[] = "Basada en v{$event->basedOnHistoryId}";
+        if ($event->based_on_history_id) {
+            $meta[] = "Basada en v{$event->based_on_history_id}";
         }
         if (!empty($event->metadata)) {
             $meta[] = 'Generada por IA';

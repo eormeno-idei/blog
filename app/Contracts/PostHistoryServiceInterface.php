@@ -20,6 +20,14 @@ interface PostHistoryServiceInterface
     public function hasFirstDraftEvent(?Authenticatable $user, int $post_id): bool;
 
     /**
+     * Obtiene el último evento de reel de un post.
+     *
+     * @param  int  $post_id
+     * @return ?PostHistoryEventDTO
+     */
+    public function getLatestReelEvent(int $post_id): ?PostHistoryEventDTO;
+
+    /**
      * Obtiene el historial de eventos de un post.
      *
      * @param  ?Authenticatable  $user
@@ -49,4 +57,30 @@ interface PostHistoryServiceInterface
      */
     public function createPostEventHistory(?Authenticatable $user, int $postId, PostHistoryEventType $eventType, ?Authenticatable $actor): PostHistoryEventDTO;
 
+    /**
+     * Solicita la generación de un guion para un reel y crea un evento correspondiente en el historial del post.
+     *
+     * @param  ?Authenticatable  $user
+     * @param  int  $postId
+     * @param  ?string  $extra_instructions
+     * @return PostHistoryEventDTO
+     */
+    public function requestGenerateReelScript(?Authenticatable $user, int $postId, ?string $extra_instructions): PostHistoryEventDTO;
+
+    /**
+     * Crea un evento de generación de guion para un reel en el historial del post.
+     *
+     * @param  PostHistoryEventDTO  $previousEvent
+     * @return PostHistoryEventDTO
+     */
+    public function createGeneratingReelScriptEvent(PostHistoryEventDTO $previousEvent): PostHistoryEventDTO;
+
+    /**
+     * Crea un evento de guion completado para un reel en el historial del post.
+     *
+     * @param  PostHistoryEventDTO  $previousEvent
+     * @param  array<string, mixed>  $reelScript
+     * @return PostHistoryEventDTO
+     */
+    public function createCompletedReelScriptEvent(PostHistoryEventDTO $previousEvent, array $reelScript): PostHistoryEventDTO;
 }

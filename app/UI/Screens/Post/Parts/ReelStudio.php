@@ -2,7 +2,7 @@
 
 namespace App\UI\Screens\Post\Parts;
 
-use App\Contracts\PostReelGenerationStatusInterface;
+use App\Contracts\PostHistoryServiceInterface;
 use App\Contracts\PostServiceInterface;
 use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasEditPanel;
 use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasFirstDraftPanel;
@@ -20,18 +20,14 @@ class ReelStudio extends Screen
 
     protected Container $edit_panel;
 
-    protected int $state_post_id = 0;
-
     protected int $state_current_scene_index = 0;
-
-    protected bool $state_first_draft_generated = false;
 
     /** @var array<int, array<string, mixed>> */
     protected array $state_scenes = [];
 
     public function __construct(
         protected PostServiceInterface $postService,
-        protected PostReelGenerationStatusInterface $postReelGenerationStatusService
+        protected PostHistoryServiceInterface $postHistoryService,
     ) {
         parent::__construct();
     }
@@ -43,14 +39,12 @@ class ReelStudio extends Screen
 
     protected function startingUI(int $post_id = 0): Container
     {
-        $rawPostId = request()->query('post_id', request('post_id', 0));
-        $this->state_post_id = $post_id > 0 ? $post_id : (is_numeric($rawPostId) ? (int) $rawPostId : 0);
-        if ($this->state_post_id > 0) {
-            $this->loadScenesFromPost($this->state_post_id);
+        if ($post_id > 0) {
+            $this->loadScenesFromPost($post_id);
         }
 
         $this->buildFirstDraftPanel();
-        $this->buildEditReelPanel();
+        $this->buildEditReelPanel($post_id);
 
         $this->first_draft_panel->visible(true);
         $this->edit_panel->visible(false);
@@ -65,11 +59,10 @@ class ReelStudio extends Screen
     protected function postLoadUI(int $post_id = 0): void
     {
         if ($post_id > 0) {
-            $this->state_post_id = $post_id;
-            $this->loadScenesFromPost($this->state_post_id);
+            $this->loadScenesFromPost($post_id);
         }
 
-        $this->updateScenePreview();
+        $this->updateScenePreview($post_id);
     }
 
     public function onGeneratingReel(int $postId): void
@@ -107,7 +100,7 @@ class ReelStudio extends Screen
         }
     }
 
-    protected function updateScenePreview(): void
+    protected function updateScenePreview(int $post_id): void
     {
         if (!isset($this->reel_scene_viewer_slot)) {
             return;
@@ -124,8 +117,8 @@ class ReelStudio extends Screen
                 'scenes' => $this->state_scenes,
             ];
             $params['initial_scene'] = $this->state_current_scene_index;
-        } elseif ($this->state_post_id > 0) {
-            $params['post_id'] = $this->state_post_id;
+        } elseif ($post_id > 0) {
+            $params['post_id'] = $post_id;
         }
 
         $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, $params);

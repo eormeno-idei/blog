@@ -4,6 +4,8 @@ namespace App\Enums;
 
 enum PostHistoryEventType: string
 {
+    case GENERATE_REQUESTED = 'generate_requested';
+    case GENERATING_SCRIPT = 'generating_script';
     case VERSION_GENERATED = 'version_generated';
     case REVIEW_REQUESTED = 'review_requested';
     case REVIEW_CHANGES_REQUESTED = 'review_changes_requested';

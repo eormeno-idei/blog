@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\LogServiceInterface;
+use App\Contracts\PostHistoryServiceInterface;
 use App\Contracts\PostReelGenerationStatusInterface;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\Posts\PostDTO;
@@ -12,6 +13,7 @@ use App\Repositories\Contracts\PostRepositoryInterface;
 use App\Repositories\Eloquent\PostHistoryRepository;
 use App\Repositories\Eloquent\PostRepository;
 use App\Services\Log\LogService;
+use App\Services\Post\PostHistoryService;
 use App\Services\Post\PostReelGenerationStatusService;
 use App\Services\Post\PostService;
 use Illuminate\Support\Facades\Gate;
@@ -50,6 +52,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(
             PostReelGenerationStatusInterface::class,
             PostReelGenerationStatusService::class
+        );
+
+        $this->app->singleton(
+            PostHistoryServiceInterface::class,
+            PostHistoryService::class
         );
     }
 

@@ -45,15 +45,15 @@ return new class extends Migration {
             // Resumen breve del evento o modificación.
             $table->string('summary', 255)->nullable();
 
-            // Instrucción enviada por el usuario a la IA.
-            $table->longText('instruction')->nullable();
+            // Instrucciones y/o prompt utilizado para generar la versión.
+            $table->longText('extra_instructions')->nullable();
 
             // Observación o solicitud realizada por el revisor.
             $table->text('review_comment')->nullable();
 
             // Estructura completa del Reel en esa versión.
             // Se conserva como snapshot inmutable.
-            $table->json('content_snapshot')->nullable();
+            $table->json('reel_script')->nullable();
 
             $table->timestamps();
 

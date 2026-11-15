@@ -63,17 +63,16 @@ class PostHistoryRepository implements PostHistoryRepositoryInterface
      *
      * @return Collection<int, PostHistoryEventDTO>
      */
-    public function getVersions(int $postId): Collection
+    public function getVersions(int $post_id): Collection
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, PostHistory> $histories */
         $histories = PostHistory::with(self::$defaultWith)
-            ->where('post_id', $postId)
+            ->where('post_id', $post_id)
             ->where(
                 'event_type',
                 PostHistoryEventType::VERSION_GENERATED->value
             )
-            ->orderBy('version_major')
-            ->orderBy('version_minor')
+            ->orderBy('version')
             ->get();
 
         return $histories->map(
@@ -88,23 +87,17 @@ class PostHistoryRepository implements PostHistoryRepositoryInterface
     {
         return new PostHistoryEventDTO(
             id: $history->id,
-            postId: $history->post_id,
-            eventType: $history->event_type,
+            post_id: $history->post_id,
+            event_type: $history->event_type,
             version: $history->version,
-            basedOnHistoryId: $history->based_on_history_id,
-            relatedVersionId: $history->related_version_id,
+            based_on_history_id: $history->based_on_history_id,
+            related_version_id: $history->related_version_id,
             summary: $history->summary,
-            instruction: $history->instruction,
-            reviewComment: $history->review_comment,
-            contentSnapshot: \is_array($history->content_snapshot)
-            ? (json_encode($history->content_snapshot) ?: null)
-            : (\is_string($history->content_snapshot) ? $history->content_snapshot : null),
-            createdAt: $history->created_at
-            ? CarbonImmutable::parse($history->created_at)
-            : null,
-            updatedAt: $history->updated_at
-            ? CarbonImmutable::parse($history->updated_at)
-            : null,
+            extra_instructions: $history->extra_instructions,
+            review_comment: $history->review_comment,
+            reel_script: $history->reel_script,
+            created_at: $history->created_at ? CarbonImmutable::parse($history->created_at) : null,
+            updated_at: $history->updated_at ? CarbonImmutable::parse($history->updated_at) : null,
             actor: $this->toUserDTO($history->actor),
         );
     }
@@ -125,18 +118,14 @@ class PostHistoryRepository implements PostHistoryRepositoryInterface
             $query->where('actor_id', $filters['actor_id']);
         }
 
-        if (isset($filters['actor_role'])) {
-            $query->where('actor_role', $filters['actor_role']);
-        }
-
         if (isset($filters['event_type'])) {
             $eventType = $filters['event_type'];
 
-            if ($eventType instanceof PostHistoryEventType) {
-                $eventType = $eventType->value;
+            if (\is_array($eventType)) {
+                $query->whereIn('event_type', $eventType);
+            } else {
+                $query->where('event_type', $eventType);
             }
-
-            $query->where('event_type', $eventType);
         }
 
         if (isset($filters['version'])) {

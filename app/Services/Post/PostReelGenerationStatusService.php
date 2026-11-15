@@ -2,6 +2,7 @@
 
 namespace App\Services\Post;
 
+use App\Contracts\PostHistoryServiceInterface;
 use App\Contracts\PostReelGenerationStatusInterface;
 use App\Contracts\PostServiceInterface;
 use App\DTOs\ReelJobStatusDTO;
@@ -10,6 +11,7 @@ class PostReelGenerationStatusService implements PostReelGenerationStatusInterfa
 {
     public function __construct(
         protected PostServiceInterface $postService,
+        protected PostHistoryServiceInterface $historyService
     ) {
     }
 
@@ -35,24 +37,19 @@ class PostReelGenerationStatusService implements PostReelGenerationStatusInterfa
 
     }
 
-    public function putStatus(ReelJobStatusDTO $payload): void
+    public function putStatus(ReelJobStatusDTO $jobStatus): void
     {
-        $post = $this->postService->findById($payload->postId);
-        if ($post === null) {
-            return;
-        }
-
-        $status = $payload->persisted();
+        $post = $this->postService->findById($jobStatus->post_id);
 
         $dbUpdate = [
-            'ai_job_status' => $status->status,
-            'ai_job_payload' => json_encode($status->toArray(), JSON_UNESCAPED_UNICODE),
+            'ai_job_status' => $jobStatus->status,
+            'ai_job_payload' => json_encode($jobStatus->toArray(), JSON_UNESCAPED_UNICODE),
         ];
 
-        if ($status->isCompleted()) {
-            $dbUpdate['ai_script'] = $status->jsonScript;
+        if ($jobStatus->isCompleted()) {
+            $dbUpdate['ai_script'] = $jobStatus->reel_script;
         }
 
-        $this->postService->updatePost($payload->postId, $dbUpdate);
+        $this->postService->updatePost($jobStatus->post_id, $dbUpdate);
     }
 }

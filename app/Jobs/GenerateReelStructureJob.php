@@ -3,50 +3,44 @@
 namespace App\Jobs;
 
 use App\Ai\Agents\PostAgent;
-use App\DTOs\ReelJobStatusDTO;
+use App\Contracts\PostHistoryServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use App\Contracts\PostReelGenerationStatusInterface;
+use App\DTOs\Posts\PostHistoryEventDTO;
 
 class GenerateReelStructureJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 1200;
-
-    public int $tries = 1;
+    protected PostHistoryServiceInterface $historyService;
 
     public function __construct(
-        public int $postId,
-        public string $notes,
-        public ?string $initialInstructions,
+        public PostHistoryEventDTO $initialEvent,
+        public string $context
     ) {
         $this->onQueue('videos');
     }
 
-    public function handle(): void
+    public function handle(PostHistoryServiceInterface $historyService): void
     {
-        $jsonPath = null;
+        $this->historyService = $historyService;
 
         try {
-            $jsonString = $this->generateJsonScript();
-            $decoded = $this->parseAndValidateScript($jsonString);
-            [$sceneCount, $totalSeconds] = $this->calculateMetrics($decoded);
-
-            $this->reportCompletedStatus($this->postId, $sceneCount, $totalSeconds, $decoded);
+            $generatingEvent = $this->historyService->createGeneratingReelScriptEvent($this->initialEvent);
+            $reelScript = $this->parseAndValidateScript($this->generateScript());
+            $this->historyService->createCompletedReelScriptEvent($generatingEvent, $reelScript);
         } catch (\Throwable $e) {
+            // $this->historyService->createFailedReelScriptEvent($this->initialEvent, $e->getMessage());
             Log::error('[GenerateReelPreviewJob] Error: ' . $e->getMessage());
-        } finally {
-            $this->deleteTempJsonFile($jsonPath);
         }
     }
 
-    private function generateJsonScript(): string
+    private function generateScript(): string
     {
         $prompt = $this->buildPrompt();
         $answer = app(PostAgent::class)->prompt($prompt);
@@ -69,70 +63,44 @@ class GenerateReelStructureJob implements ShouldQueue
         return $decoded;
     }
 
-    /**
-     * @param  array<string, mixed>  $decoded
-     * @return array{0: int, 1: int}
-     */
-    private function calculateMetrics(array $decoded): array
-    {
-        /** @var list<array<string, mixed>> $scenes */
-        $scenes = $decoded['scenes'];
-        $sceneCount = count($scenes);
-        $totalSeconds = 0;
+    // /**
+    //  * @param  array<string, mixed>  $decoded
+    //  * @return array{0: int, 1: int}
+    //  */
+    // private function calculateMetrics(array $decoded): array
+    // {
+    //     /** @var list<array<string, mixed>> $scenes */
+    //     $scenes = $decoded['scenes'];
+    //     $sceneCount = count($scenes);
+    //     $totalSeconds = 0;
 
-        foreach ($scenes as $scene) {
-            $duration = $scene['duration_seconds'] ?? 0;
-            $totalSeconds += is_numeric($duration) ? (int) $duration : 0;
-        }
+    //     foreach ($scenes as $scene) {
+    //         $duration = $scene['duration_seconds'] ?? 0;
+    //         $totalSeconds += is_numeric($duration) ? (int) $duration : 0;
+    //     }
 
-        $metadata = isset($decoded['metadata']) && is_array($decoded['metadata']) ? $decoded['metadata'] : [];
-        $metaDuration = $metadata['duracion_total_segundos'] ?? 30;
-        $fallbackSeconds = is_numeric($metaDuration) ? (int) $metaDuration : 30;
+    //     $metadata = isset($decoded['metadata']) && is_array($decoded['metadata']) ? $decoded['metadata'] : [];
+    //     $metaDuration = $metadata['duracion_total_segundos'] ?? 30;
+    //     $fallbackSeconds = is_numeric($metaDuration) ? (int) $metaDuration : 30;
 
-        return [$sceneCount, $totalSeconds > 0 ? $totalSeconds : $fallbackSeconds];
-    }
-
-    /**
-     * @param  array<string, mixed>  $decoded
-     */
-    private function reportCompletedStatus(
-        int $postId,
-        int $sceneCount,
-        int $totalSeconds,
-        array $decoded,
-    ): void {
-        $reelCompletedStatus = ReelJobStatusDTO::completed(
-            $postId,
-            $sceneCount,
-            $totalSeconds,
-            $decoded,
-        );
-        // Persistir el estado en la tabla `posts` usando el servicio
-        $postReelGenerationStatusService = app()->make(PostReelGenerationStatusInterface::class);
-        $postReelGenerationStatusService->putStatus($reelCompletedStatus);
-    }
-
-    private function deleteTempJsonFile(?string $jsonPath): void
-    {
-        if ($jsonPath !== null && File::exists($jsonPath)) {
-            File::delete($jsonPath);
-        }
-    }
+    //     return [$sceneCount, $totalSeconds > 0 ? $totalSeconds : $fallbackSeconds];
+    // }
 
     private function buildPrompt(): string
     {
-        if (!$this->initialInstructions) {
-            return $this->notes;
+        if (!$this->initialEvent->extra_instructions) {
+            return $this->context;
         }
 
         return <<<PROMPT
         INFORMACIÓN GENERAL:
-        {$this->notes}
+        {$this->context}
 
         INSTRUCCIONES INICIALES DEL USUARIO:
-        {$this->initialInstructions}
+        {$this->initialEvent->extra_instructions}
 
-        Instrucción: Ten en cuenta las instrucciones iniciales del usuario considerando ESTRICTAMENTE DICHA SOLICITUD. Mantén el esquema JSON estricto y devuelve únicamente el JSON crudo resultante.
+        Instrucción: Ten en cuenta las instrucciones iniciales del usuario considerando
+        ESTRICTAMENTE DICHA SOLICITUD. Mantén el esquema JSON estricto y devuelve únicamente el JSON crudo resultante.
         PROMPT;
     }
 

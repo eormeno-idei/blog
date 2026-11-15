@@ -3,7 +3,8 @@
 namespace App\UI\Screens\Post\Parts\ReelStudioConcerns;
 
 use App\DTOs\Posts\PostDTO;
-use App\DTOs\ReelJobStatusDTO;
+use App\DTOs\Posts\PostHistoryEventDTO;
+use App\Enums\PostHistoryEventType;
 use App\Jobs\GenerateReelStructureJob;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
@@ -15,6 +16,7 @@ use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Auth;
 
 trait HasFirstDraftPanel
 {
@@ -70,52 +72,50 @@ trait HasFirstDraftPanel
 
     protected function startReelGenerationJob(PostDTO $post, ?string $initialInstructions): void
     {
-        $generatingFirstScriptStatus = ReelJobStatusDTO::generatingFirstScript(
-            $post->id,
-            $initialInstructions
+        $new_generating_event = $this->postHistoryService->requestGenerateReelScript(
+            user: Auth::user(),
+            postId: $post->id,
+            extra_instructions: $initialInstructions
         );
 
-        $this->postReelGenerationStatusService->putStatus($generatingFirstScriptStatus);
-
-        // Inicia el trabajo de generación de la estructura para el Reel.
-        GenerateReelStructureJob::dispatch($post->id, $post->content, $initialInstructions);
+        GenerateReelStructureJob::dispatch($new_generating_event, $post->content);
 
         $this->tmr_reel_poll->start();
     }
 
     public function onCheckReelStatus(int $post_id): void
     {
-        $status = $this->postReelGenerationStatusService->getStatus($post_id);
+        $status = $this->postHistoryService->getLatestReelEvent($post_id);
 
         if ($status === null) {
             return;
         }
 
-        match ($status->status) {
-            'generating_script' => $this->handleGeneratingScriptStatus($status),
-            'completed' => $this->handleCompletedStatus($status),
-            'failed' => $this->handleFailedStatus($status),
+        match ($status->event_type) {
+                // PostHistoryEventType::GENERATE_REQUESTED => $this->handleGenerateRequestedStatus($status),
+            PostHistoryEventType::GENERATING_SCRIPT => $this->handleGeneratingScriptStatus($status),
+            PostHistoryEventType::VERSION_GENERATED => $this->handleCompletedStatus($status),
             default => null,
         };
     }
 
-    private function handleGeneratingScriptStatus(ReelJobStatusDTO $status): void
+    private function handleGeneratingScriptStatus(PostHistoryEventDTO $status): void
     {
         event(new UsimEvent('generating_reel', [
-            'postId' => $status->postId,
+            'postId' => $status->post_id,
         ]));
     }
 
-    private function handleCompletedStatus(ReelJobStatusDTO $status): void
+    private function handleCompletedStatus(PostHistoryEventDTO $status): void
     {
         $this->tmr_reel_poll->stop();
         event(new UsimEvent('ai_first_structure_completed', [
-            'postId' => $status->postId,
-            'script' => $status->parsedScript
+            'postId' => $status->post_id,
+            'script' => $status->reel_script
         ]));
     }
 
-    private function handleFailedStatus(ReelJobStatusDTO $status): void
+    private function handleFailedStatus(PostHistoryEventDTO $status): void
     {
         $this->tmr_reel_poll->stop();
         $errorMessage = $status->errorMessage ?? $this->t('.toast.unknown_error');
