@@ -6,6 +6,7 @@ return [
     'labels' => [
         'empty_title' => 'Aquí aparecerá la estructura de tu Reel',
         'empty_subtitle' => 'Haz clic en \'Generar Primera Estructura\' para que la IA procese tu información.',
+        'generating_title' => 'Generando Estructura del Reel...',
     ],
     'nav' => [
         'counter' => 'Escena :current de :total',

@@ -43,7 +43,7 @@ trait HasFirstDraftPanel
     {
         return $this->tmr_reel_poll
             ->action('check_reel_status')
-            ->every(2500)
+            ->every(1000)
             ->enabled(false);
     }
 
@@ -64,11 +64,6 @@ trait HasFirstDraftPanel
     public function onGenerateFirstStructure(int $postId, ?string $initialInstructions): void
     {
         $post = $this->postService->findById($postId);
-        if (!$post) {
-            $this->toast($this->t('.toast.post_not_found'), 'error');
-            return;
-        }
-        $this->toast($this->t('.toast.generating_first_structure'), 'info');
         $this->btn_generate_first_structure->enabled(false);
         $this->startReelGenerationJob($post, $initialInstructions);
     }
@@ -82,7 +77,9 @@ trait HasFirstDraftPanel
 
         $this->postReelGenerationStatusService->putStatus($generatingFirstScriptStatus);
 
+        // Inicia el trabajo de generación de la estructura para el Reel.
         GenerateReelStructureJob::dispatch($post->id, $post->content, $initialInstructions);
+
         $this->tmr_reel_poll->start();
     }
 
@@ -93,21 +90,28 @@ trait HasFirstDraftPanel
         if ($status === null) {
             return;
         }
+
         match ($status->status) {
-            // 'generating_script' => $this->handleGeneratingScriptStatus($status),
+            'generating_script' => $this->handleGeneratingScriptStatus($status),
             'completed' => $this->handleCompletedStatus($status),
             'failed' => $this->handleFailedStatus($status),
             default => null,
         };
     }
 
+    private function handleGeneratingScriptStatus(ReelJobStatusDTO $status): void
+    {
+        event(new UsimEvent('generating_reel', [
+            'postId' => $status->postId,
+        ]));
+    }
+
     private function handleCompletedStatus(ReelJobStatusDTO $status): void
     {
         $this->tmr_reel_poll->stop();
-        $jsonScript = $status->jsonScript ?? '';
         event(new UsimEvent('ai_first_structure_completed', [
             'postId' => $status->postId,
-            'json' => $jsonScript,
+            'script' => $status->parsedScript
         ]));
     }
 

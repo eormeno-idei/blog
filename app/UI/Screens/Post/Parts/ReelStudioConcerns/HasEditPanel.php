@@ -5,11 +5,10 @@ namespace App\UI\Screens\Post\Parts\ReelStudioConcerns;
 use App\DTOs\Posts\PostHistoryEventDTO;
 use App\Enums\PostHistoryEventType;
 use App\Repositories\Contracts\PostHistoryRepositoryInterface;
-use App\Repositories\Eloquent\EloquentPostHistoryRepository;
+use App\Repositories\Eloquent\PostHistoryRepository;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\ItemList;
 use Idei\Usim\Components\NewLabel;
-use Idei\Usim\Enums\Align;
 use Idei\Usim\Enums\AlignItems;
 use Idei\Usim\Enums\ContainerAppearance;
 use Idei\Usim\Enums\JustifyContent;
@@ -130,7 +129,7 @@ trait HasEditPanel
             /** @var PostHistoryRepositoryInterface $historyRepo */
             $historyRepo = app()->bound(PostHistoryRepositoryInterface::class)
                 ? app(PostHistoryRepositoryInterface::class)
-                : app(EloquentPostHistoryRepository::class);
+                : app(PostHistoryRepository::class);
 
             $events = $historyRepo->get(['post_id' => $postId]);
             if ($events->isNotEmpty()) {
@@ -203,7 +202,7 @@ trait HasEditPanel
 
         switch ($type) {
             case PostHistoryEventType::VERSION_GENERATED:
-                $label = 'Versión ' . ($event->versionLabel() ?? '1.0');
+                $label = 'Versión ' . $event->version;
                 $badge = 'En revisión';
                 $badgeStyle = 'info';
                 $meta = $this->formatEventMetadata($event);

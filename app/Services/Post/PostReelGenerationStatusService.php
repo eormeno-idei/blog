@@ -23,14 +23,14 @@ class PostReelGenerationStatusService implements PostReelGenerationStatusInterfa
         $ai_job_status = $post->aiJobStatus;
         $ai_job_payload = $post->aiJobPayload;
 
-        $decoded = is_string($ai_job_payload ?? null) && $ai_job_payload !== ''
+        $decoded = \is_string($ai_job_payload ?? null) && $ai_job_payload !== ''
             ? json_decode($ai_job_payload, true)
             : [];
         $decoded['post_id'] = $postId;
 
         return ReelJobStatusDTO::fromArray(
-            is_array($decoded) ? $decoded : [],
-            is_string($ai_job_status ?? null) ? $ai_job_status : null
+            \is_array($decoded) ? $decoded : [],
+            \is_string($ai_job_status ?? null) ? $ai_job_status : null
         );
 
     }

@@ -14,7 +14,6 @@ use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
-use Illuminate\Support\Facades\File;
 
 /**
  * Reusable USIM Screen Component for navigating and inspecting AI Reel textual content.
@@ -24,27 +23,20 @@ use Illuminate\Support\Facades\File;
  */
 class ReelSceneViewer extends Screen
 {
-    /**
-     * Internal server-side state persisted across USIM requests.
-     *
-     * @var array<int, array<string, mixed>>
-     */
+    protected string $state_status = 'idle';
     protected array $state_scenes = [];
 
-    /** @var array<string, mixed> */
     protected array $state_metadata = [];
 
     protected int $state_current_scene_index = 0;
 
-    protected int $state_post_id = 0;
-
-    // Header labels
     protected NewLabel $lbl_scene_meta;
 
     protected NewLabel $lbl_scene_duration;
 
-    // Scene body components
     protected NewLabel $lbl_empty_title;
+
+    protected NewLabel $lbl_generating_title;
 
     protected NewLabel $lbl_empty_subtitle;
 
@@ -54,7 +46,6 @@ class ReelSceneViewer extends Screen
 
     protected Container $scene_body_list;
 
-    // Bottom navigation components
     protected Button $btn_prev_scene;
 
     protected NewLabel $scene_indicator;
@@ -75,17 +66,14 @@ class ReelSceneViewer extends Screen
     /**
      * Build the starting UI. Accepts parameters via embed() or navigation.
      *
-     * Supported parameters:
-     * - 'data' | 'script_data' | 'json' | 'ai_script': JSON string, file path, or decoded array.
-     * - 'json_path': file path to JSON script.
-     * - 'post_id': int Post ID to fetch ai_script if no data is provided.
-     * - 'initial_scene': int Initial scene index (0-based).
-     *
-     * @param  array<string, mixed>  $params
+     * @param  string  $status  The status of the reel generation ('completed', 'generating_script', etc.)
+     * @param  array<string, mixed>  $script  The parsed script data (scenes and metadata) if available.
      */
-    protected function startingUI(array $params = []): Container
+    protected function startingUI(string $status = 'idle', array $script = []): Container
     {
-        $this->hydrateScriptData($params);
+        $this->state_status = $status;
+        $this->state_scenes = $script['scenes'] ?? [];
+        $this->state_metadata = $script['metadata'] ?? [];
 
         $this->scene_body_list
             ->plain()
@@ -101,16 +89,11 @@ class ReelSceneViewer extends Screen
 
     protected function postLoadUI(): void
     {
-        $this->getContainer()
-            ?->padding(Spacing::zero())
+        $this->getContainer()?->padding(Spacing::zero())
             ->width(Size::full())
             ->height(Size::full())
             ->justifyContent(JustifyContent::START);
     }
-
-    // ========================================================================
-    // ACTION HANDLERS
-    // ========================================================================
 
     public function onPrevScene(): void
     {
@@ -175,36 +158,38 @@ class ReelSceneViewer extends Screen
 
     protected function updateSceneContent(): void
     {
-        $hasScenes = ! empty($this->state_scenes);
+        $isIdle = $this->state_status === 'idle';
+        $isGenerating = $this->state_status === 'generating_script';
+        $isCompleted = $this->state_status === 'completed' && !empty($this->state_scenes);
 
-        if (! $hasScenes) {
-            $this->lbl_scene_meta->visible(false);
-            $this->lbl_scene_duration->visible(false);
+        if (!$isCompleted) {
+            $this->lbl_scene_meta->visible(!$isIdle && !$isGenerating);
+            $this->lbl_scene_duration->visible(!$isIdle && !$isGenerating);
 
-            $this->lbl_empty_title->visible(true);
-            $this->lbl_empty_subtitle->visible(true);
+            $this->lbl_empty_title->visible($isIdle);
+            $this->lbl_generating_title->visible($isGenerating)->animation('pulse');
+            $this->lbl_empty_subtitle->visible($isIdle);
 
             $this->lbl_scene_headline->visible(false);
             $this->lbl_scene_subheadline->visible(false);
             $this->scene_body_list->clear()->visible(false);
-
             return;
         }
 
         $scene = $this->state_scenes[$this->state_current_scene_index] ?? $this->state_scenes[0];
-        $textContent = is_array($scene['text_content'] ?? null) ? $scene['text_content'] : [];
-        $headline = is_string($textContent['headline'] ?? null) ? trim($textContent['headline']) : '';
-        $subheadline = is_string($textContent['subheadline'] ?? null) ? trim($textContent['subheadline']) : '';
-        $rawBody = is_array($textContent['body'] ?? null) ? $textContent['body'] : [];
+        $textContent = \is_array($scene['text_content'] ?? null) ? $scene['text_content'] : [];
+        $headline = \is_string($textContent['headline'] ?? null) ? trim($textContent['headline']) : '';
+        $subheadline = \is_string($textContent['subheadline'] ?? null) ? trim($textContent['subheadline']) : '';
+        $rawBody = \is_array($textContent['body'] ?? null) ? $textContent['body'] : [];
         $body = array_values(array_filter(
-            array_map(static fn (mixed $item): string => is_scalar($item) ? trim((string) $item) : '', $rawBody),
-            static fn (string $item): bool => $item !== ''
+            array_map(static fn(mixed $item): string => \is_scalar($item) ? trim((string) $item) : '', $rawBody),
+            static fn(string $item): bool => $item !== ''
         ));
 
         $rawMeta = $this->state_metadata['departamento'] ?? $this->state_metadata['autor'] ?? '';
-        $metaText = is_string($rawMeta) ? trim($rawMeta) : '';
+        $metaText = \is_string($rawMeta) ? trim($rawMeta) : '';
         $rawDuration = $scene['duration_seconds'] ?? 5;
-        $duration = is_numeric($rawDuration) ? (int) $rawDuration : 5;
+        $duration = \is_numeric($rawDuration) ? (int) $rawDuration : 5;
 
         $this->lbl_scene_meta
             ->text($metaText)
@@ -215,6 +200,7 @@ class ReelSceneViewer extends Screen
 
         $this->lbl_empty_title->visible(false);
         $this->lbl_empty_subtitle->visible(false);
+        $this->lbl_generating_title->visible(false);
 
         $this->lbl_scene_headline
             ->text($headline !== '' ? $headline : $this->t('.scene.default_headline'))
@@ -235,80 +221,6 @@ class ReelSceneViewer extends Screen
         }
         $this->scene_body_list->visible($body !== []);
     }
-
-    // ========================================================================
-    // DATA HYDRATION
-    // ========================================================================
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    protected function hydrateScriptData(array $params): void
-    {
-        $raw = $params['data']
-            ?? $params['script_data']
-            ?? $params['json']
-            ?? $params['ai_script']
-            ?? null;
-
-        // If no explicit data given, check if a file path or sample flag was requested
-        if ($raw === null && isset($params['json_path']) && is_string($params['json_path'])) {
-            $raw = $params['json_path'];
-        }
-
-        $decoded = null;
-
-        if (is_array($raw)) {
-            $decoded = $raw;
-        } elseif (is_string($raw) && trim($raw) !== '') {
-            $trimmed = trim($raw);
-            if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[')) {
-                $decoded = json_decode($trimmed, true);
-            } elseif (File::exists($trimmed)) {
-                $fileContent = File::get($trimmed);
-                $decoded = json_decode($fileContent, true);
-            }
-        }
-
-        // If still null, check post_id parameter
-        if ($decoded === null) {
-            $rawPostId = $params['post_id'] ?? request()->query('post_id', '0');
-            $postId = is_numeric($rawPostId) ? (int) $rawPostId : 0;
-            if ($postId > 0 && $this->postService !== null) {
-                $this->state_post_id = $postId;
-                $post = $this->postService->findById($postId);
-                if ($post !== null && ! empty($post->aiScript)) {
-                    $decoded = json_decode((string) $post->aiScript, true);
-                }
-            }
-        }
-
-        // Fallback: Check if _data.json exists in root if running in standalone test mode with ?sample=1
-        if ($decoded === null && request()->query('sample') === '1') {
-            $fallbackPath = base_path('_data.json');
-            if (File::exists($fallbackPath)) {
-                $decoded = json_decode(File::get($fallbackPath), true);
-            }
-        }
-
-        if (is_array($decoded)) {
-            /** @var array<int, array<string, mixed>> $scenes */
-            $scenes = is_array($decoded['scenes'] ?? null) ? array_values($decoded['scenes']) : [];
-            /** @var array<string, mixed> $metadata */
-            $metadata = is_array($decoded['metadata'] ?? null) ? $decoded['metadata'] : [];
-
-            $this->state_scenes = $scenes;
-            $this->state_metadata = $metadata;
-        }
-
-        if (isset($params['initial_scene']) && is_numeric($params['initial_scene'])) {
-            $this->state_current_scene_index = max(0, (int) $params['initial_scene']);
-        }
-    }
-
-    // ========================================================================
-    // GETTERS FOR TESTING AND EMBEDDING
-    // ========================================================================
 
     public function getCurrentSceneIndex(): int
     {

@@ -38,7 +38,7 @@ class GenerateReelStructureJob implements ShouldQueue
             $decoded = $this->parseAndValidateScript($jsonString);
             [$sceneCount, $totalSeconds] = $this->calculateMetrics($decoded);
 
-            $this->reportCompletedStatus($this->postId,$sceneCount, $totalSeconds, $jsonString, $decoded);
+            $this->reportCompletedStatus($this->postId, $sceneCount, $totalSeconds, $decoded);
         } catch (\Throwable $e) {
             Log::error('[GenerateReelPreviewJob] Error: ' . $e->getMessage());
         } finally {
@@ -99,14 +99,12 @@ class GenerateReelStructureJob implements ShouldQueue
         int $postId,
         int $sceneCount,
         int $totalSeconds,
-        string $jsonString,
         array $decoded,
     ): void {
         $reelCompletedStatus = ReelJobStatusDTO::completed(
             $postId,
             $sceneCount,
             $totalSeconds,
-            $jsonString,
             $decoded,
         );
         // Persistir el estado en la tabla `posts` usando el servicio

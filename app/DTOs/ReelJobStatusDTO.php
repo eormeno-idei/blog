@@ -75,7 +75,6 @@ final readonly class ReelJobStatusDTO
         int $postId,
         int $sceneCount,
         int $durationSeconds,
-        string $jsonScript,
         array $parsedScript,
     ): self {
         return new self(
@@ -83,7 +82,6 @@ final readonly class ReelJobStatusDTO
             status: 'completed',
             sceneCount: $sceneCount,
             durationSeconds: $durationSeconds,
-            jsonScript: $jsonScript,
             parsedScript: $parsedScript
         );
     }

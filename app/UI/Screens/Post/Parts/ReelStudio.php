@@ -72,12 +72,21 @@ class ReelStudio extends Screen
         $this->updateScenePreview();
     }
 
-    public function onAiFirstStructureCompleted(int $postId, string $json): void
+    public function onGeneratingReel(int $postId): void
+    {
+        $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
+            'status' => 'generating_script',
+            'script' => [],
+        ]);
+    }
+
+    public function onAiFirstStructureCompleted(int $postId, array $script): void
     {
         $this->edit_panel->visible(true);
         $this->first_draft_panel->visible(false);
         $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
-            'post_id' => $postId,
+            'status' => 'completed',
+            'script' => $script,
         ]);
     }
 

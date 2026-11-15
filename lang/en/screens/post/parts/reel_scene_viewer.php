@@ -4,6 +4,7 @@ return [
     'labels' => [
         'empty_title' => 'Your Reel structure will appear here',
         'empty_subtitle' => "Click 'Generate First Structure' for AI to process your information.",
+        'generating_title' => 'Generating Reel Structure...',
     ],
     'nav' => [
         'counter' => 'Scene :current of :total',
