@@ -620,6 +620,78 @@ body {
     margin-inline-start: 0.4em;
 }
 
+/* NewLabel & Label Animations */
+@keyframes usimLabelFade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes usimLabelSlide {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes usimLabelBounce {
+    0%, 100% {
+        transform: translateY(0);
+        animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+    50% {
+        transform: translateY(-6px);
+        animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+}
+
+@keyframes usimLabelPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(0.97);
+    }
+}
+
+.ui-label.anim-fade,
+.ui-label.anim-fadeIn,
+.ui-html-view.anim-fade,
+.ui-html-view.anim-fadeIn {
+    animation: usimLabelFade 0.45s ease-out both;
+}
+
+.ui-label.anim-slide,
+.ui-html-view.anim-slide {
+    animation: usimLabelSlide 0.4s ease-out both;
+}
+
+.ui-label.anim-bounce,
+.ui-html-view.anim-bounce {
+    animation: usimLabelBounce 1s infinite;
+}
+
+.ui-label.anim-pulse,
+.ui-html-view.anim-pulse {
+    animation: usimLabelPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-label[class*="anim-"],
+    .ui-html-view[class*="anim-"] {
+        animation: none;
+    }
+}
+
 /* Input Styles */
 .ui-input-group {
     display: flex;

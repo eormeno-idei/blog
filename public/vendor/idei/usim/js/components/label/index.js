@@ -32,6 +32,18 @@ class UsimLabelComponent extends UIComponent {
         }
 
         this.element = target;
+
+        if (changes.animation !== undefined) {
+            Array.from(target.classList).forEach(cls => {
+                if (cls.startsWith('anim-')) {
+                    target.classList.remove(cls);
+                }
+            });
+            if (changes.animation && changes.animation !== 'none') {
+                void target.offsetWidth;
+            }
+        }
+
         this._applyPresentation(target);
 
         if (
@@ -47,9 +59,12 @@ class UsimLabelComponent extends UIComponent {
 
     _applyPresentation(label) {
         const hasHtml = this.config.html !== undefined && this.config.html !== null;
+        const animation = this.config.animation || 'none';
 
         if (hasHtml) {
-            label.className = 'ui-html-view';
+            label.className = animation && animation !== 'none'
+                ? `ui-html-view anim-${animation}`
+                : 'ui-html-view';
             return;
         }
 
@@ -59,7 +74,6 @@ class UsimLabelComponent extends UIComponent {
         const fontWeight = this.config.font_weight || 'normal';
         const textTransform = this.config.text_transform || 'none';
         const textAlign = this.config.text_align || 'left';
-        const animation = this.config.animation || 'none';
 
         let classes = `ui-label ${style} variant-${variant} size-${size} weight-${fontWeight}`;
 
