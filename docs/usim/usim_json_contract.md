@@ -348,13 +348,16 @@ Campos soportados:
 - `search_term` (string, opcional): Término de búsqueda inicial o actual.
 - `min_search_chars` (int, opcional): Mínimo de caracteres antes de disparar consulta remota (default: `0`).
 - `debounce` (int, opcional): Tiempo de espera en ms al escribir en el buscador (default: `250`).
-- `action` (string, opcional): Nombre de la acción de consulta (invoca `Screen::get<Action>()` vía `GET /api/ui-data` pasando `{ search, ...parameters }`).
+- `action` (string, opcional): Nombre de la acción de consulta (invoca `Screen::get<Action>()` vía `GET /api/ui-data` pasando `{ search, ...parameters }`, o bien utiliza el identificador interno `__usim_item_list_service__:<target>:list` cuando el componente está vinculado a un servicio `Listable`).
 - `parameters` (object, opcional): Parámetros adicionales enviados en la consulta HTTP GET.
 - `auto_fetch` (bool, opcional): Si es `true` y tiene `action`, consulta `GET /api/ui-data` al montarse si `items` está vacío.
-- `reload` (bool, opcional): Si se envía `true` en un delta, fuerza al frontend a re-ejecutar `fetchData()` contra `GET /api/ui-data`.
-- `creatable`, `editable`, `deletable` (bool, opcional): Habilitan las operaciones CRUD en la lista.
+- `reload` / `reload_token` (bool / int, opcional): Cuando cambia/se envía, fuerza al frontend a re-ejecutar `fetchData()` contra `GET /api/ui-data`.
+- `service` (string, opcional): FQCN del servicio vinculado en backend (implementando `Listable`, `Creatable`, `Updatable`, `Deletable` y/o `BulkDeletable`), desde el cual el backend infiere capacidades CRUD y endpoints de servicio por defecto.
+- `service_feedback` (bool, opcional): Controla la emisión automática de toasts en mutaciones atendidas por el servicio (default: `true`).
+- `on_service_mutated` (string|object, opcional): Handler en la `Screen` notificado tras una mutación exitosa del servicio (`create`, `update`, `delete`, `bulk_delete`).
+- `creatable`, `editable`, `deletable`, `bulk_deletable` (bool, opcional): Habilitan las operaciones CRUD en la lista.
 - `inline_create`, `inline_edit` (bool, opcional): Controlan si el alta y la edición se realizan mediante inputs inline dentro del componente (`true`) o disparan directamente el evento al backend para abrir un modal (`false`).
-- `on_select`, `on_create`, `on_update`, `on_edit`, `on_delete`, `on_bulk_delete`, `on_search` (string, opcional): Nombres de las acciones (`snake_case`) invocadas vía `POST /api/ui-event`.
+- `on_select`, `on_create`, `on_update`, `on_edit`, `on_delete`, `on_bulk_delete`, `on_search` (string|object, opcional): Acciones invocadas vía `POST /api/ui-event` (ya sea un handler en `Screen` o una acción `__usim_item_list_service__:<target>:<op>` atendida por el servicio).
 
 ## 5.5 Contrato agnóstico de íconos (`button`, `new_label`, `label`, celdas de `table`)
 

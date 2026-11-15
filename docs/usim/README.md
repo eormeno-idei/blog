@@ -15,6 +15,7 @@ Eso publicará todas estas guías en `docs/usim/` para consulta local del equipo
 | Documento | Descripción |
 |---|---|
 | **[DECLARATIVE_LAYOUTS_AND_I18N.md](DECLARATIVE_LAYOUTS_AND_I18N.md)** | Referencia completa de `.layout.yaml`, CSS Grid, slots, escala `Spacing`, `Size`, `Screen::layoutContainer()`, `startingUI()` opcional e i18n en dos niveles (`t:` / `.clave` + `i18n: auto`) |
+| **[ITEM_LIST_SERVICE_WIRING.md](ITEM_LIST_SERVICE_WIRING.md)** | Cableado de `ItemList` mediante contratos de capacidades (`Listable`, `Creatable`, `Updatable`, `Deletable`, `BulkDeletable`), soporte YAML `service:` y despacho en ciclo de vida |
 | **[ICONS_GUIDE.md](ICONS_GUIDE.md)** | Sistema agnóstico de íconos, biblioteca estándar de 80 SVGs (`--tag=usim-icons`), íconos propios (`public/images/icons/`), `UsimIconRegistry` y adaptación automática a temas y `ContainerAppearance` |
 | **[USIM_EVENTS_SYSTEM.md](USIM_EVENTS_SYSTEM.md)** | Arquitectura completa de eventos UI y de dominio, lifecycle handlers `on*()`, diffing e integración |
 | **[SCREEN_TESTING_GUIDE.md](SCREEN_TESTING_GUIDE.md)** | Guía práctica para testear Screens con `ScreenTestHarness`, `uiScenario()` y Pest |

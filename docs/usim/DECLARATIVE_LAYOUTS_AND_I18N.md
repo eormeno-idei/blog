@@ -28,7 +28,7 @@
    - [6.7 Reglas de Precedencia y Seguridad (`isConfigDefault`)](#67-reglas-de-precedencia-y-seguridad-isconfigdefault)
 7. [Ejemplos Completos de Producción](#7-ejemplos-completos-de-producción)
    - [7.1 Pantalla Declarativa Pura (`FormDemo`, sin `startingUI`)](#71-pantalla-declarativa-pura-formdemo-sin-startingui)
-   - [7.2 Pantalla Declarativa + Datos Dinámicos (`ItemListDemo` con `layoutContainer()`)](#72-pantalla-declarativa--datos-dinámicos-itemlistdemo-con-layoutcontainer)
+   - [7.2 Pantalla Declarativa + `ItemList` Cableado a Servicio (`ItemListDemo` con `layoutContainer()`)](#72-pantalla-declarativa--itemlist-cableado-a-servicio-itemlistdemo-con-layoutcontainer)
    - [7.3 Dashboard Multi-Panel con `embedToSlot()`](#73-dashboard-multi-panel-con-embedtoslot)
 
 ---
@@ -278,8 +278,8 @@ Cualquier otra clave en la regla de un hijo (que no sea `slot`, `span`, `at`, `r
    - `scrollbar: always` → `->scrollbar('always')`
    - `create_inline: false` → `->createInline(false)`
 
-> **Orden determinista de flags CRUD en `ItemList`:**
-> `ContainerLayoutLoader::orderCustomRuleProperties()` garantiza que flags compuestos (`creatable`, `editable`, `deletable`) se apliquen siempre **antes** que modificadores individuales (`create_inline`, `edit_inline`, `allow_bulk_delete`, `create_placeholder`, etc.), haciendo que el orden de las claves en YAML nunca sobrescriba tus ajustes.
+> **Orden determinista de servicio y flags CRUD en `ItemList`:**
+> `ContainerLayoutLoader::orderCustomRuleProperties()` garantiza que `service` y los flags compuestos (`creatable`, `editable`, `deletable`) se apliquen siempre **antes** que modificadores individuales (`create_inline`, `edit_inline`, `allow_bulk_delete`, `on_delete`, `on_service_mutated`, etc.), haciendo que el orden de las claves en YAML nunca sobrescriba tus ajustes.
 
 ---
 
@@ -481,7 +481,7 @@ class FormDemo extends Screen
 }
 ```
 
-### 7.2 Pantalla Declarativa + Datos Dinámicos (`ItemListDemo` con `layoutContainer()`)
+### 7.2 Pantalla Declarativa + `ItemList` Cableado a Servicio (`ItemListDemo` con `layoutContainer()`)
 
 **`app/UI/Screens/Demo/item-list-demo.layout.yaml`:**
 ```yaml
@@ -493,36 +493,27 @@ i18n: auto
 
 grid:
   cols: 12
-  gap: m
+  gap: s
   padding: l
   default_span: 12
 
   children:
-    - item_list_demo_title:   { style: default }
-    - item_list_demo_intro:   { style: info }
+    - item_list_demo_title:   { style: default, text_align: center, size: xl, font_weight: bold }
+    - item_list_demo_intro:   { style: info, text_align: center, size: large, font_weight: normal }
     - sel_selection_mode:     { span: 5, on_change: selection_mode_changed }
     - chk_confirm_delete:     { span: 4, align: center, on_change: toggle_confirm_delete }
     - btn_reset_catalog:      { span: 3, justify: end, align: center, style: secondary, icon: refresh, action: reset_catalog }
     - movies_list:
-        action: movies
-        auto_fetch: true
+        service: App\Services\Movie\SessionMovieCatalogService
         keep_selected_visible: true
         searchable: true
         debounce: 250
-        max_height: 320
+        max_height: 420
         scrollbar: always
-        variant: card
-        creatable: true
-        create_inline: true
-        editable: true
-        edit_inline: true
-        deletable: true
-        allow_bulk_delete: true
+        variant: plain
+        selection_mode: multiple
         on_select: movie_selected
-        on_create: movie_created
-        on_update: movie_updated
-        on_delete: movie_deleted
-        on_bulk_delete: movies_bulk_deleted
+        on_service_mutated: catalog_mutated
     - lbl_selection_summary:  { span: 9, align: center, style: default }
     - btn_confirm_marathon:   { span: 3, justify: end, align: center, style: primary, action: confirm_marathon }
 ```
@@ -531,8 +522,6 @@ grid:
 ```php
     protected function startingUI(): Container
     {
-        $this->ensureCatalogLoaded();
-
         $this->sel_selection_mode
             ->options([
                 ['value' => SelectionMode::MULTIPLE->value, 'label' => $this->t('.selection_mode.options.multiple')],
@@ -543,12 +532,20 @@ grid:
 
         $this->chk_confirm_delete->checked($this->store_confirm_delete);
 
-        $initialSelected = $this->store_movies !== [] ? [$this->store_movies[0]['id']] : [];
+        $items = $this->movies_list->getItems();
+        $firstRawId = $items[0]['id'] ?? null;
+        /** @var list<int|string> $initialSelected */
+        $initialSelected = (is_int($firstRawId) || is_string($firstRawId)) ? [$firstRawId] : [];
 
         $this->movies_list
-            ->items($this->store_movies)
             ->selectionMode(SelectionMode::from($this->store_selection_mode))
             ->select($initialSelected);
+
+        if ($this->store_confirm_delete) {
+            $this->movies_list
+                ->onDelete('movie_deleted')
+                ->onBulkDelete('movies_bulk_deleted');
+        }
 
         $this->lbl_selection_summary->text($this->formatSelectionSummary($initialSelected));
 

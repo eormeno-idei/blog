@@ -547,19 +547,25 @@
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
-    opacity: 0.45;
-    transition: opacity 0.15s ease;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
 .usim-item-list-row:hover .usim-item-list-row-actions,
-.usim-item-list-row:focus-within .usim-item-list-row-actions,
-.usim-item-list-row.is-selected .usim-item-list-row-actions {
+.usim-item-list-row:focus-visible .usim-item-list-row-actions,
+.usim-item-list-row-actions:focus-within {
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 @media (hover: none) {
     .usim-item-list-row-actions {
         opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
     }
 }
 
@@ -577,6 +583,22 @@
     cursor: pointer;
     padding: 0;
     transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
+}
+
+.usim-item-list-action-icon {
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+.usim-item-list-action-icon.ui-icon-text {
+    width: auto;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .usim-item-list-action-btn:hover {

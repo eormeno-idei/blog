@@ -925,7 +925,7 @@ class UsimItemListComponent extends UIComponent {
                 editBtn.className = 'usim-item-list-action-btn edit';
                 editBtn.title = 'Editar';
                 editBtn.setAttribute('aria-label', `Editar ${item.label}`);
-                editBtn.textContent = '✏️';
+                editBtn.appendChild(this._createActionIcon('edit', '✏️'));
                 editBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this._handleRowEditClicked(item);
@@ -939,7 +939,7 @@ class UsimItemListComponent extends UIComponent {
                 delBtn.className = 'usim-item-list-action-btn delete';
                 delBtn.title = 'Eliminar';
                 delBtn.setAttribute('aria-label', `Eliminar ${item.label}`);
-                delBtn.textContent = '🗑️';
+                delBtn.appendChild(this._createActionIcon('trash', '🗑️'));
                 delBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this._handleRowDeleteClicked(item);
@@ -1342,6 +1342,24 @@ class UsimItemListComponent extends UIComponent {
         };
 
         await this.triggerAction(action, parameters, eventType);
+    }
+
+    _createActionIcon(iconName, fallbackGlyph = '') {
+        const helpers = window.USIM_COMPONENT_HELPERS;
+        if (helpers?.createIconElement) {
+            const iconElement = helpers.createIconElement(iconName, {
+                baseClass: 'usim-item-list-action-icon',
+            });
+            if (iconElement) {
+                return iconElement;
+            }
+        }
+
+        const fallback = document.createElement('span');
+        fallback.className = 'usim-item-list-action-icon ui-icon-text';
+        fallback.setAttribute('aria-hidden', 'true');
+        fallback.textContent = fallbackGlyph;
+        return fallback;
     }
 
     _escapeHtml(text) {
