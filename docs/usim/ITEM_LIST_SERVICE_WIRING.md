@@ -12,19 +12,24 @@ Los contratos siguen el Principio de Segregación de Interfaces (ISP): un servic
 
 | Contrato | Método requerido | Capacidad habilitada en `ItemList` |
 |---|---|---|
-| `Listable` | `public function list(string $search = '', array $context = []): array` | Carga inicial de ítems + búsqueda remota vía `GET /api/ui-data` |
-| `Creatable` | `public function create(string $label, array $payload = []): array` | Alta inline (`creatable = true`) y ruta automática `on_create` |
-| `Updatable` | `public function update(int\|string $id, string $label, array $payload = []): ?array` | Edición inline (`editable = true`) y ruta automática `on_update` |
+| `Listable` | `public function list(string $search = '', array $context = []): Collection` | Carga inicial de ítems (`Collection<int, ListItemDTO>`) + búsqueda remota vía `GET /api/ui-data` |
+| `Creatable` | `public function create(string $label, array $payload = []): ListItemDTO` | Alta inline (`creatable = true`) y ruta automática `on_create` |
+| `Updatable` | `public function update(int\|string $id, string $label, array $payload = []): ?ListItemDTO` | Edición inline (`editable = true`) y ruta automática `on_update` |
 | `Deletable` | `public function delete(int\|string $id): bool` | Eliminación por fila (`deletable = true`), `on_delete` y fallback de `bulk_delete` |
 | `BulkDeletable` | `public function deleteMany(array $ids): int` | Eliminación masiva en lote (`bulk_deletable = true`) y `on_bulk_delete` |
 
 > **Regla de fallback para eliminación masiva:** si el servicio implementa `Deletable` pero no `BulkDeletable`, `ItemList` igualmente habilita `bulk_deletable` e itera `delete($id)` salvo que se deshabilite explícitamente con `allowBulkDelete(false)` / `allow_bulk_delete: false`.
 
-### Contrato de datos devueltos
+### Contrato de datos devueltos (`Idei\Usim\DTOs\ListItemDTO`)
 
-- `Listable::list()` debe devolver una lista de arreglos normalizables por `ItemList` (`id`, `label`, `subtitle?`, `icon?`, `badge?`, `badge_style?`, `avatar?`, `disabled?`, `meta?`).
-- `Creatable::create()` devuelve el ítem creado (normalizado automáticamente con `ItemList::normalizeSingleItem()`).
-- `Updatable::update()` devuelve el ítem actualizado o `null` si el ID no existe.
+- `ListItemDTO` modela la representación visual e interacción de cada fila sin duplicar estado de selección (`selected` permanece en `ItemList::select()` / `selected_items`):
+  - `id: int|string`, `label: string`, `subtitle: ?string = null`, `icon: ?string = null`
+  - `badge: ?string = null`, `badgeStyle: Style = Style::DEFAULT`
+  - `style: Style = Style::DEFAULT` (`default`, `primary`, `secondary`, `success`, `danger`, `warning`, `info`, `muted`)
+  - `disabled: bool = false`, `editable: bool = true`, `deletable: bool = true`, `meta: array = []`
+- `Listable::list()` devuelve `Illuminate\Support\Collection<int, ListItemDTO>`.
+- `Creatable::create()` devuelve el `ListItemDTO` creado.
+- `Updatable::update()` devuelve el `ListItemDTO` actualizado o `null` si el ID no existe.
 - `Deletable::delete()` devuelve `bool` (`true` si eliminó el registro).
 - `BulkDeletable::deleteMany()` devuelve la cantidad entera (`int`) de elementos eliminados.
 

@@ -395,6 +395,40 @@
     background: var(--usim-table-row-hover-bg, var(--usim-color-surface-muted));
 }
 
+.usim-item-list-row.style-primary {
+    border-left-color: var(--usim-color-primary, #3498db);
+    background: rgba(52, 152, 219, 0.05);
+}
+
+.usim-item-list-row.style-info {
+    border-left-color: var(--usim-color-info, #17a2b8);
+    background: var(--usim-label-info-bg, rgba(52, 152, 219, 0.08));
+}
+
+.usim-item-list-row.style-success {
+    border-left-color: var(--usim-color-success, #2ecc71);
+    background: var(--usim-label-success-bg, rgba(46, 204, 113, 0.08));
+}
+
+.usim-item-list-row.style-warning {
+    border-left-color: var(--usim-color-warning, #f39c12);
+    background: var(--usim-label-warning-bg, rgba(243, 156, 18, 0.1));
+}
+
+.usim-item-list-row.style-danger {
+    border-left-color: var(--usim-color-danger, #e74c3c);
+    background: var(--usim-label-error-bg, rgba(231, 76, 60, 0.09));
+}
+
+.usim-item-list-row.style-secondary {
+    border-left-color: var(--usim-color-border-strong, #94a3b8);
+}
+
+.usim-item-list-row.style-muted .usim-item-list-row-label,
+.usim-item-list-row.style-muted .usim-item-list-row-subtitle {
+    color: var(--usim-color-text-muted);
+}
+
 .usim-item-list-row.is-selected {
     background: var(--usim-table-row-selected-bg, rgba(52, 152, 219, 0.14));
     border-left-color: var(--usim-color-primary, #3498db);

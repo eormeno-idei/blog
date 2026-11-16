@@ -338,7 +338,7 @@ Campos soportados:
 - `parent` (string|int): ID del contenedor padre.
 - `name` (string): Identificador funcional y nombre del campo para recolección automática en formularios (`name` en selección simple, `name[]` en selección múltiple).
 - `label` (string, opcional): Título del componente.
-- `items` (array, opcional): Lista de objetos de ítem `{ id, label, subtitle?, badge?, badge_style?, icon?, avatar?, disabled?, actions?, meta? }`.
+- `items` (array, opcional): Lista de objetos de ítem `{ id, label, subtitle?, style?, badge?, badge_style?, icon?, avatar?, disabled?, editable?, deletable?, actions?, meta? }`. Los estilos semánticos de fila (`style`) y de badge (`badge_style`) utilizan los valores de `Idei\Usim\Enums\Style` (`default`, `primary`, `secondary`, `success`, `danger`, `warning`, `info`, `muted`).
 - `selection_mode` (string, opcional): `"none"` | `"single"` | `"multiple"` (default: `"none"`).
 - `selected_items` (array, opcional): Lista de IDs seleccionados (`list<int|string>`).
 - `keep_selected_visible` (bool, opcional): Si es `true`, mantiene visibles y fijados los ítems seleccionados aunque una búsqueda posterior en `/api/ui-data` no los devuelva.

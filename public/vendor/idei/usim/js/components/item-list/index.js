@@ -82,6 +82,12 @@ class UsimItemListComponent extends UIComponent {
         return normalized;
     }
 
+    _normalizeStyleToken(value) {
+        const normalized = String(value || 'default').toLowerCase().trim();
+        const allowed = ['default', 'primary', 'secondary', 'success', 'danger', 'warning', 'info', 'muted'];
+        return allowed.includes(normalized) ? normalized : 'default';
+    }
+
     _normalizeSingleItem(item, fallbackIdx = 0) {
         if (item !== null && typeof item === 'object') {
             const rawId = item.id ?? item.value ?? item._model_id ?? fallbackIdx;
@@ -96,7 +102,8 @@ class UsimItemListComponent extends UIComponent {
                 subtitle: rawSubtitle !== null && rawSubtitle !== undefined && rawSubtitle !== '' ? String(rawSubtitle) : null,
                 icon: item.icon ? String(item.icon) : null,
                 badge: item.badge !== null && item.badge !== undefined && item.badge !== '' ? String(item.badge) : null,
-                badge_style: item.badge_style ? String(item.badge_style) : 'default',
+                badge_style: this._normalizeStyleToken(item.badge_style),
+                style: this._normalizeStyleToken(item.style),
                 disabled: Boolean(item.disabled),
                 editable: item.editable !== undefined ? Boolean(item.editable) : true,
                 deletable: item.deletable !== undefined ? Boolean(item.deletable) : true,
@@ -111,6 +118,7 @@ class UsimItemListComponent extends UIComponent {
             icon: null,
             badge: null,
             badge_style: 'default',
+            style: 'default',
             disabled: false,
             editable: true,
             deletable: true,
@@ -763,6 +771,9 @@ class UsimItemListComponent extends UIComponent {
         row.setAttribute('role', 'option');
         row.setAttribute('aria-selected', isSelected ? 'true' : 'false');
 
+        if (item.style && item.style !== 'default') {
+            row.classList.add(`style-${item.style}`);
+        }
         if (mode !== 'none' && !isDisabled && !isEditing) {
             row.classList.add('is-selectable');
             row.tabIndex = 0;
