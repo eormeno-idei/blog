@@ -21,6 +21,12 @@ Eso publicará todas estas guías en `docs/usim/` para consulta local del equipo
 | **[SCREEN_TESTING_GUIDE.md](SCREEN_TESTING_GUIDE.md)** | Guía práctica para testear Screens con `ScreenTestHarness`, `uiScenario()` y Pest |
 | **[package-update-and-consumer-upgrade-guide.md](package-update-and-consumer-upgrade-guide.md)** | Cómo actualizar `idei/usim` en aplicaciones consumidoras de forma segura |
 
+## Guidelines / Casos de Uso Prácticos
+
+| Documento | Descripción |
+|---|---|
+| **[guidelines/ITEM_LIST_GUIDELINES.md](guidelines/ITEM_LIST_GUIDELINES.md)** | Casos de uso prácticos para `ItemList`: solo lectura con `Listable`, filtrado por contexto y claves foráneas (`parameters`), refresco dinámico y sincronización reactiva (`onServiceMutated`) |
+
 ## Especificación del Protocolo y Clientes Multiplataforma
 
 | Documento | Descripción |
