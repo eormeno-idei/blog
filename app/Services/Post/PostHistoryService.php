@@ -89,6 +89,7 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
         $icon = null;
         $label = '';
         $subtitle = '';
+        $disabled = false;
 
         $type = $event->event_type;
 
@@ -141,6 +142,7 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
                 $badge = 'Solicitado';
                 $badgeStyle = Style::INFO;
                 $subtitle = $event->extra_instructions ?? $event->summary ?? '';
+                $disabled = true;
                 break;
 
             case PostHistoryEventType::GENERATING_SCRIPT:
@@ -149,6 +151,7 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
                 $badge = 'En proceso';
                 $badgeStyle = Style::INFO;
                 $subtitle = 'Generando estructura con IA';
+                $disabled = true;
                 break;
 
             case PostHistoryEventType::GENERATION_FAILED:
@@ -180,6 +183,7 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
             icon: $icon,
             badge: $badge,
             badgeStyle: $badgeStyle,
+            disabled: $disabled
         );
     }
 
@@ -233,10 +237,14 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
             throw new \InvalidArgumentException('El evento anterior debe ser de tipo GENERATING_SCRIPT.');
         }
 
+        $lastVersionEvent = $this->getLastGeneratedVersionEvent(null, $previousEvent->post_id);
+        $nextVersion = $lastVersionEvent ? ($lastVersionEvent->version ?? 1) + 1 : 1;
+
         return $this->postHistoryRepository->create([
             'post_id' => $previousEvent->post_id,
             'event_id' => $previousEvent->id,
             'event_type' => PostHistoryEventType::VERSION_GENERATED,
+            'version' => $nextVersion,
             'reel_script' => $reelScript,
         ]);
     }

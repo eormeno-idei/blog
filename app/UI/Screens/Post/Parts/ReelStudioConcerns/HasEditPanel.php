@@ -4,18 +4,17 @@ namespace App\UI\Screens\Post\Parts\ReelStudioConcerns;
 
 use App\DTOs\Posts\PostHistoryEventDTO;
 use App\Services\Post\PostHistoryService;
-use BackedEnum;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\ItemList;
 use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\SelectionMode;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Auth;
 
 trait HasEditPanel
 {
@@ -35,9 +34,6 @@ trait HasEditPanel
 
     protected Button $btn_generate_reel;
 
-    /**
-     * Configure the edit panel and attach its declarative layout.
-     */
     protected function buildEditReelPanel(int $post_id): Container
     {
         $this->configureStatusRow();
@@ -60,9 +56,6 @@ trait HasEditPanel
         return $container;
     }
 
-    /**
-     * Configure horizontal status row container.
-     */
     protected function configureStatusRow(): Container
     {
         return $this->cnt_status_row
@@ -95,13 +88,18 @@ trait HasEditPanel
             )->add(
                 $this->btn_generate_reel
                     ->icon('send')
+                    ->action('onGenerateReel')
                     ->style('primary')
             );
     }
 
-    /**
-     * Configure history list component with service wiring and context parameters.
-     */
+    public function onGenerateReel(int $post_id, ?string $input_prompt = null): void
+    {
+        if (empty($input_prompt)) return;
+
+        $this->postHistoryService->requestGenerateReelScript(Auth::user(), $post_id, $input_prompt);
+    }
+
     protected function configureHistoryList(int $post_id): void
     {
         $this->lst_history
@@ -110,9 +108,6 @@ trait HasEditPanel
             ->service(PostHistoryService::class);
     }
 
-    /**
-     * Select initial history event in the list if none is currently selected.
-     */
     protected function selectInitialHistoryItem(): void
     {
         if (empty($this->lst_history->getSelectedIds())) {
@@ -123,9 +118,6 @@ trait HasEditPanel
         }
     }
 
-    /**
-     * Load history events for the current post, delegating to the Listable service.
-     */
     protected function loadHistoryItems(?int $postId = null): void
     {
         $resolvedPostId = $postId ?? ($this->state_post_id ?? 0);
@@ -133,9 +125,6 @@ trait HasEditPanel
         $this->selectInitialHistoryItem();
     }
 
-    /**
-     * Programmatically refresh history items from the PostHistoryService.
-     */
     public function refreshHistoryList(?int $postId = null): void
     {
         $context = $postId !== null ? ['post_id' => $postId] : [];

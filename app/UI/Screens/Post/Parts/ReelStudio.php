@@ -10,7 +10,6 @@ use Idei\Usim\Components\Container;
 use Idei\Usim\Screen;
 use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class ReelStudio extends Screen
 {
@@ -24,7 +23,6 @@ class ReelStudio extends Screen
 
     protected int $state_current_scene_index = 0;
 
-    /** @var array<int, array<string, mixed>> */
     protected array $state_scenes = [];
 
     public function __construct(
@@ -41,7 +39,6 @@ class ReelStudio extends Screen
 
     protected function startingUI(int $post_id = 0): Container
     {
-        $this->loadScenesFromPost($post_id);
         $this->buildFirstDraftPanel();
         $this->buildEditReelPanel($post_id);
 
@@ -54,13 +51,9 @@ class ReelStudio extends Screen
             ->plain()
             ->padding(Spacing::zero());
 
-        return $this->layoutContainer();
-    }
-
-    protected function postLoadUI(int $post_id = 0): void
-    {
-        $this->loadScenesFromPost($post_id);
         $this->updateScenePreview($post_id);
+
+        return $this->layoutContainer();
     }
 
     public function onGeneratingReel(int $postId): void
@@ -84,35 +77,20 @@ class ReelStudio extends Screen
 
         $this->edit_panel->visible(true);
         $this->first_draft_panel->visible(false);
+        $this->loadHistoryItems($postId);
         $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'completed',
             'script' => $resolvedScript ?? [],
         ]);
     }
 
-    protected function loadScenesFromPost(int $postId): void
-    {
-        $lastEvent = $this->postHistoryService->getLastGeneratedVersionEvent(Auth::user(), $postId);
-        $this->state_scenes = $lastEvent?->reel_script ?? [];
-    }
-
     protected function updateScenePreview(int $post_id): void
     {
-        $params = [];
-        if (! empty($this->state_scenes)) {
-            $params = [
-                'metadata' => [
-                    'autor' => 'UNSJ',
-                    'tema' => 'Reel Preview',
-                    'duracion_total_segundos' => 30,
-                ],
-                'scenes' => $this->state_scenes,
-            ];
-        }
+        $lastEvent = $this->postHistoryService->getLastGeneratedVersionEvent(Auth::user(), $post_id);
 
         $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'completed',
-            'script' => $this->state_scenes
+            'script' => $lastEvent?->reel_script ?? []
         ]);
     }
 }
