@@ -10,6 +10,6 @@ grid:
   gap: m
 
   children:
-    - first_draft_panel:      { at: [1, 1], align: stretch }
-    - edit_panel:             { at: [1, 1], align: stretch }
-    - reel_scene_viewer_slot: { at: [1, 2], align: stretch, justify: stretch, width: full }
+    - first_draft_panel:      { at: [1, 1], min_width: 400, align: stretch }
+    - edit_panel:             { at: [1, 1], min_width: 400, align: stretch }
+    - reel_scene_viewer_slot: { at: [1, 2], min_width: 400, align: stretch, justify: stretch, width: full }

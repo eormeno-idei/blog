@@ -3,24 +3,37 @@
 namespace App\UI\Screens\Post\Parts\ReelStudioConcerns;
 
 use App\DTOs\Posts\PostHistoryEventDTO;
-use App\Enums\PostHistoryEventType;
-use App\Repositories\Contracts\PostHistoryRepositoryInterface;
-use App\Repositories\Eloquent\PostHistoryRepository;
+use App\Services\Post\PostHistoryService;
+use BackedEnum;
+use Idei\Usim\Components\Input;
+use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Components\ItemList;
 use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Enums\AlignItems;
+use Idei\Usim\Enums\JustifyContent;
 use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\SelectionMode;
+use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
 
 trait HasEditPanel
 {
     protected NewLabel $lbl_post_title;
+
     protected Container $cnt_status_row;
+
     protected NewLabel $lbl_status_prefix;
+
     protected NewLabel $lbl_status_badge;
+
     protected ItemList $lst_history;
+
+    protected Container $cnt_prompt_input_row;
+
+    protected Input $input_prompt;
+
+    protected Button $btn_generate_reel;
 
     /**
      * Configure the edit panel and attach its declarative layout.
@@ -28,18 +41,23 @@ trait HasEditPanel
     protected function buildEditReelPanel(int $post_id): Container
     {
         $this->configureStatusRow();
-        $this->loadHistoryItems();
+        $this->configureHistoryList($post_id);
+        $this->configurePromptInputRow();
 
         $post = $this->postService->findById($post_id);
-        if ($post !== null && !empty($post->title)) {
+        if ($post !== null && ! empty($post->title)) {
             $this->lbl_post_title->text($post->title);
         }
         if ($post !== null) {
             $this->lbl_status_badge->text(strtoupper($post->statusValue()));
         }
 
-        return $this->edit_panel
+        $container = $this->edit_panel
             ->layoutFile('reel-studio-edit.layout.yaml');
+
+        $this->selectInitialHistoryItem();
+
+        return $container;
     }
 
     /**
@@ -48,14 +66,14 @@ trait HasEditPanel
     protected function configureStatusRow(): Container
     {
         return $this->cnt_status_row
-            ->plain()
+            ->appearance('elevated')
             ->layout(LayoutType::HORIZONTAL)
             ->alignItems(AlignItems::CENTER)
             ->gap(Spacing::xs())
             ->add(
                 $this->lbl_status_prefix
                     ->text($this->t('.status_prefix', [], 'ESTADO:'))
-                    ->muted()
+                    ->bold()
                     ->small()
             )
             ->add(
@@ -67,70 +85,66 @@ trait HasEditPanel
             );
     }
 
-    /**
-     * Load history events for the current post, falling back to default preview events.
-     */
-    protected function loadHistoryItems(): void
+    protected function configurePromptInputRow(): Container
     {
-        $items = [];
-        $postId = $this->state_post_id ?? 0;
+        return $this->cnt_prompt_input_row
+            ->add(
+                $this->input_prompt
+                    ->placeholder(t('.prompt_placeholder'))
+                    ->width(Size::half())
+            )->add(
+                $this->btn_generate_reel
+                    ->icon('send')
+                    ->style('primary')
+            );
+    }
 
-        if ($postId > 0) {
-            /** @var PostHistoryRepositoryInterface $historyRepo */
-            $historyRepo = app()->bound(PostHistoryRepositoryInterface::class)
-                ? app(PostHistoryRepositoryInterface::class)
-                : app(PostHistoryRepository::class);
-
-            $events = $historyRepo->get(['post_id' => $postId]);
-            if ($events->isNotEmpty()) {
-                foreach ($events as $event) {
-                    $items[] = $this->formatHistoryEventItem($event);
-                }
-            }
-        }
-
-        if (empty($items)) {
-            $items = $this->getDefaultHistoryItems();
-        }
-
+    /**
+     * Configure history list component with service wiring and context parameters.
+     */
+    protected function configureHistoryList(int $post_id): void
+    {
         $this->lst_history
             ->selectionMode(SelectionMode::SINGLE)
-            ->items($items);
+            ->parameters(['post_id' => $post_id])
+            ->service(PostHistoryService::class);
+    }
 
-        if (!empty($items)) {
-            $this->lst_history->select([(string) $items[0]['id']]);
+    /**
+     * Select initial history event in the list if none is currently selected.
+     */
+    protected function selectInitialHistoryItem(): void
+    {
+        if (empty($this->lst_history->getSelectedIds())) {
+            $items = $this->lst_history->getItems();
+            if (! empty($items)) {
+                $this->lst_history->select([(string) $items[0]['id']]);
+            }
         }
     }
 
     /**
-     * Default history items matching the design mock when no stored events exist.
-     *
-     * @return list<array<string, mixed>>
+     * Load history events for the current post, delegating to the Listable service.
      */
-    protected function getDefaultHistoryItems(): array
+    protected function loadHistoryItems(?int $postId = null): void
     {
-        return [
-            [
-                'id' => 'v1.1',
-                'label' => $this->t('.history.items.v1_1.label', [], 'Versión 1.1'),
-                'badge' => $this->t('.history.items.v1_1.badge', [], 'En revisión'),
-                'badge_style' => 'info',
-                'subtitle' => $this->t('.history.items.v1_1.subtitle', [], 'Se agregó el logotipo de la facultad. · Basada en v1.0 · Generada por IA'),
-            ],
-            [
-                'id' => 'rev1',
-                'icon' => 'mail',
-                'label' => $this->t('.history.items.rev1.label', [], 'Solicitud de revisión'),
-                'badge' => $this->t('.history.items.rev1.badge', [], 'Cambios solicitados'),
-                'badge_style' => 'warning',
-                'subtitle' => $this->t('.history.items.rev1.subtitle', [], 'Juan Pérez: «Agregá el logotipo de la facultad.»'),
-            ],
-            [
-                'id' => 'v1.0',
-                'label' => $this->t('.history.items.v1_0.label', [], 'Versión 1.0'),
-                'subtitle' => $this->t('.history.items.v1_0.subtitle', [], 'Borrador inicial generado'),
-            ],
-        ];
+        $resolvedPostId = $postId ?? ($this->state_post_id ?? 0);
+        $this->configureHistoryList($resolvedPostId);
+        $this->selectInitialHistoryItem();
+    }
+
+    /**
+     * Programmatically refresh history items from the PostHistoryService.
+     */
+    public function refreshHistoryList(?int $postId = null): void
+    {
+        $context = $postId !== null ? ['post_id' => $postId] : [];
+        if ($postId !== null) {
+            $this->lst_history->parameters($context);
+        }
+
+        $this->lst_history->refreshFromService($context);
+        $this->selectInitialHistoryItem();
     }
 
     /**
@@ -140,58 +154,9 @@ trait HasEditPanel
      */
     protected function formatHistoryEventItem(PostHistoryEventDTO $event): array
     {
-        $badge = null;
-        $badgeStyle = 'default';
-        $icon = null;
-        $label = '';
-        $subtitle = '';
-
-        $type = $event->event_type instanceof PostHistoryEventType
-            ? $event->event_type
-            : PostHistoryEventType::tryFrom((string) $event->event_type);
-
-        switch ($type) {
-            case PostHistoryEventType::VERSION_GENERATED:
-                $label = 'Versión ' . $event->version;
-                $badge = 'En revisión';
-                $badgeStyle = 'info';
-                $meta = $this->formatEventMetadata($event);
-                $parts = array_filter([$event->summary, $meta]);
-                $subtitle = implode(' · ', $parts);
-                break;
-
-            case PostHistoryEventType::REVIEW_CHANGES_REQUESTED:
-                $label = 'Solicitud de revisión';
-                $icon = 'mail';
-                $badge = 'Cambios solicitados';
-                $badgeStyle = 'warning';
-                $actor = $event->actor?->displayName ?? $event->actor?->name ?? 'Revisor';
-                $comment = $event->review_comment ? "«{$event->review_comment}»" : '';
-                $subtitle = trim("{$actor}: {$comment}");
-                break;
-
-            case PostHistoryEventType::REVIEW_APPROVED:
-                $label = 'Revisión aprobada';
-                $icon = 'check';
-                $badge = 'Aprobado';
-                $badgeStyle = 'success';
-                $subtitle = $event->summary ?? '';
-                break;
-
-            default:
-                $label = $event->summary ?? 'Evento';
-                $subtitle = $event->instruction ?? '';
-                break;
-        }
-
-        return [
-            'id' => (string) $event->id,
-            'label' => $label,
-            'subtitle' => $subtitle,
-            'badge' => $badge,
-            'badge_style' => $badgeStyle,
-            'icon' => $icon,
-        ];
+        return app(PostHistoryService::class)
+            ->formatEventToListItem($event)
+            ->toArray();
     }
 
     /**
@@ -203,7 +168,7 @@ trait HasEditPanel
         if ($event->based_on_history_id) {
             $meta[] = "Basada en v{$event->based_on_history_id}";
         }
-        if (!empty($event->metadata)) {
+        if (! empty($event->reel_script)) {
             $meta[] = 'Generada por IA';
         }
 
@@ -213,7 +178,7 @@ trait HasEditPanel
     /**
      * Handle version history item selection.
      *
-     * @param array<int, string|int> $selected
+     * @param  array<int, string|int>  $selected
      */
     public function onSelectHistoryEvent(string|int|null $id = null, array $selected = []): void
     {

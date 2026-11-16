@@ -35,7 +35,7 @@ class GenerateReelStructureJob implements ShouldQueue
             $reelScript = $this->parseAndValidateScript($this->generateScript());
             $this->historyService->createCompletedReelScriptEvent($generatingEvent, $reelScript);
         } catch (\Throwable $e) {
-            // $this->historyService->createFailedReelScriptEvent($this->initialEvent, $e->getMessage());
+            $this->historyService->createFailedReelScriptEvent($this->initialEvent, $e->getMessage());
             Log::error('[GenerateReelPreviewJob] Error: ' . $e->getMessage());
         }
     }

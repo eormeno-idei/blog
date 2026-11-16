@@ -28,6 +28,15 @@ interface PostHistoryServiceInterface
     public function getLatestReelEvent(int $post_id): ?PostHistoryEventDTO;
 
     /**
+     * Obtiene el último evento de versión generada de un post.
+     *
+     * @param  ?Authenticatable  $user
+     * @param  int  $post_id
+     * @return ?PostHistoryEventDTO
+     */
+    public function getLastGeneratedVersionEvent(?Authenticatable $user, int $post_id): ?PostHistoryEventDTO;
+
+    /**
      * Obtiene el historial de eventos de un post.
      *
      * @param  ?Authenticatable  $user
@@ -83,4 +92,13 @@ interface PostHistoryServiceInterface
      * @return PostHistoryEventDTO
      */
     public function createCompletedReelScriptEvent(PostHistoryEventDTO $previousEvent, array $reelScript): PostHistoryEventDTO;
+
+    /**
+     * Crea un evento de generación de guion fallido para un reel en el historial del post.
+     *
+     * @param  PostHistoryEventDTO  $previousEvent
+     * @param  string  $errorMessage
+     * @return PostHistoryEventDTO
+     */
+    public function createFailedReelScriptEvent(PostHistoryEventDTO $previousEvent, string $errorMessage): PostHistoryEventDTO;
 }

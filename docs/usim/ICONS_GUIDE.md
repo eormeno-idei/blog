@@ -109,7 +109,7 @@ A partir de esta versión **se eliminaron** los métodos y claves de contrato `i
 
 ---
 
-## 4. Biblioteca de Íconos Estándar (80 íconos)
+## 4. Biblioteca de Íconos Estándar (83 íconos)
 
 Todos los archivos viven en `packages/idei/usim/resources/icons/{nombre}.svg` y se publican en `public/vendor/idei/usim/icons/{nombre}.svg`:
 
@@ -121,7 +121,7 @@ Todos los archivos viven en `packages/idei/usim/resources/icons/{nombre}.svg` y 
 | **Colaboración y Mensajería** | `message-square` (alias: `chat`), `mail` |
 | **Seguridad, Identidad y Passkeys** | `shield`, `shield-check`, `user`, `users`, `lock`, `unlock`, `key`, `login`, `logout`, `eye`, `eye-off` |
 | **Dispositivos, Cloud y Datos** | `monitor`, `smartphone`, `cloud`, `cloud-off`, `database`, `file`, `folder` |
-| **Negocio, Feedback y Multimedia** | `credit-card`, `crown`, `mic`, `check`, `close`, `info`, `warning`, `error`, `help`, `bell`, `star`, `heart`, `bolt`, `calendar`, `clock`, `sun`, `moon` |
+| **Negocio, Feedback y Estados** | `credit-card`, `crown`, `mic`, `check`, `check-circle`, `close`, `info`, `warning`, `alert-circle`, `error`, `help`, `loader`, `bell`, `star`, `heart`, `bolt`, `calendar`, `clock`, `sun`, `moon` |
 
 ---
 

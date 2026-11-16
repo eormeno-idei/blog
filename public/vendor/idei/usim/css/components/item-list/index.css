@@ -483,9 +483,26 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 1.2em;
+    height: 1.2em;
     font-size: 18px;
     line-height: 1;
     flex-shrink: 0;
+    color: var(--usim-color-text-muted, #64748b);
+}
+
+.usim-item-list-row-icon.ui-icon-text {
+    width: auto;
+    height: auto;
+}
+
+.usim-item-list-row.is-selected .usim-item-list-row-icon {
+    color: var(--usim-color-primary, #3498db);
+}
+
+.usim-item-list-row-icon[data-usim-icon-name="loader"],
+.usim-item-list-row-icon[data-usim-icon-name="refresh"] {
+    animation: usimComponentSpin 1s linear infinite;
 }
 
 /* Content (Label, Badge, Subtitle) */

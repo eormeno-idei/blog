@@ -14,6 +14,7 @@ use Idei\Usim\Screen;
 use Idei\Usim\UI;
 use Idei\Usim\ValueObjects\Size;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Reusable USIM Screen Component for navigating and inspecting AI Reel textual content.
@@ -87,12 +88,12 @@ class ReelSceneViewer extends Screen
         return $this->layoutContainer()->shadow(true);
     }
 
-    protected function postLoadUI(): void
+    protected function postLoadUI(string $status = 'idle', array $script = []): void
     {
-        $this->getContainer()?->padding(Spacing::zero())
-            ->width(Size::full())
-            ->height(Size::full())
-            ->justifyContent(JustifyContent::START);
+        $this->state_status = $status;
+        $this->state_scenes = $script['scenes'] ?? [];
+        $this->state_metadata = $script['metadata'] ?? [];
+        $this->refreshView();
     }
 
     public function onPrevScene(): void

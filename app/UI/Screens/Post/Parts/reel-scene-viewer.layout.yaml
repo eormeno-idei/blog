@@ -2,6 +2,7 @@ name: phone_mockup_container
 appearance: contrast
 width: 100%
 max_width: 288
+min_width: 288
 height: 512
 center_horizontal: true
 i18n: auto

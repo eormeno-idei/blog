@@ -45,4 +45,6 @@ return [
     ],
     'waiting_title' => 'Esperando al creador',
     'waiting_desc' => 'El creador está editando el post. Recibirás una notificación cuando lo envíe a revisión.',
+    'prompt_placeholder' => 'Escribe un prompt para generar el reel...',
+    'generate_button' => 'Generar Reel',
 ];

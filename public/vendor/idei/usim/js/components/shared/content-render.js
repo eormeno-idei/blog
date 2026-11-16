@@ -11,6 +11,9 @@
         settings: '⚙️',
         filter: '🔽',
         refresh: '🔄',
+        loader: '⏳',
+        'alert-circle': '⚠️',
+        'check-circle': '✅',
         'external-link': '↗️',
         link: '🔗',
         plus: '➕',
@@ -207,6 +210,9 @@
             iconElement.style.webkitMaskImage = `url("${descriptor.src}")`;
             iconElement.style.maskImage = `url("${descriptor.src}")`;
             iconElement.setAttribute('aria-hidden', 'true');
+            if (descriptor.name) {
+                iconElement.setAttribute('data-usim-icon-name', descriptor.name);
+            }
             return iconElement;
         }
 

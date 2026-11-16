@@ -95,6 +95,7 @@ trait HasFirstDraftPanel
                 // PostHistoryEventType::GENERATE_REQUESTED => $this->handleGenerateRequestedStatus($status),
             PostHistoryEventType::GENERATING_SCRIPT => $this->handleGeneratingScriptStatus($status),
             PostHistoryEventType::VERSION_GENERATED => $this->handleCompletedStatus($status),
+            PostHistoryEventType::GENERATION_FAILED => $this->handleFailedStatus($status),
             default => null,
         };
     }
@@ -118,7 +119,7 @@ trait HasFirstDraftPanel
     private function handleFailedStatus(PostHistoryEventDTO $status): void
     {
         $this->tmr_reel_poll->stop();
-        $errorMessage = $status->errorMessage ?? $this->t('.toast.unknown_error');
+        $errorMessage = $status->summary ?? $this->t('.toast.unknown_error');
         $this->toast($this->t('.toast.generation_failed', ['message' => $errorMessage]), 'error');
     }
 }

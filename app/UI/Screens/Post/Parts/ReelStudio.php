@@ -9,10 +9,12 @@ use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasFirstDraftPanel;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Screen;
 use Idei\Usim\ValueObjects\Spacing;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ReelStudio extends Screen
 {
-    use HasFirstDraftPanel, HasEditPanel;
+    use HasEditPanel, HasFirstDraftPanel;
 
     protected Container $reel_scene_viewer_slot;
 
@@ -39,15 +41,14 @@ class ReelStudio extends Screen
 
     protected function startingUI(int $post_id = 0): Container
     {
-        if ($post_id > 0) {
-            $this->loadScenesFromPost($post_id);
-        }
-
+        $this->loadScenesFromPost($post_id);
         $this->buildFirstDraftPanel();
         $this->buildEditReelPanel($post_id);
 
-        $this->first_draft_panel->visible(true);
-        $this->edit_panel->visible(false);
+        $hasDraft = $this->postHistoryService->hasFirstDraftEvent(Auth::user(), $post_id);
+
+        $this->first_draft_panel->visible(! $hasDraft);
+        $this->edit_panel->visible($hasDraft);
 
         $this->reel_scene_viewer_slot
             ->plain()
@@ -58,10 +59,7 @@ class ReelStudio extends Screen
 
     protected function postLoadUI(int $post_id = 0): void
     {
-        if ($post_id > 0) {
-            $this->loadScenesFromPost($post_id);
-        }
-
+        $this->loadScenesFromPost($post_id);
         $this->updateScenePreview($post_id);
     }
 
@@ -73,42 +71,36 @@ class ReelStudio extends Screen
         ]);
     }
 
-    public function onAiFirstStructureCompleted(int $postId, array $script): void
+    public function onAiFirstStructureCompleted(int $postId, array|string|null $script = null, ?string $json = null): void
     {
+        $resolvedScript = $script;
+        if (empty($resolvedScript) && ! empty($json)) {
+            $decoded = json_decode($json, true);
+            $resolvedScript = is_array($decoded) ? $decoded : [];
+        } elseif (is_string($resolvedScript)) {
+            $decoded = json_decode($resolvedScript, true);
+            $resolvedScript = is_array($decoded) ? $decoded : [];
+        }
+
         $this->edit_panel->visible(true);
         $this->first_draft_panel->visible(false);
         $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'completed',
-            'script' => $script,
+            'script' => $resolvedScript ?? [],
         ]);
     }
 
     protected function loadScenesFromPost(int $postId): void
     {
-        if ($postId <= 0) {
-            return;
-        }
-
-        $post = $this->postService->findById($postId);
-        if ($post !== null && !empty($post->aiScript)) {
-            $decoded = json_decode((string) $post->aiScript, true);
-            if (is_array($decoded) && !empty($decoded['scenes'])) {
-                $this->state_scenes = $decoded['scenes'];
-
-                return;
-            }
-        }
+        $lastEvent = $this->postHistoryService->getLastGeneratedVersionEvent(Auth::user(), $postId);
+        $this->state_scenes = $lastEvent?->reel_script ?? [];
     }
 
     protected function updateScenePreview(int $post_id): void
     {
-        if (!isset($this->reel_scene_viewer_slot)) {
-            return;
-        }
-
         $params = [];
-        if (!empty($this->state_scenes)) {
-            $params['data'] = [
+        if (! empty($this->state_scenes)) {
+            $params = [
                 'metadata' => [
                     'autor' => 'UNSJ',
                     'tema' => 'Reel Preview',
@@ -116,11 +108,11 @@ class ReelStudio extends Screen
                 ],
                 'scenes' => $this->state_scenes,
             ];
-            $params['initial_scene'] = $this->state_current_scene_index;
-        } elseif ($post_id > 0) {
-            $params['post_id'] = $post_id;
         }
 
-        $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, $params);
+        $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
+            'status' => 'completed',
+            'script' => $this->state_scenes
+        ]);
     }
 }

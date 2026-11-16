@@ -823,10 +823,10 @@ class UsimItemListComponent extends UIComponent {
 
         // 2. Optional Icon
         if (item.icon && !isEditing) {
-            const iconEl = document.createElement('span');
-            iconEl.className = 'usim-item-list-row-icon';
-            iconEl.textContent = item.icon;
-            row.appendChild(iconEl);
+            const iconEl = this._createRowIcon(item.icon);
+            if (iconEl) {
+                row.appendChild(iconEl);
+            }
         }
 
         // 3. Center Content (or Inline Edit Input)
@@ -1353,6 +1353,24 @@ class UsimItemListComponent extends UIComponent {
         };
 
         await this.triggerAction(action, parameters, eventType);
+    }
+
+    _createRowIcon(iconName) {
+        const helpers = window.USIM_COMPONENT_HELPERS;
+        if (helpers?.createIconElement) {
+            const iconElement = helpers.createIconElement(iconName, {
+                baseClass: 'usim-item-list-row-icon',
+            });
+            if (iconElement) {
+                return iconElement;
+            }
+        }
+
+        const fallback = document.createElement('span');
+        fallback.className = 'usim-item-list-row-icon ui-icon-text';
+        fallback.setAttribute('aria-hidden', 'true');
+        fallback.textContent = String(iconName ?? '');
+        return fallback;
     }
 
     _createActionIcon(iconName, fallbackGlyph = '') {

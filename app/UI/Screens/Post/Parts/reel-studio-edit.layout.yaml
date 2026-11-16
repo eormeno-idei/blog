@@ -7,7 +7,7 @@ grid:
   cols: [1fr]
   rows: [auto, auto, 1fr, auto]
   padding: none
-  gap: m
+  gap: xs
 
   children:
     - lbl_post_title:
@@ -24,6 +24,7 @@ grid:
     - lst_history:
         at: [3, 1]
         width: full
+        service: App\Services\Post\PostHistoryService
         title: .history.title
         selection_mode: single
         variant: card
@@ -34,7 +35,10 @@ grid:
         show_select_all: false
         on_select: select_history_event
 
-    - cnt_waiting_creator:
+    - cnt_prompt_input_row:
         at: [4, 1]
         width: full
-        appearance: card
+        appearance: elevated
+        layout: horizontal
+        align_items: center
+        justify_content: space-between
