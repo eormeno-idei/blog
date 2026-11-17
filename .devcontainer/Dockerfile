@@ -36,8 +36,9 @@ RUN apt-get update && \
         vim \
         nano
 
-# Instalar Node.js 20 LTS
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+# Instalar Node.js (Active LTS)
+ARG NODE_MAJOR=26
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - && \
     apt-get install -y nodejs
 
 # Verificar instalación de Node.js y npm
