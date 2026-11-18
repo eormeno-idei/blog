@@ -16,6 +16,7 @@ use Idei\Usim\Components\ItemList;
 use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Screen;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ReelStudio extends Screen
 {
@@ -114,8 +115,15 @@ class ReelStudio extends Screen
     private function handleFailedStatus(PostHistoryEventDTO $status): void
     {
         $this->stopTimer('tmr_reel_poll');
-        $errorMessage = $status->summary ?? $this->t('.toast.unknown_error');
-        $this->toast($this->t('.toast.generation_failed', ['message' => $errorMessage]), 'error');
+
+        $this->input_prompt->disabled(false);
+        $this->btn_generate_reel->enabled();
+        $this->lst_history->select([(string) $status->id]);
+
+        $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
+            'status' => 'idle',
+            'script' => [],
+        ]);
     }
 
     private function handleGeneratingReel(): void

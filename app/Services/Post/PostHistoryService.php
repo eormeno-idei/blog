@@ -52,6 +52,7 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
                 PostHistoryEventType::GENERATE_REQUESTED,
                 PostHistoryEventType::GENERATING_SCRIPT,
                 PostHistoryEventType::VERSION_GENERATED,
+                PostHistoryEventType::GENERATION_FAILED,
             ],
         ]);
 
