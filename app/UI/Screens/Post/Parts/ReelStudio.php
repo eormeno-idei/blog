@@ -8,16 +8,17 @@ use App\DTOs\Posts\PostDTO;
 use App\DTOs\Posts\PostHistoryEventDTO;
 use App\Enums\PostHistoryEventType;
 use App\Jobs\GenerateReelStructureJob;
-use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasEditPanel;
+use App\Services\Post\PostHistoryService;
 use Idei\Usim\Components\Button;
 use Idei\Usim\Components\Container;
+use Idei\Usim\Components\Input;
+use Idei\Usim\Components\ItemList;
+use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Screen;
 use Illuminate\Support\Facades\Auth;
 
 class ReelStudio extends Screen
 {
-    use HasEditPanel;
-
     protected static bool $autoTranslate = true;
 
     protected Container $cnt_reel_scene_viewer_slot;
@@ -27,10 +28,14 @@ class ReelStudio extends Screen
     protected Container $cnt_edit_panel;
 
     protected Button $btn_generate_first_structure;
+    protected Input $input_prompt;
+    protected Button $btn_generate_reel;
 
-    protected int $state_current_scene_index = 0;
+    protected NewLabel $lbl_post_title;
 
-    protected array $state_scenes = [];
+    protected NewLabel $lbl_status_badge;
+
+    protected ItemList $lst_history;
 
     public function __construct(
         protected PostServiceInterface $postService,
@@ -70,6 +75,17 @@ class ReelStudio extends Screen
         $this->startReelGenerationJob($post, $txt_initial_instructions);
     }
 
+    public function onGenerateReel(int $post_id, ?string $input_prompt = null): void
+    {
+        if (empty($input_prompt)) {
+            return;
+        }
+        $post = $this->postService->findById($post_id);
+        $this->input_prompt->disabled();
+        $this->btn_generate_reel->disabled();
+        $this->startReelGenerationJob($post, $input_prompt);
+    }
+
     protected function startReelGenerationJob(PostDTO $post, ?string $initialInstructions): void
     {
         $new_generating_event = $this->postHistoryService->requestGenerateReelScript(
@@ -89,7 +105,7 @@ class ReelStudio extends Screen
 
         match ($status->event_type) {
             PostHistoryEventType::GENERATING_SCRIPT => $this->handleGeneratingReel(),
-            PostHistoryEventType::VERSION_GENERATED => $this->firstReelCompleted($status),
+            PostHistoryEventType::VERSION_GENERATED => $this->handleReelCompleted($status),
             PostHistoryEventType::GENERATION_FAILED => $this->handleFailedStatus($status),
             default => null,
         };
@@ -110,7 +126,7 @@ class ReelStudio extends Screen
         ]);
     }
 
-    public function firstReelCompleted(PostHistoryEventDTO $status): void
+    public function handleReelCompleted(PostHistoryEventDTO $status): void
     {
         $this->stopTimer('tmr_reel_poll');
         $postId = $status->post_id;
@@ -125,6 +141,10 @@ class ReelStudio extends Screen
 
         $this->cnt_edit_panel->visible(true);
         $this->cnt_first_draft_panel->visible(false);
+        $this->input_prompt->disabled(false);
+        $this->input_prompt->value('');
+        $this->btn_generate_reel->enabled();
+
         $this->loadHistoryItems($postId);
         $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'completed',
@@ -140,5 +160,91 @@ class ReelStudio extends Screen
             'status' => 'completed',
             'script' => $lastEvent?->reel_script ?? [],
         ]);
+    }
+
+    protected function buildEditReelPanel(int $post_id): void
+    {
+        $this->configureHistoryList($post_id);
+
+        $post = $this->postService->findById($post_id);
+        if ($post !== null && !empty($post->title)) {
+            $this->lbl_post_title->text($post->title);
+        }
+        if ($post !== null) {
+            $this->lbl_status_badge->text(strtoupper($post->statusValue()));
+        }
+    }
+
+    protected function configureHistoryList(int $post_id): void
+    {
+        $this->lst_history->parameters(['post_id' => $post_id]);
+    }
+
+    protected function selectInitialHistoryItem(): void
+    {
+        if (empty($this->lst_history->getSelectedIds())) {
+            $items = $this->lst_history->getItems();
+            if (!empty($items)) {
+                $this->lst_history->select([(string) $items[0]['id']]);
+            }
+        }
+    }
+
+    protected function loadHistoryItems(?int $postId = null): void
+    {
+        $resolvedPostId = $postId ?? ($this->state_post_id ?? 0);
+        $this->refreshHistoryList($resolvedPostId);
+    }
+
+    public function refreshHistoryList(?int $postId = null): void
+    {
+        $context = $postId !== null ? ['post_id' => $postId] : [];
+        if ($postId !== null) {
+            $this->lst_history->parameters($context);
+        }
+
+        $this->lst_history->refreshFromService($context);
+        $this->selectInitialHistoryItem();
+    }
+
+    /**
+     * Map a domain PostHistoryEventDTO into an ItemList item representation.
+     *
+     * @return array<string, mixed>
+     */
+    protected function formatHistoryEventItem(PostHistoryEventDTO $event): array
+    {
+        return app(PostHistoryService::class)
+            ->formatEventToListItem($event)
+            ->toArray();
+    }
+
+    /**
+     * Format metadata line for a generated version event.
+     */
+    protected function formatEventMetadata(PostHistoryEventDTO $event): string
+    {
+        $meta = [];
+        if ($event->based_on_history_id) {
+            $meta[] = "Basada en v{$event->based_on_history_id}";
+        }
+        if (!empty($event->reel_script)) {
+            $meta[] = 'Generada por IA';
+        }
+
+        return implode(' · ', $meta);
+    }
+
+    /**
+     * Handle version history item selection.
+     *
+     * @param  array<int, string|int>  $selected
+     */
+    public function onSelectHistoryEvent(string|int|null $id = null, array $selected = []): void
+    {
+        $selectedId = $id ?? ($selected[0] ?? null);
+        if ($selectedId !== null) {
+            $this->lst_history->select([(string) $selectedId]);
+        }
     }
 }
