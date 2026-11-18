@@ -17,6 +17,7 @@
    - [4.5 Definición de Hijos (`children` e `items`)](#45-definición-de-hijos-children-e-items)
    - [4.6 Reglas de Posicionamiento y Spanning](#46-reglas-de-posicionamiento-y-spanning)
    - [4.7 Propiedades Personalizadas y Delegación Fluida](#47-propiedades-personalizadas-y-delegación-fluida)
+   - [4.8 Contenedores Anidados *Inline* y Referencias Externas (`include` / `layout_file`)](#48-contenedores-anidados-inline-y-referencias-externas-include--layout_file)
 5. [Sistema de Slots y Composición de Sub-Screens](#5-sistema-de-slots-y-composición-de-sub-screens)
 6. [Sistema de Internacionalización (i18n)](#6-sistema-de-internacionalización-i18n)
    - [6.1 Convención de Claves por Namespace](#61-convención-de-claves-por-namespace)
@@ -280,6 +281,37 @@ Cualquier otra clave en la regla de un hijo (que no sea `slot`, `span`, `at`, `r
 
 > **Orden determinista de servicio y flags CRUD en `ItemList`:**
 > `ContainerLayoutLoader::orderCustomRuleProperties()` garantiza que `service` y los flags compuestos (`creatable`, `editable`, `deletable`) se apliquen siempre **antes** que modificadores individuales (`create_inline`, `edit_inline`, `allow_bulk_delete`, `on_delete`, `on_service_mutated`, etc.), haciendo que el orden de las claves en YAML nunca sobrescriba tus ajustes.
+
+### 4.8 Contenedores Anidados *Inline* y Referencias Externas (`include` / `layout_file`)
+
+Cualquier entrada en `children:` puede definir un sub-contenedor de dos maneras sin requerir una propiedad `protected Container $...` en la `Screen` (USIM crea el `Container` estructural automáticamente si no existe y monta dentro de él las propiedades de componentes declaradas en sus hijos):
+
+1. **Sub-grid *inline* (`grid:` dentro del hijo):**
+   ```yaml
+   - cnt_prompt_input_row:
+       at: [4, 1]
+       width: full
+       appearance: elevated
+       padding: xs
+       grid:
+         cols: [1fr, auto]
+         gap: s
+         align: center
+         children:
+           - input_prompt: { width: full }
+           - btn_send:     { style: primary, action: send_prompt }
+   ```
+2. **Referencia a otro archivo `.layout.yaml` (`include:`, `layout_file:`, `file:` o `layout:` con ruta):**
+   ```yaml
+   - cnt_prompt_input_row:
+       at: [4, 1]
+       width: full
+       include: partials/prompt-row
+       appearance: elevated   # Sobrescribe propiedades de caja del archivo incluido
+   ```
+   - Las rutas relativas se resuelven primero respecto al directorio del `.layout.yaml` padre, luego respecto al directorio de la `Screen`, ruta directa y `base_path()`.
+   - Se detectan referencias circulares lanzando `InvalidArgumentException`.
+   - Para el catálogo completo de patrones y ejemplos, ver [LAYOUTS_COMPOSITION_GUIDE.md](LAYOUTS_COMPOSITION_GUIDE.md).
 
 ---
 
