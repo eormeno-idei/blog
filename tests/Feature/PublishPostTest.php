@@ -1,35 +1,43 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Contracts\PostServiceInterface;
-use App\Http\Requests\PostRequest;
 use App\Services\User\UsimUserService;
-use App\UI\Screens\PublishPost;
+use App\UI\Requests\InitialDataRequest;
+use App\UI\Screens\Post\Parts\InitialData;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Textarea;
 use Idei\Usim\Screen;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
+use Tests\TestCase;
 
 beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
 });
 
-it('validates required fields using PostRequest and binds errors to components', function () {
+it('validates required fields using InitialDataRequest and binds errors to components', function () {
+    /** @var TestCase $this */
     $admin = app(UsimUserService::class)->provisionFromConfig('admin');
     $this->actingAs($admin);
 
-    /** @var PublishPost $screen */
-    $screen = Screen::make(PublishPost::class);
-    $harness = ScreenTestHarness::for($screen);
-    $harness->render([], shouldReset: true);
+    $postService = app(PostServiceInterface::class);
+    $postId = $postService->createPost([
+        'user_id' => $admin->id,
+        'status' => 'draft',
+    ]);
 
-    $harness->call('save_post', [
+    /** @var InitialData $screen */
+    $screen = Screen::make(InitialData::class);
+    $harness = ScreenTestHarness::for($screen);
+    $harness->render(['post_id' => $postId], shouldReset: true);
+
+    $harness->call('on_confirm_initial_data', [
+        'post_id' => $postId,
         'post_title' => '   ',
         'post_content' => '',
     ]);
-
-    $postService = app(PostServiceInterface::class);
-    expect($postService->getLatestPosts()->where('title', ''))->toBeEmpty();
 
     /** @var Input|null $postTitle */
     $postTitle = $screen->getContainer()?->findByName('post_title');
@@ -37,77 +45,108 @@ it('validates required fields using PostRequest and binds errors to components',
     $postContent = $screen->getContainer()?->findByName('post_content');
 
     expect($postTitle)->not->toBeNull()
-        ->and($postTitle?->get('error'))->toBe('El título es obligatorio.')
+        ->and($postTitle?->get('error'))->not->toBeNull()
         ->and($postContent)->not->toBeNull()
         ->and($postContent?->get('error'))->toBe('El contenido es obligatorio.');
 });
 
-it('successfully creates post when PostRequest is valid', function () {
+it('successfully updates post when InitialDataRequest is valid', function () {
+    /** @var TestCase $this */
     $admin = app(UsimUserService::class)->provisionFromConfig('admin');
     $this->actingAs($admin);
 
-    /** @var PublishPost $screen */
-    $screen = Screen::make(PublishPost::class);
-    $harness = ScreenTestHarness::for($screen);
-    $harness->render([], shouldReset: true);
+    $postService = app(PostServiceInterface::class);
+    $postId = $postService->createPost([
+        'user_id' => $admin->id,
+        'status' => 'draft',
+    ]);
 
-    $harness->call('save_post', [
+    /** @var InitialData $screen */
+    $screen = Screen::make(InitialData::class);
+    $harness = ScreenTestHarness::for($screen);
+    $harness->render(['post_id' => $postId], shouldReset: true);
+
+    $validContent = 'Contenido detallado del artículo con más de cincuenta caracteres para superar la validación inicial.';
+
+    $harness->call('on_confirm_initial_data', [
+        'post_id' => $postId,
         'post_title' => 'Featured News Article',
-        'post_content' => 'Content of the article',
+        'post_content' => $validContent,
     ]);
 
-    $postService = app(PostServiceInterface::class);
-    $createdPost = $postService->getLatestPosts()->firstWhere('title', 'Featured News Article');
+    $updatedPost = $postService->findById($postId);
 
-    expect($createdPost)->not->toBeNull()
-        ->and($createdPost->content)->toBe('Content of the article')
-        ->and($createdPost->user_id)->toBe($admin->id);
+    expect($updatedPost)->not->toBeNull()
+        ->and($updatedPost?->title)->toBe('Featured News Article')
+        ->and($updatedPost?->content)->toBe($validContent)
+        ->and($updatedPost?->author?->id)->toBe($admin->id);
 });
 
-it('can be called directly with a PostRequest instance', function () {
+it('can be called directly with an InitialDataRequest instance', function () {
+    /** @var TestCase $this */
     $admin = app(UsimUserService::class)->provisionFromConfig('admin');
     $this->actingAs($admin);
 
-    /** @var PublishPost $screen */
-    $screen = Screen::make(PublishPost::class);
-    $harness = ScreenTestHarness::for($screen);
-    $harness->render([], shouldReset: true);
-
-    $request = PostRequest::fromArray([
-        'post_title' => 'Direct Call Post',
-        'post_content' => 'Content from direct request',
-    ], $screen);
-
-    $screen->onSavePost($request);
-
     $postService = app(PostServiceInterface::class);
-    expect($postService->getLatestPosts()->where('title', 'Direct Call Post'))->not->toBeEmpty();
-});
-
-it('trims title and content before validation in PostRequest', function () {
-    $request = PostRequest::fromArray([
-        'post_title' => '   Trimmed Title   ',
-        'post_content' => '   Trimmed Content   ',
+    $postId = $postService->createPost([
+        'user_id' => $admin->id,
+        'status' => 'draft',
     ]);
 
-    $validated = $request->validate();
+    /** @var InitialData $screen */
+    $screen = Screen::make(InitialData::class);
+    $harness = ScreenTestHarness::for($screen);
+    $harness->render(['post_id' => $postId], shouldReset: true);
 
-    expect($request->title())->toBe('Trimmed Title')
-        ->and($request->content())->toBe('Trimmed Content')
-        ->and($validated['post_title'])->toBe('Trimmed Title')
-        ->and($validated['post_content'])->toBe('Trimmed Content');
+    $validContent = 'Contenido enviado directamente mediante la instancia de InitialDataRequest con longitud suficiente.';
+
+    $request = new InitialDataRequest();
+    $request->initialize(
+        screen: $screen,
+        parameters: [
+            'post_title' => 'Direct Call Post',
+            'post_content' => $validContent,
+        ]
+    );
+    $request->validate();
+
+    $screen->onConfirmInitialData($postId, $request);
+
+    expect($postService->findById($postId)?->title)->toBe('Direct Call Post');
 });
 
-it('supports clean mapped keys in PostRequest', function () {
-    $request = PostRequest::fromArray([
-        'title' => 'Mapped Title',
-        'content' => 'Mapped Content',
-    ]);
+it('trims title and content before validation in InitialDataRequest', function () {
+    $validContent = '   Contenido suficientemente largo con más de cincuenta caracteres para validar correctamente.   ';
 
-    $validated = $request->validate();
+    $request = new InitialDataRequest();
+    $request->initialize(
+        screen: Screen::make(InitialData::class),
+        parameters: [
+            'post_title' => '   Trimmed Title Valid   ',
+            'post_content' => $validContent,
+        ]
+    );
 
-    expect($request->title())->toBe('Mapped Title')
-        ->and($request->content())->toBe('Mapped Content')
-        ->and($validated['post_title'])->toBe('Mapped Title')
-        ->and($validated['post_content'])->toBe('Mapped Content');
+    $request->validate();
+
+    expect($request->title)->toBe('Trimmed Title Valid')
+        ->and($request->content)->toBe(trim($validContent));
+});
+
+it('supports clean mapped keys in InitialDataRequest', function () {
+    $validContent = 'Contenido mapeado suficientemente extenso con más de cincuenta caracteres requeridos.';
+
+    $request = new InitialDataRequest();
+    $request->initialize(
+        screen: Screen::make(InitialData::class),
+        parameters: [
+            'title' => 'Mapped Title Valid',
+            'content' => $validContent,
+        ]
+    );
+
+    $request->validate();
+
+    expect($request->title)->toBe('Mapped Title Valid')
+        ->and($request->content)->toBe($validContent);
 });

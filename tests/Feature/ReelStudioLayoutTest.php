@@ -10,14 +10,17 @@ use App\Services\User\UsimUserService;
 use App\UI\Screens\Post\Parts\ReelStudio;
 use App\UI\Screens\PublishPost;
 use Idei\Usim\Components\Container;
+use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
+use Tests\TestCase;
 
 beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
 });
 
 it('configures ReelStudio main, first-draft, and edit panels using declarative USIM 2.14 layouts', function () {
+    /** @var TestCase $this */
     /** @var User $admin */
     $admin = User::factory()->create();
     $this->actingAs($admin);
@@ -28,7 +31,7 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
     $root = $harness->getContainer();
     expect($root)->not->toBeNull();
 
-    $json = $root->toJson();
+    $json = $root?->toJson() ?? [];
 
     // Removed intermediate wrapper containers must not exist
     foreach ([
@@ -132,10 +135,10 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
 
     // 3. Edit panel grid layout (reel-studio-edit.layout.yaml)
     expect($editCfg['layout'])->toBe('grid')
-        ->and($editCfg['appearance'])->toBe('plain')
+        ->and($editCfg['appearance'])->toBe('card')
         ->and($editCfg['width'])->toBe('100%')
         ->and($editCfg['height'])->toBe('100%')
-        ->and($editCfg['padding'])->toBe('0')
+        ->and($editCfg['padding'])->toBe('4px')
         ->and($editCfg['gap'])->toBe('4px')
         ->and($editCfg['grid_template_columns'])->toBe('1fr')
         ->and($editCfg['grid_template_rows'])->toBe('auto auto 1fr auto');
@@ -180,7 +183,7 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
     $inputPrompt = $harness->getComponent('input_prompt');
     $btnGenerateReel = $harness->getComponent('btn_generate_reel');
 
-    expect($cntPromptRowCfg['appearance'])->toBe('elevated')
+    expect($cntPromptRowCfg['appearance'])->toBe('card')
         ->and($cntPromptRowCfg['layout'])->toBe('grid')
         ->and($cntPromptRowCfg['grid_template_columns'])->toBe('1fr auto')
         ->and($inputPrompt->getParent())->toBe($cntPromptRow->getId())
@@ -190,6 +193,7 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
 });
 
 it('preserves cnt_reel_scene_viewer_slot grid placement when hot-swapping ReelSceneViewer on completion', function () {
+    /** @var TestCase $this */
     $publisher = app(UsimUserService::class)->provisionFromConfig('publisher');
     $this->actingAs($publisher);
 
@@ -223,11 +227,15 @@ it('preserves cnt_reel_scene_viewer_slot grid placement when hot-swapping ReelSc
         ->and($slotCfg['align_self'])->toBe('stretch')
         ->and($slotCfg['justify_self'])->toBe('stretch');
 
-    $headlineAfter = (string) $harness->getComponent('lbl_scene_headline')->get('text', '');
+    /** @var NewLabel $lblHeadline */
+    $lblHeadline = $harness->getComponent('lbl_scene_headline');
+    $rawHeadline = $lblHeadline->get('text', '');
+    $headlineAfter = is_string($rawHeadline) ? $rawHeadline : '';
     expect($headlineAfter)->toBe('Nueva Beca IDEI');
 });
 
 it('embeds cleanly inside PublishPost step 2 with declarative layouts preserved', function () {
+    /** @var TestCase $this */
     $publisher = app(UsimUserService::class)->provisionFromConfig('publisher');
     $this->actingAs($publisher);
 

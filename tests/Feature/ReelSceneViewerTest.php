@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Contracts\PostReelGenerationStatusInterface;
+use App\Contracts\PostHistoryServiceInterface;
 use App\Contracts\PostServiceInterface;
-use App\DTOs\ReelJobStatusDTO;
 use App\Jobs\GenerateReelStructureJob;
 use App\Services\User\UsimUserService;
 use App\UI\Screens\Post\Parts\ReelSceneViewer;
@@ -18,6 +17,7 @@ use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Queue;
+use Tests\TestCase;
 
 it('renders empty state when no data is passed to ReelSceneViewer', function () {
     $harness = ScreenTestHarness::for(ReelSceneViewer::class)
@@ -37,7 +37,7 @@ it('renders empty state when no data is passed to ReelSceneViewer', function () 
     $mockup = $harness->getComponent('phone_mockup_container');
     $json = $harness->getContainer()?->toJson() ?? [];
     $mockupCfg = $json[$mockup->getId()];
-    expect($mockupCfg['appearance'])->toBe('card')
+    expect($mockupCfg['appearance'])->toBe('contrast')
         ->and($mockupCfg['background_color'] ?? null)->toBeNull();
 
     $harness->assertComponentText('lbl_empty_title', 'Aquí aparecerá la estructura de tu Reel')
@@ -59,10 +59,12 @@ it('renders scenes from _data.json and allows bidirectional navigation using nat
     $jsonPath = base_path('_data.json');
     expect(file_exists($jsonPath))->toBeTrue();
 
-    $jsonContent = file_get_contents($jsonPath);
+    $jsonContent = (string) file_get_contents($jsonPath);
+    /** @var array<string, mixed> $decoded */
+    $decoded = json_decode($jsonContent, true);
 
     $harness = ScreenTestHarness::for(ReelSceneViewer::class)
-        ->render(['data' => $jsonContent], shouldReset: true);
+        ->render(['status' => 'completed', 'script' => $decoded], shouldReset: true);
 
     // Initial state: Scene 1 (index 0)
     $harness->assertComponentText('scene_indicator', 'Escena 1 de 3')
@@ -124,11 +126,13 @@ it('renders scenes from _data.json and allows bidirectional navigation using nat
         ->assertComponentText('lbl_scene_headline', 'Requisitos excluyentes');
 });
 
-it('supports loading data directly from a file path', function () {
+it('supports loading data directly from a parsed script array', function () {
     $jsonPath = base_path('_data.json');
+    /** @var array<string, mixed> $decoded */
+    $decoded = json_decode((string) file_get_contents($jsonPath), true);
 
     $harness = ScreenTestHarness::for(ReelSceneViewer::class)
-        ->render(['json_path' => $jsonPath], shouldReset: true);
+        ->render(['status' => 'completed', 'script' => $decoded], shouldReset: true);
 
     $harness->assertComponentText('scene_indicator', 'Escena 1 de 3')
         ->assertComponentText('lbl_scene_headline', 'Nueva Beca IDEI');
@@ -138,8 +142,11 @@ it('matches 5 scenes from data.json showing Escena 1 de 5', function () {
     $jsonPath = base_path('data.json');
     expect(file_exists($jsonPath))->toBeTrue();
 
+    /** @var array<string, mixed> $decoded */
+    $decoded = json_decode((string) file_get_contents($jsonPath), true);
+
     $harness = ScreenTestHarness::for(ReelSceneViewer::class)
-        ->render(['json_path' => $jsonPath], shouldReset: true);
+        ->render(['status' => 'completed', 'script' => $decoded], shouldReset: true);
 
     $harness->assertComponentText('scene_indicator', 'Escena 1 de 5')
         ->assertComponentText('lbl_scene_headline', 'Backend-Driven UI en Salud')
@@ -158,8 +165,12 @@ it('can be embedded into another Screen container with data passed via params', 
 
         protected function postLoadUI(): void
         {
-            $json = file_get_contents(base_path('_data.json'));
-            $this->viewer_slot->embed(ReelSceneViewer::class, ['data' => $json]);
+            /** @var array<string, mixed> $decoded */
+            $decoded = json_decode((string) file_get_contents(base_path('_data.json')), true);
+            $this->viewer_slot->embed(ReelSceneViewer::class, [
+                'status' => 'completed',
+                'script' => $decoded,
+            ]);
         }
     };
 
@@ -172,6 +183,7 @@ it('can be embedded into another Screen container with data passed via params', 
 });
 
 it('embeds ReelSceneViewer in ReelStudio replacing old preview and supports generate_first_structure', function () {
+    /** @var TestCase $this */
     Queue::fake();
 
     $userService = app(UsimUserService::class);
@@ -213,42 +225,32 @@ it('embeds ReelSceneViewer in ReelStudio replacing old preview and supports gene
 
     // 2. Click "✨ Generar Primera Estructura" -> dispatches job and starts timer
     $harness->click('btn_generate_first_structure', [
-        'post_id' => $postId,
+        'postId' => $postId,
         'txt_initial_instructions' => 'Enfocar en estudiantes de Informática',
     ]);
 
     Queue::assertPushed(GenerateReelStructureJob::class);
 
-    // 3. Simulate completed job status and trigger polling + completion event
+    // 3. Simulate completed job status in PostHistoryService and trigger polling
     $sampleJson = (string) file_get_contents(base_path('_data.json'));
     /** @var array<string, mixed> $decoded */
     $decoded = json_decode($sampleJson, true);
-    /** @var array<int, array<string, mixed>> $scenes */
-    $scenes = is_array($decoded['scenes'] ?? null) ? $decoded['scenes'] : [];
 
-    $reelCompletedStatus = ReelJobStatusDTO::completed(
-        postId: $postId,
-        sceneCount: count($scenes),
-        durationSeconds: 30,
-        jsonScript: $sampleJson,
-        parsedScript: $decoded,
-    );
+    $historyService = app(PostHistoryServiceInterface::class);
+    $requestedEvent = $historyService->getLatestReelEvent($postId);
+    expect($requestedEvent)->not->toBeNull();
 
-    // GenerateReelStructureJob::putStatus(ReelStructureGenerationStatus::completed(
-    //     postId: $postId,
-    //     sceneCount: count($scenes),
-    //     durationSeconds: 30,
-    //     jsonScript: $sampleJson,
-    //     parsedScript: $decoded,
-    // ));
-
-    $postReelGenerationStatusService = app()->make(PostReelGenerationStatusInterface::class);
-    $postReelGenerationStatusService->putStatus($reelCompletedStatus);
+    if ($requestedEvent !== null) {
+        $this->travel(1)->seconds();
+        $generatingEvent = $historyService->createGeneratingReelScriptEvent($requestedEvent);
+        $this->travel(1)->seconds();
+        $historyService->createCompletedReelScriptEvent($generatingEvent, $decoded);
+    }
 
     $harness->call('check_reel_status', ['post_id' => $postId]);
     $harness->call('ai_first_structure_completed', [
         'postId' => $postId,
-        'json' => $sampleJson,
+        'script' => $decoded,
     ]);
 
     // Viewer now displays the generated structure

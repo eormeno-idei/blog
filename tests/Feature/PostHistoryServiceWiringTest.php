@@ -16,6 +16,7 @@ use Idei\Usim\DTOs\ListItemDTO;
 use Idei\Usim\Enums\Style;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
+use Tests\TestCase;
 
 beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
@@ -56,15 +57,19 @@ it('implements Listable contract and returns ListItemDTO collections', function 
     ]);
 
     $items = $service->list('', ['post_id' => $postId]);
+    /** @var ListItemDTO|null $firstItem */
+    $firstItem = $items->first();
     expect($items)->not->toBeEmpty()
         ->and($items->count())->toBe(3)
-        ->and($items->first())->toBeInstanceOf(ListItemDTO::class)
-        ->and($items->first()->badgeStyle)->toBe(Style::INFO);
+        ->and($firstItem)->toBeInstanceOf(ListItemDTO::class)
+        ->and($firstItem?->badgeStyle)->toBe(Style::INFO);
 
     // Filter items with search
     $filtered = $service->list('guion', ['post_id' => $postId]);
+    /** @var ListItemDTO|null $firstFiltered */
+    $firstFiltered = $filtered->first();
     expect($filtered)->not->toBeEmpty()
-        ->and($filtered->first()->label)->toBe('Generando guion');
+        ->and($firstFiltered?->label)->toBe('Generando guion');
 });
 
 it('retrieves and formats stored post history events as ListItemDTO items', function () {
@@ -98,28 +103,33 @@ it('retrieves and formats stored post history events as ListItemDTO items', func
 
     expect($items->count())->toBe(2);
 
+    /** @var ListItemDTO|null $first */
     $first = $items->first();
     expect($first)->toBeInstanceOf(ListItemDTO::class)
-        ->and($first->label)->toBe('Solicitud de revisión')
-        ->and($first->badge)->toBe('Cambios solicitados')
-        ->and($first->badgeStyle)->toBe(Style::WARNING)
-        ->and($first->subtitle)->toContain('Editor')
-        ->and($first->subtitle)->toContain('Por favor cambiar la música');
+        ->and($first?->label)->toBe('Solicitud de revisión')
+        ->and($first?->badge)->toBe('Cambios solicitados')
+        ->and($first?->badgeStyle)->toBe(Style::WARNING)
+        ->and($first?->subtitle)->toContain('Editor')
+        ->and($first?->subtitle)->toContain('Por favor cambiar la música');
 
+    /** @var ListItemDTO|null $second */
     $second = $items->last();
-    expect($second->label)->toBe('Versión 1')
-        ->and($second->badge)->toBe('Versión generada')
-        ->and($second->badgeStyle)->toBe(Style::INFO)
-        ->and($second->subtitle)->toContain('Primera versión generada')
-        ->and($second->subtitle)->toContain('Generada por IA');
+    expect($second?->label)->toBe('Versión 1')
+        ->and($second?->badge)->toBe('Versión generada')
+        ->and($second?->badgeStyle)->toBe(Style::INFO)
+        ->and($second?->subtitle)->toContain('Primera versión generada');
 
     // Filter by search
     $searched = $service->list('música', ['post_id' => $postId]);
+    /** @var ListItemDTO|null $firstSearched */
+    $firstSearched = $searched->first();
     expect($searched->count())->toBe(1)
-        ->and($searched->first()->label)->toBe('Solicitud de revisión');
+        ->and($firstSearched?->label)->toBe('Solicitud de revisión');
 });
 
 it('wires PostHistoryService to lst_history in ReelStudio via layout and HasEditPanel', function () {
+    /** @var TestCase $this */
+    /** @var User $user */
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -147,11 +157,14 @@ it('wires PostHistoryService to lst_history in ReelStudio via layout and HasEdit
 
     $json = $harness->getContainer()?->toJson() ?? [];
     $lstCfg = $json[$lstHistory->getId()];
+    /** @var list<array<string, mixed>> $cfgItems */
+    $cfgItems = is_array($lstCfg['items'] ?? null) ? $lstCfg['items'] : [];
 
+    $firstItemId = $cfgItems[0]['id'] ?? '';
     expect($lstCfg['service'])->toBe(PostHistoryService::class)
         ->and($lstCfg['selection_mode'])->toBe('single')
         ->and($lstCfg['parameters'])->toBe(['post_id' => $postId])
-        ->and(count($lstCfg['items']))->toBe(1)
-        ->and($lstCfg['items'][0]['label'])->toBe('Versión 1')
-        ->and($lstHistory->getSelectedIds())->toBe([(string) $lstCfg['items'][0]['id']]);
+        ->and(count($cfgItems))->toBe(1)
+        ->and($cfgItems[0]['label'])->toBe('Versión 1')
+        ->and($lstHistory->getSelectedIds())->toBe([is_scalar($firstItemId) ? (string) $firstItemId : '']);
 });

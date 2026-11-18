@@ -19,7 +19,7 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y \
         php8.5 php8.5-cli php8.5-mbstring php8.5-xml php8.5-bcmath php8.5-curl php8.5-zip \
-        php8.5-sqlite3 php8.5-pdo php8.5-pdo-mysql php8.5-gd php8.5-intl php8.5-readline \
+        php8.5-sqlite3 php8.5-pdo php8.5-pdo-mysql php8.5-gd php8.5-intl php8.5-readline php8.5-pcov \
         openssl curl git unzip composer \
         # Herramientas de red y diagnóstico
         iputils-ping \

@@ -9,14 +9,15 @@ use App\Services\User\UsimUserService;
 use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\EmailVerified;
 use App\UI\Screens\Auth\Profile;
+use App\UI\Screens\Post\Parts\InitialData;
 use App\UI\Screens\PublishPost;
 use Idei\Usim\Models\UsimRole;
 use Idei\Usim\Models\UsimUnit;
 use Idei\Usim\Screen;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
+use Tests\TestCase;
 
 beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
@@ -24,6 +25,7 @@ beforeEach(function () {
 });
 
 it('exercises UsersManager device actions, DeviceTableModel formatting, and page switching', function () {
+    /** @var TestCase $this */
     $admin = app(UsimUserService::class)->provisionFromConfig('admin');
     $this->actingAs($admin);
 
@@ -81,13 +83,15 @@ it('exercises UsersManager device actions, DeviceTableModel formatting, and page
     $screen->onSubmitApproveDevicePairing(['input_pin' => '1234', 'pairing_device_id' => 0]);
     $screen->onSubmitApproveDevicePairing(['input_pin' => '1234', 'pairing_device_id' => $publicDevice->id]);
 
-    expect($sharedDevice->fresh()->name)->toBe('Manager Updated Device')
+    expect($sharedDevice->fresh()?->name)->toBe('Manager Updated Device')
         ->and($publicAndOpsDevice->id)->toBeGreaterThan(0);
 });
 
 it('renders and saves Profile and handles verification and password reset actions', function () {
+    /** @var TestCase $this */
     Notification::fake();
 
+    /** @var User $user */
     $user = User::factory()->unverified()->create([
         'name' => 'Initial Profile Name',
         'email' => 'profile@example.com',
@@ -104,7 +108,7 @@ it('renders and saves Profile and handles verification and password reset action
 
     // Valid profile save
     $screen->onSaveProfile(['input_name' => 'Updated Profile Name']);
-    expect($user->fresh()->name)->toBe('Updated Profile Name');
+    expect($user->fresh()?->name)->toBe('Updated Profile Name');
 
     // Resend verification for unverified vs verified user
     $screen->onResendVerification([]);
@@ -116,6 +120,7 @@ it('renders and saves Profile and handles verification and password reset action
 });
 
 it('verifies email states in EmailVerified screen', function () {
+    /** @var User $user */
     $user = User::factory()->unverified()->create(['email' => 'checkverify@example.com']);
     $hash = sha1($user->getEmailForVerification());
 
@@ -132,7 +137,7 @@ it('verifies email states in EmailVerified screen', function () {
     /** @var EmailVerified $screen */
     $screen = Screen::make(EmailVerified::class);
     ScreenTestHarness::for($screen)->render([], shouldReset: true);
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+    expect($user->fresh()?->hasVerifiedEmail())->toBeTrue();
 
     // 4. Already verified
     ScreenTestHarness::for(EmailVerified::class)->render([], shouldReset: true);
@@ -143,37 +148,46 @@ it('verifies email states in EmailVerified screen', function () {
 });
 
 it('validates and publishes posts in PublishPost screen', function () {
+    /** @var TestCase $this */
     $admin = app(UsimUserService::class)->provisionFromConfig('admin');
     $this->actingAs($admin);
+
+    $postService = app(PostServiceInterface::class);
+    $postId = $postService->createPost([
+        'user_id' => $admin->id,
+        'status' => 'draft',
+    ]);
 
     /** @var PublishPost $screen */
     $screen = Screen::make(PublishPost::class);
     $harness = ScreenTestHarness::for($screen);
-    $harness->render([], shouldReset: true);
+    $harness->withQuery(['post_id' => $postId])
+        ->render(['post_id' => $postId], shouldReset: true);
 
-    $postService = app(PostServiceInterface::class);
-    $initialCount = $postService->getLatestPosts()->count();
+    /** @var InitialData $initialDataScreen */
+    $initialDataScreen = Screen::make(InitialData::class);
+    $initialHarness = ScreenTestHarness::for($initialDataScreen);
+    $initialHarness->render(['post_id' => $postId], shouldReset: true);
 
     // Validation errors when title or content is empty
-    $harness->call('save_post', ['post_title' => '', 'post_content' => '']);
-    expect($postService->getLatestPosts()->count())->toBe($initialCount);
+    $initialHarness->call('on_confirm_initial_data', [
+        'post_id' => $postId,
+        'post_title' => '',
+        'post_content' => '',
+    ]);
+    expect($postService->findById($postId)?->content)->toBe('');
 
-    // Successful post creation
-    $harness->call('save_post', [
-        'post_title' => 'My First Post',
-        'post_content' => 'Hello world content',
+    // Successful initial data update
+    $validContent = 'Contenido válido de prueba con más de cincuenta caracteres para el primer paso del post.';
+    $initialHarness->call('on_confirm_initial_data', [
+        'post_id' => $postId,
+        'post_title' => 'My First Post Title',
+        'post_content' => $validContent,
     ]);
 
-    expect($postService->getLatestPosts()->where('title', 'My First Post'))->not->toBeEmpty();
+    expect($postService->findById($postId)?->title)->toBe('My First Post Title');
 
-    // Cancel post navigation
-    $screen->onCancelPost([]);
-
-    // Unauthenticated guard
-    Auth::logout();
-    $harness->call('save_post', [
-        'post_title' => 'Should Not Save',
-        'post_content' => 'No auth',
-    ]);
-    expect($postService->getLatestPosts()->where('title', 'Should Not Save'))->toBeEmpty();
+    // Step navigation and go home action on PublishPost
+    $screen->onPostChanged($postId, 0);
+    $screen->onGoHome();
 });
