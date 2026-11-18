@@ -26,6 +26,7 @@ grid:
 
     - lst_history:
         at: [3, 1]
+        min_height: 350
         max_height: 350
         service: App\Services\Post\PostHistoryService
         title: .history.title

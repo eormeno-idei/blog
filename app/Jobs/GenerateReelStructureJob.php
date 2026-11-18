@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use App\DTOs\Posts\PostHistoryEventDTO;
+use App\Models\Post;
 
 class GenerateReelStructureJob implements ShouldQueue
 {
@@ -18,6 +19,7 @@ class GenerateReelStructureJob implements ShouldQueue
 
     public int $timeout = 1200;
     protected PostHistoryServiceInterface $historyService;
+    protected PostHistoryEventDTO $generatingEvent;
 
     public function __construct(
         public PostHistoryEventDTO $initialEvent,
@@ -31,11 +33,12 @@ class GenerateReelStructureJob implements ShouldQueue
         $this->historyService = $historyService;
 
         try {
-            $generatingEvent = $this->historyService->createGeneratingReelScriptEvent($this->initialEvent);
-            $reelScript = $this->parseAndValidateScript($this->generateScript());
-            $this->historyService->createCompletedReelScriptEvent($generatingEvent, $reelScript);
+            $this->generatingEvent = $this->historyService->createGeneratingReelScriptEvent($this->initialEvent);
+            $rawReelScript = $this->generateScript();
+            $reelScript = $this->parseAndValidateScript($rawReelScript);
+            $this->historyService->createCompletedReelScriptEvent($this->generatingEvent, $reelScript);
         } catch (\Throwable $e) {
-            $this->historyService->createFailedReelScriptEvent($this->initialEvent, $e->getMessage());
+            $this->historyService->createFailedReelScriptEvent($this->generatingEvent, $e->getMessage());
             Log::error('[GenerateReelPreviewJob] Error: ' . $e->getMessage());
         }
     }
@@ -58,6 +61,11 @@ class GenerateReelStructureJob implements ShouldQueue
 
         if (!is_array($decoded) || empty($decoded['scenes']) || !is_array($decoded['scenes'])) {
             throw new \RuntimeException('La IA devolvió un guion con formato JSON inválido. Intenta nuevamente.');
+        }
+
+        if (isset($decoded['errors']) && is_array($decoded['errors']) && !empty($decoded['errors'])) {
+            $errorMessages = implode('; ', array_map('strval', $decoded['errors']));
+            throw new \RuntimeException('La solicitud fue rechazada: ' . $errorMessages);
         }
 
         return $decoded;

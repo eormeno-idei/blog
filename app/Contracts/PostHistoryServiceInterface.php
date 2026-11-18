@@ -10,6 +10,8 @@ use Illuminate\Support\Collection;
 interface PostHistoryServiceInterface
 {
 
+    public function findPostEventHistoryById(?Authenticatable $user, int $event_id): ?PostHistoryEventDTO;
+
     /**
      * Verifica si un post tiene un evento de borrador inicial.
      *

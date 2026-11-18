@@ -144,6 +144,7 @@ class ReelStudio extends Screen
         $this->input_prompt->disabled(false);
         $this->input_prompt->value('');
         $this->btn_generate_reel->enabled();
+        $this->lst_history->select([(string) $status->id]);
 
         $this->loadHistoryItems($postId);
         $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
@@ -152,9 +153,11 @@ class ReelStudio extends Screen
         ]);
     }
 
-    protected function updateScenePreview(int $post_id): void
+    protected function updateScenePreview(int $post_id, ?int $event_id = null): void
     {
-        $lastEvent = $this->postHistoryService->getLastGeneratedVersionEvent(Auth::user(), $post_id);
+        $lastEvent = $event_id ?
+            $this->postHistoryService->findPostEventHistoryById(Auth::user(), $event_id) :
+            $this->postHistoryService->getLastGeneratedVersionEvent(Auth::user(), $post_id);
 
         $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'completed',
@@ -235,16 +238,8 @@ class ReelStudio extends Screen
         return implode(' · ', $meta);
     }
 
-    /**
-     * Handle version history item selection.
-     *
-     * @param  array<int, string|int>  $selected
-     */
     public function onSelectHistoryEvent(string|int|null $id = null, array $selected = []): void
     {
-        $selectedId = $id ?? ($selected[0] ?? null);
-        if ($selectedId !== null) {
-            $this->lst_history->select([(string) $selectedId]);
-        }
+        $this->updateScenePreview(0, $id);
     }
 }

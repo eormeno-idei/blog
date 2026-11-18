@@ -16,7 +16,13 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
 {
     public function __construct(
         private readonly PostHistoryRepositoryInterface $postHistoryRepository
-    ) {}
+    ) {
+    }
+
+    public function findPostEventHistoryById(?Authenticatable $user, int $event_id): ?PostHistoryEventDTO
+    {
+        return $this->postHistoryRepository->findById($event_id);
+    }
 
     public function hasFirstDraftEvent(?Authenticatable $user, int $post_id): bool
     {
@@ -64,6 +70,10 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
 
         $events = $this->postHistoryRepository->get([
             'post_id' => $post_id,
+            'event_type' => [
+                PostHistoryEventType::VERSION_GENERATED,
+                PostHistoryEventType::GENERATION_FAILED,
+            ],
         ]);
 
         $items = $events->map(fn(PostHistoryEventDTO $event) => $this->formatEventToListItem($event));
@@ -102,7 +112,7 @@ class PostHistoryService implements Listable, PostHistoryServiceInterface
                 if ($event->based_on_history_id) {
                     $meta[] = "Basada en v{$event->based_on_history_id}";
                 }
-                if (! empty($event->reel_script)) {
+                if (!empty($event->reel_script)) {
                     $meta[] = $event->updated_at->diffForHumans();
                 }
                 $metaStr = implode(' · ', $meta);
