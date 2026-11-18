@@ -32,11 +32,5 @@ grid:
         at: [3, 1]
         width: full
         style: primary
-        icon: "✨"
+        icon: "sparkles"
         action: generate_first_structure
-
-timers:
-  - tmr_reel_poll:
-      action: check_reel_status
-      every: 1000
-      enabled: false

@@ -34,7 +34,7 @@ class PublishPost extends Screen
         $this->demo_container = UI::container('demo_container')
             ->card()
             ->centerHorizontal()
-            ->width(Size::px(1600))
+            ->width(Size::px(1280))
             ->height(Size::px(600));
 
         $wrapper = UI::container('wrapper')
@@ -58,7 +58,7 @@ class PublishPost extends Screen
     {
         $this->buttons_container = UI::container('buttons_container')
             ->layout(LayoutType::HORIZONTAL)
-            ->width(Size::px(1600))
+            ->width(Size::px(1280))
             ->centerHorizontal()
             ->padding(Spacing::zero())
             ->gap(Spacing::px(10));
