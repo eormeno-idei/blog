@@ -8,18 +8,19 @@ use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasEditPanel;
 use App\UI\Screens\Post\Parts\ReelStudioConcerns\HasFirstDraftPanel;
 use Idei\Usim\Components\Container;
 use Idei\Usim\Screen;
-use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
 
 class ReelStudio extends Screen
 {
     use HasEditPanel, HasFirstDraftPanel;
 
-    protected Container $reel_scene_viewer_slot;
+    protected static bool $autoTranslate = true;
 
-    protected Container $first_draft_panel;
+    protected Container $cnt_reel_scene_viewer_slot;
 
-    protected Container $edit_panel;
+    protected Container $cnt_first_draft_panel;
+
+    protected Container $cnt_edit_panel;
 
     protected int $state_current_scene_index = 0;
 
@@ -39,26 +40,26 @@ class ReelStudio extends Screen
 
     protected function startingUI(int $post_id = 0): Container
     {
-        $this->buildFirstDraftPanel();
         $this->buildEditReelPanel($post_id);
 
         $hasDraft = $this->postHistoryService->hasFirstDraftEvent(Auth::user(), $post_id);
 
-        $this->first_draft_panel->visible(! $hasDraft);
-        $this->edit_panel->visible($hasDraft);
-
-        $this->reel_scene_viewer_slot
-            ->plain()
-            ->padding(Spacing::zero());
+        $this->cnt_first_draft_panel->visible(! $hasDraft);
+        $this->cnt_edit_panel->visible($hasDraft);
 
         $this->updateScenePreview($post_id);
 
         return $this->layoutContainer();
     }
 
+    protected function postLoadUI(): void
+    {
+        $this->selectInitialHistoryItem();
+    }
+
     public function onGeneratingReel(int $postId): void
     {
-        $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
+        $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'generating_script',
             'script' => [],
         ]);
@@ -75,10 +76,10 @@ class ReelStudio extends Screen
             $resolvedScript = is_array($decoded) ? $decoded : [];
         }
 
-        $this->edit_panel->visible(true);
-        $this->first_draft_panel->visible(false);
+        $this->cnt_edit_panel->visible(true);
+        $this->cnt_first_draft_panel->visible(false);
         $this->loadHistoryItems($postId);
-        $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
+        $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'completed',
             'script' => $resolvedScript ?? [],
         ]);
@@ -88,9 +89,9 @@ class ReelStudio extends Screen
     {
         $lastEvent = $this->postHistoryService->getLastGeneratedVersionEvent(Auth::user(), $post_id);
 
-        $this->reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
+        $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'completed',
-            'script' => $lastEvent?->reel_script ?? []
+            'script' => $lastEvent?->reel_script ?? [],
         ]);
     }
 }

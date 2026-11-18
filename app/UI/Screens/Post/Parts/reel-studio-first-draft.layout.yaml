@@ -10,6 +10,33 @@ grid:
   gap: s
 
   children:
-    - context_received_card:        { at: [1, 1] }
-    - initial_instructions:         { at: [2, 1], width: full }
-    - btn_generate_first_structure: { at: [3, 1], width: full, style: primary, icon: "✨", action: generate_first_structure }
+    - cnt_context_received_card:
+        at: [1, 1]
+        appearance: card
+        width: full
+        padding: 5
+        gap: 5
+        grid:
+          cols: [1fr]
+          gap: 5
+          children:
+            - lbl_context_received_title:   { text: .context_received.title }
+            - lbl_context_received_content: { text: .context_received.content }
+            - lbl_context_received_images:  { text: .context_received.images }
+
+    - txt_initial_instructions:
+        at: [2, 1]
+        width: full
+
+    - btn_generate_first_structure:
+        at: [3, 1]
+        width: full
+        style: primary
+        icon: "✨"
+        action: generate_first_structure
+
+timers:
+  - tmr_reel_poll:
+      action: check_reel_status
+      every: 1000
+      enabled: false

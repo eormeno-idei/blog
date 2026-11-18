@@ -189,16 +189,16 @@ it('embeds ReelSceneViewer in ReelStudio replacing old preview and supports gene
     $harness = ScreenTestHarness::for(ReelStudio::class)
         ->render(['post_id' => $postId], shouldReset: true);
 
-    $harness->assertHasComponent('reel_studio_main_row')
-        ->assertHasComponent('first_draft_panel')
-        ->assertHasComponent('edit_panel')
-        ->assertHasComponent('context_received_card')
-        ->assertHasComponent('context_received_title')
-        ->assertHasComponent('context_received_content')
-        ->assertHasComponent('context_received_images')
-        ->assertHasComponent('initial_instructions')
+    $harness->assertHasComponent('cnt_reel_studio_main_row')
+        ->assertHasComponent('cnt_first_draft_panel')
+        ->assertHasComponent('cnt_edit_panel')
+        ->assertHasComponent('cnt_context_received_card')
+        ->assertHasComponent('lbl_context_received_title')
+        ->assertHasComponent('lbl_context_received_content')
+        ->assertHasComponent('lbl_context_received_images')
+        ->assertHasComponent('txt_initial_instructions')
         ->assertHasComponent('btn_generate_first_structure')
-        ->assertHasComponent('reel_scene_viewer_slot')
+        ->assertHasComponent('cnt_reel_scene_viewer_slot')
         ->assertHasComponent('phone_mockup_container')
         ->assertHasComponent('lbl_empty_title');
 
@@ -206,15 +206,15 @@ it('embeds ReelSceneViewer in ReelStudio replacing old preview and supports gene
         ->and($harness->findComponent('right_preview_panel'))->toBeNull();
 
     // 1. Initial state: Empty state in viewer and Contexto recibido labels visible
-    $harness->assertComponentText('context_received_title', '✅ Contexto recibido')
-        ->assertComponentText('context_received_content', '✅ Texto Markdown cargado')
-        ->assertComponentText('context_received_images', '✅ Imágenes adjuntas')
+    $harness->assertComponentText('lbl_context_received_title', '✅ Contexto recibido')
+        ->assertComponentText('lbl_context_received_content', '✅ Texto Markdown cargado')
+        ->assertComponentText('lbl_context_received_images', '✅ Imágenes adjuntas')
         ->assertComponentText('lbl_empty_title', 'Aquí aparecerá la estructura de tu Reel');
 
     // 2. Click "✨ Generar Primera Estructura" -> dispatches job and starts timer
     $harness->click('btn_generate_first_structure', [
         'post_id' => $postId,
-        'initial_instructions' => 'Enfocar en estudiantes de Informática',
+        'txt_initial_instructions' => 'Enfocar en estudiantes de Informática',
     ]);
 
     Queue::assertPushed(GenerateReelStructureJob::class);

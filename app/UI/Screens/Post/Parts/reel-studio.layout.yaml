@@ -1,8 +1,9 @@
-name: reel_studio_main_row
+name: cnt_reel_studio_main_row
 appearance: card
 width: 100%
 max_width: 800
 center_horizontal: true
+i18n: auto
 
 grid:
   cols: [1fr, 1fr]
@@ -10,6 +11,23 @@ grid:
   gap: m
 
   children:
-    - first_draft_panel:      { at: [1, 1], min_width: 400, align: stretch }
-    - edit_panel:             { at: [1, 1], min_width: 400, align: stretch }
-    - reel_scene_viewer_slot: { at: [1, 2], min_width: 400, align: stretch, justify: stretch, width: full }
+    - cnt_first_draft_panel:
+        at: [1, 1]
+        min_width: 400
+        align: stretch
+        include: reel-studio-first-draft.layout.yaml
+
+    - cnt_edit_panel:
+        at: [1, 1]
+        min_width: 400
+        align: stretch
+        include: reel-studio-edit.layout.yaml
+
+    - cnt_reel_scene_viewer_slot:
+        at: [1, 2]
+        min_width: 400
+        align: stretch
+        justify: stretch
+        width: full
+        appearance: plain
+        padding: none

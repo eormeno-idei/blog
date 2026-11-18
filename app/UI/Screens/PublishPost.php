@@ -33,8 +33,9 @@ class PublishPost extends Screen
 
         $this->demo_container = UI::container('demo_container')
             ->card()
-            ->width(Size::full())
-            ->height(Size::px(650));
+            ->centerHorizontal()
+            ->width(Size::px(1600))
+            ->height(Size::px(600));
 
         $wrapper = UI::container('wrapper')
             ->width(Size::full())
@@ -44,7 +45,6 @@ class PublishPost extends Screen
         $wrapper->add($this->buildStepsBar($post_id, $workflow));
         $wrapper->add($this->demo_container);
 
-        $container->add($this->buildHeader());
         $container->add($wrapper);
     }
 
@@ -58,8 +58,17 @@ class PublishPost extends Screen
     {
         $this->buttons_container = UI::container('buttons_container')
             ->layout(LayoutType::HORIZONTAL)
+            ->width(Size::px(1600))
+            ->centerHorizontal()
             ->padding(Spacing::zero())
             ->gap(Spacing::px(10));
+
+        $this->buttons_container->add(
+            UI::button('btn_back_home')
+                ->label('← Inicio')
+                ->action('go_home')
+                ->style('secondary')
+        );
 
         foreach ($workflow->steps as $index => $step) {
             $index_inc = $index + 1;
@@ -123,22 +132,6 @@ class PublishPost extends Screen
                 $btn->style($step->isCurrent ? 'primary' : 'secondary');
             }
         }
-    }
-
-    private function buildHeader(): Container
-    {
-        $header = UI::container('publish_header')
-            ->width(Size::full())
-            ->layout(LayoutType::HORIZONTAL)
-            ->padding(Spacing::zero())
-            ->add(
-                UI::button('btn_back_home')
-                    ->label('← Inicio')
-                    ->action('go_home')
-                    ->style('secondary')
-            );
-
-        return $header;
     }
 
     public function onGoHome(): void

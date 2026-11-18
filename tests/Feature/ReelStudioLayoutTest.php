@@ -17,7 +17,7 @@ beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
 });
 
-it('configures ReelStudio main, first-draft, and edit panels using declarative USIM 2.6 layouts without wrapper containers', function () {
+it('configures ReelStudio main, first-draft, and edit panels using declarative USIM 2.14 layouts', function () {
     /** @var User $admin */
     $admin = User::factory()->create();
     $this->actingAs($admin);
@@ -53,7 +53,7 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
 
     // 1. Main 2-column grid container (reel-studio.layout.yaml)
     /** @var Container $mainRow */
-    $mainRow = $harness->getComponent('reel_studio_main_row');
+    $mainRow = $harness->getComponent('cnt_reel_studio_main_row');
     $mainCfg = $json[$mainRow->getId()];
 
     expect($mainCfg['layout'])->toBe('grid')
@@ -64,13 +64,13 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($mainCfg['gap'])->toBe('16px')
         ->and($mainCfg['grid_template_columns'])->toBe('1fr 1fr');
 
-    // Direct children of reel_studio_main_row
+    // Direct children of cnt_reel_studio_main_row
     /** @var Container $firstDraftPanel */
-    $firstDraftPanel = $harness->getComponent('first_draft_panel');
+    $firstDraftPanel = $harness->getComponent('cnt_first_draft_panel');
     /** @var Container $editPanel */
-    $editPanel = $harness->getComponent('edit_panel');
+    $editPanel = $harness->getComponent('cnt_edit_panel');
     /** @var Container $viewerSlot */
-    $viewerSlot = $harness->getComponent('reel_scene_viewer_slot');
+    $viewerSlot = $harness->getComponent('cnt_reel_scene_viewer_slot');
 
     expect($firstDraftPanel->getParent())->toBe($mainRow->getId())
         ->and($editPanel->getParent())->toBe($mainRow->getId())
@@ -90,7 +90,9 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($viewerSlotCfg['grid_row'])->toBe('1')
         ->and($viewerSlotCfg['align_self'])->toBe('stretch')
         ->and($viewerSlotCfg['justify_self'])->toBe('stretch')
-        ->and($viewerSlotCfg['width'])->toBe('100%');
+        ->and($viewerSlotCfg['width'])->toBe('100%')
+        ->and($viewerSlotCfg['appearance'])->toBe('plain')
+        ->and($viewerSlotCfg['padding'])->toBe('0');
 
     // 2. First-draft panel declarative layout (reel-studio-first-draft.layout.yaml)
     expect($firstDraftCfg['layout'])->toBe('grid')
@@ -102,12 +104,18 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($firstDraftCfg['grid_template_columns'])->toBe('1fr')
         ->and($firstDraftCfg['grid_template_rows'])->toBe('auto 1fr auto');
 
-    $contextCard = $harness->getComponent('context_received_card');
-    $instructions = $harness->getComponent('initial_instructions');
+    $contextCard = $harness->getComponent('cnt_context_received_card');
+    $ctxTitle = $harness->getComponent('lbl_context_received_title');
+    $ctxContent = $harness->getComponent('lbl_context_received_content');
+    $ctxImages = $harness->getComponent('lbl_context_received_images');
+    $instructions = $harness->getComponent('txt_initial_instructions');
     $btnGenerate = $harness->getComponent('btn_generate_first_structure');
     $timer = $harness->getComponent('tmr_reel_poll');
 
     expect($contextCard->getParent())->toBe($firstDraftPanel->getId())
+        ->and($ctxTitle->getParent())->toBe($contextCard->getId())
+        ->and($ctxContent->getParent())->toBe($contextCard->getId())
+        ->and($ctxImages->getParent())->toBe($contextCard->getId())
         ->and($instructions->getParent())->toBe($firstDraftPanel->getId())
         ->and($btnGenerate->getParent())->toBe($firstDraftPanel->getId())
         ->and($timer->getParent())->toBe($firstDraftPanel->getId());
@@ -116,7 +124,11 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($json[$instructions->getId()]['grid_row'])->toBe('2')
         ->and($json[$instructions->getId()]['width'])->toBe('100%')
         ->and($json[$btnGenerate->getId()]['grid_row'])->toBe('3')
-        ->and($json[$btnGenerate->getId()]['width'])->toBe('100%');
+        ->and($json[$btnGenerate->getId()]['width'])->toBe('100%')
+        ->and($json[$timer->getId()]['action'])->toBe('check_reel_status')
+        ->and($json[$timer->getId()]['interval'])->toBe(1000)
+        ->and($json[$timer->getId()]['repeat'])->toBeTrue()
+        ->and($json[$timer->getId()]['enabled'])->toBeFalse();
 
     // 3. Edit panel grid layout (reel-studio-edit.layout.yaml)
     expect($editCfg['layout'])->toBe('grid')
@@ -124,7 +136,7 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         ->and($editCfg['width'])->toBe('100%')
         ->and($editCfg['height'])->toBe('100%')
         ->and($editCfg['padding'])->toBe('0')
-        ->and($editCfg['gap'])->toBe('16px')
+        ->and($editCfg['gap'])->toBe('4px')
         ->and($editCfg['grid_template_columns'])->toBe('1fr')
         ->and($editCfg['grid_template_rows'])->toBe('auto auto 1fr auto');
 
@@ -132,7 +144,7 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
         'lbl_post_title' => ['1', '1'],
         'cnt_status_row' => ['1', '2'],
         'lst_history' => ['1', '3'],
-        'cnt_waiting_creator' => ['1', '4'],
+        'cnt_prompt_input_row' => ['1', '4'],
     ];
 
     foreach ($expectedEditPlacement as $name => [$expectedCol, $expectedRow]) {
@@ -144,24 +156,47 @@ it('configures ReelStudio main, first-draft, and edit panels using declarative U
             ->and($cfg['grid_row'])->toBe($expectedRow);
     }
 
+    $cntStatusRow = $harness->getComponent('cnt_status_row');
+    $cntStatusRowCfg = $json[$cntStatusRow->getId()];
+    $lblStatusPrefix = $harness->getComponent('lbl_status_prefix');
+    $lblStatusBadge = $harness->getComponent('lbl_status_badge');
+
+    expect($cntStatusRowCfg['appearance'])->toBe('elevated')
+        ->and($cntStatusRowCfg['layout'])->toBe('grid')
+        ->and($cntStatusRowCfg['grid_template_columns'])->toBe('auto 1fr')
+        ->and($lblStatusPrefix->getParent())->toBe($cntStatusRow->getId())
+        ->and($json[$lblStatusPrefix->getId()]['text'])->toBe('ESTADO:')
+        ->and($lblStatusBadge->getParent())->toBe($cntStatusRow->getId())
+        ->and($json[$lblStatusBadge->getId()]['text'])->toBe('BORRADOR');
+
     $lstHistory = $harness->getComponent('lst_history');
     $lstCfg = $json[$lstHistory->getId()];
     expect($lstCfg['selection_mode'])->toBe('single')
         ->and($lstCfg['variant'])->toBe('card')
-        ->and($lstCfg['title'])->toBe('Historial de versiones')
-        ->and(count($lstCfg['items']))->toBe(3);
+        ->and($lstCfg['title'])->toBe('Historial de versiones');
 
-    $cntWaiting = $harness->getComponent('cnt_waiting_creator');
-    $cntWaitingCfg = $json[$cntWaiting->getId()];
-    expect($cntWaitingCfg['appearance'])->toBe('card');
+    $cntPromptRow = $harness->getComponent('cnt_prompt_input_row');
+    $cntPromptRowCfg = $json[$cntPromptRow->getId()];
+    $inputPrompt = $harness->getComponent('input_prompt');
+    $btnGenerateReel = $harness->getComponent('btn_generate_reel');
+
+    expect($cntPromptRowCfg['appearance'])->toBe('elevated')
+        ->and($cntPromptRowCfg['layout'])->toBe('grid')
+        ->and($cntPromptRowCfg['grid_template_columns'])->toBe('1fr auto')
+        ->and($inputPrompt->getParent())->toBe($cntPromptRow->getId())
+        ->and($json[$inputPrompt->getId()]['width'])->toBe('100%')
+        ->and($json[$inputPrompt->getId()]['placeholder'])->toBe('Escribe un prompt para generar el reel...')
+        ->and($btnGenerateReel->getParent())->toBe($cntPromptRow->getId());
 });
 
-it('preserves reel_scene_viewer_slot grid placement when hot-swapping ReelSceneViewer on completion', function () {
+it('preserves cnt_reel_scene_viewer_slot grid placement when hot-swapping ReelSceneViewer on completion', function () {
     $publisher = app(UsimUserService::class)->provisionFromConfig('publisher');
     $this->actingAs($publisher);
 
     $postService = app(PostServiceInterface::class);
     $sampleJson = (string) file_get_contents(base_path('_data.json'));
+    /** @var array<string, mixed> $decoded */
+    $decoded = json_decode($sampleJson, true);
 
     $postId = $postService->createPost([
         'user_id' => $publisher->id,
@@ -176,11 +211,11 @@ it('preserves reel_scene_viewer_slot grid placement when hot-swapping ReelSceneV
 
     $harness->call('ai_first_structure_completed', [
         'postId' => $postId,
-        'json' => $sampleJson,
+        'script' => $decoded,
     ]);
 
     $json = $harness->getContainer()?->toJson() ?? [];
-    $viewerSlot = $harness->getComponent('reel_scene_viewer_slot');
+    $viewerSlot = $harness->getComponent('cnt_reel_scene_viewer_slot');
     $slotCfg = $json[$viewerSlot->getId()];
 
     expect($slotCfg['grid_column'])->toBe('2')
@@ -210,15 +245,15 @@ it('embeds cleanly inside PublishPost step 2 with declarative layouts preserved'
         ->render(['post_id' => $postId], shouldReset: true);
 
     $harness->assertHasComponent('demo_container')
-        ->assertHasComponent('reel_studio_main_row')
-        ->assertHasComponent('first_draft_panel')
-        ->assertHasComponent('edit_panel')
-        ->assertHasComponent('reel_scene_viewer_slot')
+        ->assertHasComponent('cnt_reel_studio_main_row')
+        ->assertHasComponent('cnt_first_draft_panel')
+        ->assertHasComponent('cnt_edit_panel')
+        ->assertHasComponent('cnt_reel_scene_viewer_slot')
         ->assertHasComponent('phone_mockup_container');
 
     $json = $harness->getContainer()?->toJson() ?? [];
-    $mainRow = $harness->getComponent('reel_studio_main_row');
-    $editPanel = $harness->getComponent('edit_panel');
+    $mainRow = $harness->getComponent('cnt_reel_studio_main_row');
+    $editPanel = $harness->getComponent('cnt_edit_panel');
 
     expect($json[$mainRow->getId()]['layout'])->toBe('grid')
         ->and($json[$mainRow->getId()]['grid_template_columns'])->toBe('1fr 1fr')

@@ -1,4 +1,4 @@
-appearance: plain
+appearance: card
 width: 100%
 height: 100%
 i18n: auto
@@ -6,7 +6,7 @@ i18n: auto
 grid:
   cols: [1fr]
   rows: [auto, auto, 1fr, auto]
-  padding: none
+  padding: xs
   gap: xs
 
   children:
@@ -15,11 +15,24 @@ grid:
         width: full
         size: xl
         font_weight: bold
-        text: .post_title
 
     - cnt_status_row:
         at: [2, 1]
         width: full
+        appearance: elevated
+        grid:
+          cols: [auto, 1fr]
+          gap: xs
+          align: center
+          children:
+            - lbl_status_prefix:
+                font_weight: bold
+                size: small
+            - lbl_status_badge:
+                justify: start
+                variant: pill
+                style: secondary
+                size: small
 
     - lst_history:
         at: [3, 1]
@@ -38,7 +51,16 @@ grid:
     - cnt_prompt_input_row:
         at: [4, 1]
         width: full
-        appearance: elevated
-        layout: horizontal
-        align_items: center
-        justify_content: space-between
+        appearance: card
+        grid:
+          cols: [1fr, auto]
+          gap: xs
+          align: center
+          children:
+            - input_prompt:
+                width: full
+                placeholder: .prompt_placeholder
+            - btn_generate_reel:
+                icon: send
+                action: generate_reel
+                style: primary

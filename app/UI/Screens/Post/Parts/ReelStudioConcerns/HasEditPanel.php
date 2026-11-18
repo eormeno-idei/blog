@@ -4,41 +4,21 @@ namespace App\UI\Screens\Post\Parts\ReelStudioConcerns;
 
 use App\DTOs\Posts\PostHistoryEventDTO;
 use App\Services\Post\PostHistoryService;
-use Idei\Usim\Components\Input;
-use Idei\Usim\Components\Button;
-use Idei\Usim\Components\Container;
 use Idei\Usim\Components\ItemList;
 use Idei\Usim\Components\NewLabel;
-use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\LayoutType;
-use Idei\Usim\Enums\SelectionMode;
-use Idei\Usim\ValueObjects\Size;
-use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Support\Facades\Auth;
 
 trait HasEditPanel
 {
     protected NewLabel $lbl_post_title;
 
-    protected Container $cnt_status_row;
-
-    protected NewLabel $lbl_status_prefix;
-
     protected NewLabel $lbl_status_badge;
 
     protected ItemList $lst_history;
 
-    protected Container $cnt_prompt_input_row;
-
-    protected Input $input_prompt;
-
-    protected Button $btn_generate_reel;
-
-    protected function buildEditReelPanel(int $post_id): Container
+    protected function buildEditReelPanel(int $post_id): void
     {
-        $this->configureStatusRow();
         $this->configureHistoryList($post_id);
-        $this->configurePromptInputRow();
 
         $post = $this->postService->findById($post_id);
         if ($post !== null && ! empty($post->title)) {
@@ -47,65 +27,20 @@ trait HasEditPanel
         if ($post !== null) {
             $this->lbl_status_badge->text(strtoupper($post->statusValue()));
         }
-
-        $container = $this->edit_panel
-            ->layoutFile('reel-studio-edit.layout.yaml');
-
-        $this->selectInitialHistoryItem();
-
-        return $container;
-    }
-
-    protected function configureStatusRow(): Container
-    {
-        return $this->cnt_status_row
-            ->appearance('elevated')
-            ->layout(LayoutType::HORIZONTAL)
-            ->alignItems(AlignItems::CENTER)
-            ->gap(Spacing::xs())
-            ->add(
-                $this->lbl_status_prefix
-                    ->text($this->t('.status_prefix', [], 'ESTADO:'))
-                    ->bold()
-                    ->small()
-            )
-            ->add(
-                $this->lbl_status_badge
-                    ->text($this->t('.status_badge', [], 'BORRADOR'))
-                    ->pill()
-                    ->secondary()
-                    ->small()
-            );
-    }
-
-    protected function configurePromptInputRow(): Container
-    {
-        return $this->cnt_prompt_input_row
-            ->add(
-                $this->input_prompt
-                    ->placeholder(t('.prompt_placeholder'))
-                    ->width(Size::half())
-            )->add(
-                $this->btn_generate_reel
-                    ->icon('send')
-                    ->action('onGenerateReel')
-                    ->style('primary')
-            );
     }
 
     public function onGenerateReel(int $post_id, ?string $input_prompt = null): void
     {
-        if (empty($input_prompt)) return;
+        if (empty($input_prompt)) {
+            return;
+        }
 
         $this->postHistoryService->requestGenerateReelScript(Auth::user(), $post_id, $input_prompt);
     }
 
     protected function configureHistoryList(int $post_id): void
     {
-        $this->lst_history
-            ->selectionMode(SelectionMode::SINGLE)
-            ->parameters(['post_id' => $post_id])
-            ->service(PostHistoryService::class);
+        $this->lst_history->parameters(['post_id' => $post_id]);
     }
 
     protected function selectInitialHistoryItem(): void
@@ -121,8 +56,7 @@ trait HasEditPanel
     protected function loadHistoryItems(?int $postId = null): void
     {
         $resolvedPostId = $postId ?? ($this->state_post_id ?? 0);
-        $this->configureHistoryList($resolvedPostId);
-        $this->selectInitialHistoryItem();
+        $this->refreshHistoryList($resolvedPostId);
     }
 
     public function refreshHistoryList(?int $postId = null): void
