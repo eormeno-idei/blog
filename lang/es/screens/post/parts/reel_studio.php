@@ -47,4 +47,6 @@ return [
     'waiting_desc' => 'El creador está editando el post. Recibirás una notificación cuando lo envíe a revisión.',
     'prompt_placeholder' => 'Escribe un prompt para generar el reel...',
     'generate_button' => 'Generar Reel',
+    'generation_failed_title' => 'Generación fallida',
+    'generation_failed' => 'Error al generar el reel: :error',
 ];

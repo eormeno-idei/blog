@@ -14,9 +14,11 @@ use Idei\Usim\Components\Container;
 use Idei\Usim\Components\Input;
 use Idei\Usim\Components\ItemList;
 use Idei\Usim\Components\NewLabel;
+use Idei\Usim\Modals\ConfirmDialog;
 use Idei\Usim\Screen;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Idei\Usim\Enums\DialogType;
 
 class ReelStudio extends Screen
 {
@@ -116,9 +118,13 @@ class ReelStudio extends Screen
     {
         $this->stopTimer('tmr_reel_poll');
 
+        $this->toast(t('.generation_failed', ['error' => $status->summary ?? '']), 'error');
+
+        $this->btn_generate_first_structure->enabled(true);
         $this->input_prompt->disabled(false);
         $this->btn_generate_reel->enabled();
-        $this->lst_history->select([(string) $status->id]);
+        $this->lst_history->select([$status->id]);
+        $this->loadHistoryItems($status->post_id);
 
         $this->cnt_reel_scene_viewer_slot->embed(ReelSceneViewer::class, [
             'status' => 'idle',
@@ -139,13 +145,6 @@ class ReelStudio extends Screen
         $this->stopTimer('tmr_reel_poll');
         $postId = $status->post_id;
         $resolvedScript = $status->reel_script;
-        if (empty($resolvedScript) && !empty($json)) {
-            $decoded = json_decode($json, true);
-            $resolvedScript = is_array($decoded) ? $decoded : [];
-        } elseif (is_string($resolvedScript)) {
-            $decoded = json_decode($resolvedScript, true);
-            $resolvedScript = is_array($decoded) ? $decoded : [];
-        }
 
         $this->cnt_edit_panel->visible(true);
         $this->cnt_first_draft_panel->visible(false);

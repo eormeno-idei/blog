@@ -371,7 +371,7 @@ class Menu extends Screen
      */
     public function onShowAboutInfo(array $params): void
     {
-        $version = '0.7.0';
+        $version = '2.14.1';
         $aboutMessage = t('screens.menu.about.message', [
             'version' => $version,
         ]);
