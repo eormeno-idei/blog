@@ -1,40 +1,36 @@
 /**
  * MenuDropdown component (modular override)
+ * Supports standard dropdowns and viewport-portaled floating popovers
+ * (right-top, right-bottom, top-left, top-right) so menus inside Split panes never clip.
  */
 class UsimMenuDropdownComponent extends UIComponent {
+    constructor(id, config) {
+        super(id, config);
+        this.menuContainer = null;
+        this.triggerEl = null;
+        this.contentEl = null;
+        this._isPortaled = false;
+        this._boundOutsideClick = null;
+        this._boundKeydown = null;
+        this._boundViewportChange = null;
+    }
+
     render() {
         const menuContainer = document.createElement('div');
         menuContainer.className = 'menu-dropdown';
+        this.menuContainer = menuContainer;
 
         const trigger = document.createElement('button');
+        trigger.type = 'button';
         trigger.className = 'menu-dropdown-trigger';
+        this.triggerEl = trigger;
 
-        const triggerConfig = this.config.trigger || {};
-        const triggerLabel = triggerConfig.label || '☰ Menu';
-        const triggerIcon = triggerConfig.icon;
-        const triggerImage = triggerConfig.image;
-        const triggerAlt = triggerConfig.alt || 'Menu';
-        const triggerStyle = triggerConfig.style || 'default';
-
-        trigger.className += ` menu-trigger-${triggerStyle}`;
-
-        let triggerContent = '';
-        if (triggerImage) {
-            triggerContent += `<img src="${triggerImage}" alt="${triggerAlt}" class="trigger-image">`;
-            if (triggerLabel) {
-                triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
-            }
-        } else {
-            if (triggerIcon) {
-                triggerContent += `<span class="trigger-icon">${triggerIcon}</span>`;
-            }
-            triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
-        }
-
-        trigger.innerHTML = triggerContent;
+        this._renderTriggerContent(trigger, this.config.trigger || {});
 
         const content = document.createElement('div');
         content.className = 'menu-dropdown-content';
+        content.dataset.ownerDropdownId = String(this.id);
+        this.contentEl = content;
 
         const position = this.config.position || 'bottom-left';
         content.classList.add(`position-${position}`);
@@ -59,29 +55,36 @@ class UsimMenuDropdownComponent extends UIComponent {
             this.closeAllMenus();
 
             if (!isActive) {
-                content.classList.add('show');
-                trigger.classList.add('active');
-                content.style.animationDuration = '0.3s';
-
-                const firstMenuItem = content.querySelector('.menu-item:not([disabled])');
-                if (firstMenuItem) {
-                    setTimeout(() => firstMenuItem.focus(), 100);
-                }
+                this._openMenu();
             }
         });
 
-        document.addEventListener('click', (e) => {
-            if (!menuContainer.contains(e.target) && !e.target.closest('.submenu')) {
+        this._boundOutsideClick = (e) => {
+            if (
+                !menuContainer.contains(e.target) &&
+                !content.contains(e.target) &&
+                !e.target.closest('.submenu')
+            ) {
                 this.closeMenu(content, trigger);
             }
-        });
+        };
 
-        document.addEventListener('keydown', (e) => {
+        this._boundKeydown = (e) => {
             if (e.key === 'Escape' && content.classList.contains('show')) {
                 this.closeMenu(content, trigger);
                 trigger.focus();
             }
-        });
+        };
+
+        this._boundViewportChange = () => {
+            if (content.classList.contains('show') && this._isPortaled) {
+                this._positionFloatingContent();
+            }
+        };
+
+        document.addEventListener('click', this._boundOutsideClick);
+        document.addEventListener('keydown', this._boundKeydown);
+        window.addEventListener('resize', this._boundViewportChange);
 
         menuContainer.appendChild(trigger);
         menuContainer.appendChild(content);
@@ -98,6 +101,118 @@ class UsimMenuDropdownComponent extends UIComponent {
         return result;
     }
 
+    _renderTriggerContent(trigger, triggerConfig) {
+        const triggerLabel = triggerConfig.label || '☰ Menu';
+        const triggerIcon = triggerConfig.icon;
+        const triggerImage = triggerConfig.image;
+        const triggerAlt = triggerConfig.alt || 'Menu';
+        const triggerStyle = triggerConfig.style || 'default';
+
+        trigger.className = `menu-dropdown-trigger menu-trigger-${triggerStyle}`;
+        trigger.title = triggerLabel || triggerAlt;
+
+        let triggerContent = '';
+        if (triggerImage) {
+            triggerContent += `<img src="${triggerImage}" alt="${triggerAlt}" class="trigger-image">`;
+            if (triggerLabel) {
+                triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
+            }
+        } else {
+            if (triggerIcon) {
+                triggerContent += `<span class="trigger-icon">${triggerIcon}</span>`;
+            }
+            triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
+        }
+
+        trigger.innerHTML = triggerContent;
+    }
+
+    _shouldUseFloatingPortal() {
+        if (this.config.floating === true) {
+            return true;
+        }
+        const position = String(this.config.position || 'bottom-left');
+        if (position.startsWith('right-') || position.startsWith('top-')) {
+            return true;
+        }
+        return Boolean(this.menuContainer?.closest('.ui-split-pane'));
+    }
+
+    _openMenu() {
+        const content = this.contentEl;
+        const trigger = this.triggerEl;
+        if (!content || !trigger) {
+            return;
+        }
+
+        if (this._shouldUseFloatingPortal()) {
+            this._isPortaled = true;
+            content.classList.add('is-floating');
+            if (content.parentElement !== document.body) {
+                document.body.appendChild(content);
+            }
+            content.classList.add('show');
+            trigger.classList.add('active');
+            this._positionFloatingContent();
+        } else {
+            content.classList.add('show');
+            trigger.classList.add('active');
+            content.style.animationDuration = '0.2s';
+        }
+
+        const firstMenuItem = content.querySelector('.menu-item:not([disabled])');
+        if (firstMenuItem) {
+            setTimeout(() => firstMenuItem.focus(), 60);
+        }
+    }
+
+    _positionFloatingContent() {
+        const content = this.contentEl;
+        const trigger = this.triggerEl;
+        if (!content || !trigger) {
+            return;
+        }
+
+        const triggerRect = trigger.getBoundingClientRect();
+        const contentRect = content.getBoundingClientRect();
+        const viewportW = window.innerWidth;
+        const viewportH = window.innerHeight;
+        const gap = 8;
+        const position = String(this.config.position || 'bottom-left');
+
+        let top = triggerRect.bottom + gap;
+        let left = triggerRect.left;
+
+        if (position === 'right-top') {
+            left = triggerRect.right + gap;
+            top = triggerRect.bottom - contentRect.height;
+        } else if (position === 'right-bottom') {
+            left = triggerRect.right + gap;
+            top = triggerRect.top;
+        } else if (position === 'top-left') {
+            left = triggerRect.left;
+            top = triggerRect.top - contentRect.height - gap;
+        } else if (position === 'top-right') {
+            left = triggerRect.right - contentRect.width;
+            top = triggerRect.top - contentRect.height - gap;
+        } else if (position === 'bottom-right') {
+            left = triggerRect.right - contentRect.width;
+            top = triggerRect.bottom + gap;
+        }
+
+        // Clamp within viewport margins
+        const margin = 8;
+        left = Math.max(margin, Math.min(left, viewportW - contentRect.width - margin));
+        top = Math.max(margin, Math.min(top, viewportH - contentRect.height - margin));
+
+        content.style.position = 'fixed';
+        content.style.top = `${Math.round(top)}px`;
+        content.style.left = `${Math.round(left)}px`;
+        content.style.right = 'auto';
+        content.style.bottom = 'auto';
+        content.style.zIndex = '10050';
+    }
+
     renderMenuItem(item) {
         if (item.type === 'separator') {
             const separator = document.createElement('div');
@@ -107,6 +222,9 @@ class UsimMenuDropdownComponent extends UIComponent {
 
         const hasSubmenu = item.submenu && item.submenu.length > 0;
         const menuItem = document.createElement(item.url ? 'a' : 'button');
+        if (menuItem.tagName === 'BUTTON') {
+            menuItem.type = 'button';
+        }
         menuItem.className = 'menu-item';
 
         if (hasSubmenu) {
@@ -172,10 +290,30 @@ class UsimMenuDropdownComponent extends UIComponent {
                     clearTimeout(hideTimeout);
                     hideTimeout = null;
                 }
+                submenu.style.top = '0';
+                submenu.style.bottom = 'auto';
+                submenu.style.left = '100%';
+                submenu.style.right = 'auto';
+                submenu.style.marginLeft = '';
+                submenu.style.marginRight = '';
+
                 submenu.style.setProperty('display', 'block', 'important');
                 submenu.style.setProperty('opacity', '1', 'important');
                 submenu.style.setProperty('visibility', 'visible', 'important');
                 submenu.classList.add('show');
+
+                // Keep submenu inside viewport bounds (critical for bottom-left Settings popovers)
+                const rect = submenu.getBoundingClientRect();
+                if (rect.bottom > window.innerHeight - 8) {
+                    submenu.style.top = 'auto';
+                    submenu.style.bottom = '0';
+                }
+                if (rect.right > window.innerWidth - 8) {
+                    submenu.style.left = 'auto';
+                    submenu.style.right = '100%';
+                    submenu.style.marginLeft = '0';
+                    submenu.style.marginRight = '6px';
+                }
             };
 
             const hideSubmenu = () => {
@@ -184,6 +322,17 @@ class UsimMenuDropdownComponent extends UIComponent {
                 submenu.style.setProperty('visibility', 'hidden', 'important');
                 submenu.classList.remove('show');
             };
+
+            if (!item.action) {
+                menuItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (submenu.classList.contains('show')) {
+                        hideSubmenu();
+                    } else {
+                        showSubmenu();
+                    }
+                });
+            }
 
             menuItem.addEventListener('mouseenter', () => {
                 showSubmenu();
@@ -216,7 +365,7 @@ class UsimMenuDropdownComponent extends UIComponent {
 
         if (changes.items !== undefined) {
             this.config.items = changes.items;
-            const content = element.querySelector('.menu-dropdown-content');
+            const content = this.contentEl || element.querySelector('.menu-dropdown-content');
             if (content) {
                 content.innerHTML = '';
                 const items = Array.isArray(changes.items) ? changes.items : [];
@@ -234,38 +383,34 @@ class UsimMenuDropdownComponent extends UIComponent {
 
         if (changes.trigger !== undefined) {
             this.config.trigger = changes.trigger;
-            const trigger = element.querySelector('.menu-dropdown-trigger');
+            const trigger = this.triggerEl || element.querySelector('.menu-dropdown-trigger');
             if (trigger) {
-                const triggerConfig = changes.trigger;
-                const triggerLabel = triggerConfig.label || '☰ Menu';
-                const triggerIcon = triggerConfig.icon;
-                const triggerImage = triggerConfig.image;
-                const triggerAlt = triggerConfig.alt || 'Menu';
-                const triggerStyle = triggerConfig.style || 'default';
-
-                trigger.className = `menu-dropdown-trigger menu-trigger-${triggerStyle}`;
-
-                let triggerContent = '';
-                if (triggerImage) {
-                    triggerContent += `<img src="${triggerImage}" alt="${triggerAlt}" class="trigger-image">`;
-                    if (triggerLabel) {
-                        triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
-                    }
-                } else {
-                    if (triggerIcon) {
-                        triggerContent += `<span class="trigger-icon">${triggerIcon}</span>`;
-                    }
-                    triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
-                }
-
-                trigger.innerHTML = triggerContent;
+                this._renderTriggerContent(trigger, changes.trigger);
             }
+        }
+
+        if (changes.visible !== undefined) {
+            element.style.display = changes.visible ? '' : 'none';
         }
     }
 
     closeAllMenus() {
         document.querySelectorAll('.menu-dropdown-content.show').forEach(content => {
             content.classList.remove('show');
+            if (content.classList.contains('is-floating')) {
+                content.classList.remove('is-floating');
+                content.style.position = '';
+                content.style.top = '';
+                content.style.left = '';
+                content.style.right = '';
+                content.style.bottom = '';
+                content.style.zIndex = '';
+                const ownerId = content.dataset.ownerDropdownId;
+                const owner = ownerId ? document.querySelector(`[data-component-id="${ownerId}"]`) : null;
+                if (owner && content.parentElement === document.body) {
+                    owner.appendChild(content);
+                }
+            }
         });
         document.querySelectorAll('.menu-dropdown-trigger.active').forEach(trigger => {
             trigger.classList.remove('active');
@@ -275,6 +420,34 @@ class UsimMenuDropdownComponent extends UIComponent {
     closeMenu(content, trigger) {
         content.classList.remove('show');
         trigger.classList.remove('active');
+        if (this._isPortaled) {
+            this._isPortaled = false;
+            content.classList.remove('is-floating');
+            content.style.position = '';
+            content.style.top = '';
+            content.style.left = '';
+            content.style.right = '';
+            content.style.bottom = '';
+            content.style.zIndex = '';
+            if (this.menuContainer && content.parentElement === document.body) {
+                this.menuContainer.appendChild(content);
+            }
+        }
+    }
+
+    destroy() {
+        if (this._boundOutsideClick) {
+            document.removeEventListener('click', this._boundOutsideClick);
+        }
+        if (this._boundKeydown) {
+            document.removeEventListener('keydown', this._boundKeydown);
+        }
+        if (this._boundViewportChange) {
+            window.removeEventListener('resize', this._boundViewportChange);
+        }
+        if (this.contentEl && this.contentEl.parentElement === document.body) {
+            this.contentEl.remove();
+        }
     }
 }
 

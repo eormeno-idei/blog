@@ -40,8 +40,22 @@ Created with fluent builders, for example:
 - `UI::itemList(...)`
 - `UI::image(...)`
 - `UI::uploader(...)`
-- `UI::menuDropdown(...)`
+- `UI::menuDropdown(...)` (supports `->floating(true)` and `right-top`/`top-left`/`top-right` viewport-portaled popovers)
+- `UI::navTree(...)` (vertical sidebar navigation with inline collapsible accordions and Activity Bar compact mode; populated via `MenuBuilder::renderNavTree()`)
+- `UI::split(...)` (resizable/collapsible two-pane container; supports declarative `first:`/`second:` panes, `collapse_size`, and `hide_divider_when_collapsed` in `.layout.yaml`)
 - `UI::carousel(...)`
+
+### Unified Layouts & Workbench Shell
+- Page layouts (`AbstractLayout`) share the **same declarative `.layout.yaml` engine** (`ContainerLayoutLoader`) as screen containers, with `layout_slot`, `slot_aliases`, `screen`, `persist_on_navigate`, and nested `component: split` panes.
+- Layout resolution precedence in `Screen::getLayoutClass()`:
+  1. `$layout = null` -> standalone/kiosk (no layout, no status bar, no reset button). Always wins.
+  2. `$layout = CustomLayout::class` -> explicit layout.
+  3. `$layout = 'default'` -> `config('usim.guest_layout')` when unauthenticated (if set), otherwise `config('usim.default_layout')` (`WorkbenchLayout` or `MainLayout`).
+- `showInto()` automatically handles SPA layout transitions (`MainLayout <-> WorkbenchLayout <-> null`) via `clear_container: 'main'`.
+- Auxiliary slots like `right_panel` (collapsed to `0px` by default) auto-expand on `$this->showInto($screen, slot: 'right_panel')` and close/collapse via `$this->closeSlot('right_panel')`.
+- `SidebarMenu` renders `NavTree` (`accordion(true)`) + VS Code-style floating footer popovers (`user_menu` + `settings_menu` with theme toggle, `🌐` language submenu, and About).
+- `StatusBar` hosts organizational unit switching (left), dynamic status messages via `UsimEvent('status_bar_message', ['text' => ...])` (center), and the dev-only Reset button (right, automatically omitted in production).
+- Full AI technical reference: `WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md` in `packages/idei/usim/docs/` (published to `docs/usim/`).
 
 ### Agnostic Icons (`HasIcon`)
 - Components (`Button`, `NewLabel`, `Label`) accept `->icon('check', Align::LEFT)` with semantic names (from the 80-icon library published via `php artisan vendor:publish --tag=usim-icons` or custom files in `public/images/icons/`), `BackedEnum`, emojis (`'🚀'`), or explicit URLs/URIs.

@@ -685,6 +685,25 @@ class UIComponent {
             element.style.fontSize = this.config.font_size + 'px';
         }
 
+        // Apply custom CSS classes
+        if (typeof this.config.custom_class === 'string' && this.config.custom_class.trim() !== '') {
+            this.config.custom_class
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .forEach((cls) => element.classList.add(cls));
+        }
+
+        // Apply custom data-* attributes (e.g. data-layout-slot, data-split-pane)
+        if (this.config.data_attributes && typeof this.config.data_attributes === 'object') {
+            Object.entries(this.config.data_attributes).forEach(([attrKey, attrVal]) => {
+                if (attrKey && attrVal !== null && attrVal !== undefined) {
+                    const normalizedKey = attrKey.startsWith('data-') ? attrKey : `data-${attrKey}`;
+                    element.setAttribute(normalizedKey, String(attrVal));
+                }
+            });
+        }
+
         // Apply accessibility attributes
         if (this.config.aria_label) {
             element.setAttribute('aria-label', this.config.aria_label);
@@ -2105,12 +2124,12 @@ class UIRenderer {
             || document.getElementById(String(containerId));
 
         if (!containerElement && (
-            containerId === 104921240 || String(containerId) === '104921240' ||
             containerId === 'content_container' || containerId === 'main' ||
             (this.currentNavigateSlotId && String(containerId) === String(this.currentNavigateSlotId))
         )) {
-            containerElement = document.getElementById('content_container')
-                || document.querySelector('[data-component-id="104921240"]')
+            containerElement = document.querySelector('[data-layout-slot="main"]')
+                || document.querySelector('[data-name="content_container"]')
+                || document.getElementById('content_container')
                 || document.getElementById('main');
         }
 
@@ -2933,8 +2952,8 @@ class UIRenderer {
             if (!(parentElement instanceof HTMLElement) || !parentElement.isConnected) {
                 parentElement = document.querySelector(`[data-component-id="${config.parent}"]`)
                     || document.getElementById(String(config.parent))
-                    || (config.parent === 104921240 || String(config.parent) === '104921240' || config.parent === 'content_container' || (this.currentNavigateSlotId && String(config.parent) === String(this.currentNavigateSlotId))
-                        ? document.getElementById('content_container') || document.querySelector('[data-component-id="104921240"]')
+                    || (config.parent === 'content_container' || (this.currentNavigateSlotId && String(config.parent) === String(this.currentNavigateSlotId))
+                        ? document.querySelector('[data-layout-slot="main"]') || document.querySelector('[data-name="content_container"]') || document.getElementById('content_container')
                         : null)
                     || (config.parent === 'main' ? document.getElementById('main') : null);
             }
@@ -3689,110 +3708,13 @@ document.addEventListener('DOMContentLoaded', () => {
 window.openModal = openModal;
 window.closeModal = closeModal;
 
-/**
- * Load menu UI
- */
-async function loadMenuUI(forceReset = null) {
-    if (!window.MENU_SERVICE) {
-        return;
-    }
-
-    try {
-        const shouldReset = forceReset === null ? Boolean(window.RESET_STATE) : Boolean(forceReset);
-        const resetQuery = shouldReset ? 'reset=true' : '';
-        const usimStorage = getUsimStorageHeaderValue();
-        const usimClientId = getUsimClientId();
-        const parentElement = 'parent=menu';
-
-        // Use /api/ui/ prefix for menu as well
-        const response = await fetch(`/api/ui/${window.MENU_SERVICE}?${parentElement}&${resetQuery}`,
-            {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-USIM-Storage': usimStorage,
-                    ...(usimClientId ? { 'X-UI-Client-Id': usimClientId } : {}),
-                }
-            }
-        );
-        const uiData = await response.json();
-
-        const menuContainer = document.getElementById('menu');
-        if (!menuContainer) {
-            console.error('❌ Menu container #menu not found');
-            return;
-        }
-
-        // If globalRenderer exists, merge menu data and components
-        if (globalRenderer) {
-            // Merge menu data
-            Object.assign(globalRenderer.data, uiData);
-
-            // Sort components by _order field (preserves backend order)
-            const entries = Object.entries(uiData)
-                .filter(([id, config]) => !isSpecialUIKey(id) && config && typeof config === 'object')
-                .sort((a, b) => {
-                    const orderA = a[1]._order || 999;
-                    const orderB = b[1]._order || 999;
-                    return orderA - orderB;
-                });
-
-            // Separate top-level (parent='menu') from children
-            const topLevel = entries.filter(([, config]) => config.parent === 'menu');
-            const children = entries.filter(([, config]) => config.parent !== 'menu');
-
-            // Combine: top-level first (sorted by _order), then children
-            const components = [...topLevel, ...children];
-
-            // Create and add menu components to globalRenderer AND render them
-            for (const [id, config] of components) {
-                const component = ComponentFactory.create(id, config);
-                if (component) {
-                    // Add to global registry
-                    globalRenderer.components.set(id, component);
-
-                    // Render and mount component
-                    const element = component.render();
-                    if (element) {
-                        let parentEl;
-
-                        // Find parent element by data-component-id or by DOM id
-                        if (config.parent === 'menu') {
-                            parentEl = menuContainer;
-                        } else {
-                            // Try to find by data-component-id first
-                            parentEl = document.querySelector(`[data-component-id="${config.parent}"]`);
-                            // Fallback to regular id
-                            if (!parentEl) {
-                                parentEl = document.getElementById(config.parent);
-                            }
-                        }
-
-                        if (parentEl) {
-                            parentEl.appendChild(element);
-                        }
-                    }
-                }
-            }
-        } else {
-            // First load - create globalRenderer with menu
-            globalRenderer = new UIRenderer(uiData);
-            globalRenderer.render();
-        }
-    } catch (error) {
-        console.error('❌ Error loading menu:', error);
-    }
-}
-
 // Load UI on page load
 document.addEventListener('DOMContentLoaded', async () => {
     const initialResetState = Boolean(window.RESET_STATE);
 
-    await loadScreenUI(null, initialResetState);  // Load main UI first to create globalRenderer
-    await loadMenuUI(initialResetState);  // Then load menu and merge into globalRenderer
+    await loadScreenUI(null, initialResetState);  // Load main UI (layouts embed menu/sidebar/status bar natively)
 
-    // Clear reset flag after both screen and menu consumed it, preserving other query params.
+    // Clear reset flag after screen consumed it, preserving other query params.
     if (initialResetState) {
         const cleanParams = new URLSearchParams(window.location.search);
         cleanParams.delete('reset');

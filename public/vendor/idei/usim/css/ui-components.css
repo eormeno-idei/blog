@@ -1491,7 +1491,7 @@ body.modal-open #menu {
 /* ==================== Menu Dropdown Styles ==================== */
 
 /* ==================== TOP MENU BAR ==================== */
-#top-menu-bar, .main-menu-container, [data-name="main_menu_container"] {
+#top-menu-bar, .main-menu-container, .usim-topbar-slot, [data-name="main_menu_container"] {
     position: sticky;
     top: 0;
     left: 0;
@@ -1649,6 +1649,291 @@ body.modal-open #menu {
     display: block;
 }
 
+.menu-dropdown-content.is-floating {
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    padding: 4px 0;
+    min-width: 200px;
+}
+
+.menu-dropdown-content.is-floating::before {
+    display: none;
+}
+
+.menu-dropdown-content.is-floating .menu-item {
+    padding: 9px 14px;
+    font-size: 13.5px;
+    gap: 10px;
+}
+
+/* ==================== WORKBENCH SIDEBAR & STATUS BAR ==================== */
+
+html:has(.usim-workbench-root),
+body:has(.usim-workbench-root),
+html:has([data-layout-slot="status_bar"]),
+body:has([data-layout-slot="status_bar"]) {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#main:has(.usim-workbench-root),
+#main:has([data-layout-slot="status_bar"]) {
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ui-container.usim-workbench-root,
+.ui-container:has(> [data-layout-slot="status_bar"]) {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    box-sizing: border-box;
+}
+
+.ui-container.usim-workbench-root > .ui-split,
+.ui-container:has(> [data-layout-slot="status_bar"]) > .ui-split {
+    min-height: 0 !important;
+    height: 100% !important;
+    margin: 0 !important;
+}
+
+.ui-container.usim-sidebar-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    background: var(--ui-surface) !important;
+    border-right: 1px solid var(--ui-border) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+}
+
+.ui-container[data-layout-slot="right_panel"] {
+    background: var(--ui-surface) !important;
+    border-left: 1px solid var(--ui-border) !important;
+}
+
+.ui-container.usim-sidebar-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px;
+    padding: 12px 14px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid var(--ui-border) !important;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ui-text-strong);
+    flex: 0 0 auto !important;
+    min-height: 44px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.ui-container.usim-sidebar-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.ui-container.usim-sidebar-footer {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px;
+    padding: 8px 6px !important;
+    margin: 0 !important;
+    border-top: 1px solid var(--ui-border) !important;
+}
+
+.usim-sidebar-footer .menu-dropdown {
+    width: 100%;
+    display: block;
+}
+
+.usim-sidebar-footer .menu-dropdown-trigger {
+    width: 100%;
+    justify-content: flex-start;
+    background: transparent;
+    border: 1px solid transparent;
+    box-shadow: none;
+    padding: 7px 10px;
+    min-height: 36px;
+    font-size: 13.5px;
+    font-weight: 500;
+    border-radius: 6px;
+}
+
+.usim-sidebar-footer .menu-dropdown-trigger:hover {
+    background: var(--ui-surface-hover);
+    border-color: transparent;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Activity Bar adaptation when left Split pane is collapsed (~52px) */
+.ui-split-pane.is-collapsed .usim-sidebar-brand {
+    justify-content: center !important;
+    padding: 12px 4px !important;
+}
+
+.ui-split-pane.is-collapsed .usim-sidebar-brand-title {
+    display: none !important;
+}
+
+.ui-split-pane.is-collapsed .usim-sidebar-footer {
+    align-items: center !important;
+    padding: 8px 4px !important;
+}
+
+.ui-split-pane.is-collapsed .usim-sidebar-footer .menu-dropdown-trigger {
+    justify-content: center;
+    padding: 6px 0;
+    gap: 0;
+}
+
+.ui-split-pane.is-collapsed .usim-sidebar-footer .menu-dropdown-trigger .trigger-image + .trigger-label {
+    display: none !important;
+}
+
+.ui-split-pane.is-collapsed .usim-sidebar-footer .menu-dropdown-trigger .trigger-icon + .trigger-label {
+    display: none !important;
+}
+
+/* Status Bar (VS Code style bottom bar with subtle top border) */
+.ui-container[data-layout-slot="status_bar"] {
+    width: 100% !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: var(--ui-surface) !important;
+    border: none !important;
+    border-top: 1px solid var(--ui-border-strong, var(--ui-border)) !important;
+    box-shadow: 0 -1px 6px rgba(0, 0, 0, 0.12);
+    z-index: 20;
+    box-sizing: border-box;
+}
+
+.ui-container.usim-statusbar-shell {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 8px 0 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+    font-size: 12px;
+    color: var(--ui-text-muted);
+    background: transparent !important;
+    border: none !important;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.ui-container.usim-statusbar-left,
+.ui-container.usim-statusbar-right {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    gap: 8px;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+.ui-container.usim-statusbar-center {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    flex: 1 1 0% !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+    background: transparent !important;
+    border: none !important;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.usim-statusbar-unit .menu-dropdown-trigger {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 0;
+    border: none;
+    background: var(--usim-color-primary, #1e88e5);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.usim-statusbar-unit .menu-dropdown-trigger:hover {
+    background: var(--usim-color-primary-hover, #1565c0);
+    transform: none;
+    box-shadow: none;
+}
+
+.usim-statusbar-lang .menu-dropdown-trigger {
+    height: 24px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ui-text);
+    font-size: 11.5px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.usim-statusbar-lang .menu-dropdown-trigger:hover {
+    background: var(--ui-surface-hover);
+    border-color: var(--ui-border);
+    transform: none;
+    box-shadow: none;
+}
+
+.usim-statusbar-reset-btn {
+    height: 22px !important;
+    min-height: 22px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    border-radius: 4px !important;
+    line-height: 1 !important;
+}
+
 .menu-item {
     padding: 14px 20px;
     cursor: pointer;
@@ -1733,11 +2018,27 @@ body.modal-open #menu {
 
 .menu-dropdown .menu-item.has-submenu:hover .submenu,
 .menu-dropdown .submenu:hover,
-.menu-dropdown .submenu.show {
+.menu-dropdown .submenu.show,
+.menu-dropdown-content.is-floating .menu-item.has-submenu:hover .submenu,
+.menu-dropdown-content.is-floating .submenu:hover,
+.menu-dropdown-content.is-floating .submenu.show {
     display: block !important;
     opacity: 1 !important;
     visibility: visible !important;
-    z-index: 10001 !important; /* Ensure submenu is on top */
+    z-index: 10060 !important; /* Ensure submenu is on top */
+}
+
+.menu-dropdown-content.is-floating .submenu {
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    margin-left: 6px;
+    padding: 4px 0;
+    min-width: 180px;
+}
+
+.menu-dropdown-content.is-floating .submenu::before {
+    display: none;
 }
 
 

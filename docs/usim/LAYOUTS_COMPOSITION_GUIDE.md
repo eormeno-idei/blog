@@ -21,10 +21,12 @@
 
 ## 1. Layouts de Contenedor vs. Layouts de Página (`AbstractLayout`)
 
-En USIM existen dos niveles complementarios de layout:
+En USIM ambos niveles comparten **el mismo motor declarativo (`.layout.yaml` + `ContainerLayoutLoader`)**:
 
-- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación (menú lateral, barra superior, área principal de contenido). Se declara en la `Screen` con `public static ?string $layout = 'default';` (o `null` para pantallas tipo *kiosk*).
-- **Layout de Contenedor (`.layout.yaml`):** Define la estructura interna de una `Screen` o `Container` (CSS Grid, cajas, espaciados, alineación y propiedades de componentes). Se procesa en PHP mediante `Idei\Usim\Support\ContainerLayoutLoader`.
+- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación (por ejemplo `WorkbenchLayout` con sidebar en `Split` + Activity Bar de `52px`, `right_panel` en `0px` y `status_bar`; o `MainLayout` con barra superior). Se declara en la `Screen` con `public static ?string $layout = 'default';` (resuelve `guest_layout` vs `default_layout`), una clase explícita o `null` para pantallas standalone/kiosk.
+- **Layout de Contenedor (`.layout.yaml`):** Define la estructura interna de una `Screen`, un `Container` o un `AbstractLayout` (CSS Grid, `component: split` con panes `first:` / `second:`, `layout_slot`, cajas, espaciados, alineación y propiedades de componentes). Se procesa en PHP mediante `Idei\Usim\Support\ContainerLayoutLoader`.
+
+> Para la referencia técnica completa de `WorkbenchLayout`, `Split` declarativo, `NavTree`, `right_panel`, `StatusBar` y transiciones de layout, consultá [WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md](./WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md).
 
 ---
 
@@ -354,6 +356,7 @@ Si un componente declarado en `.layout.yaml` no necesita ser manipulado desde PH
 | `upl_` | `Uploader` | `uploader` |
 | `crd_` | `Card` | `card` |
 | `cnt_` | `Container` | `container` / `split` |
+| `nav_` | `NavTree` | `nav_tree` / `navtree` |
 | `tmr_` | `Timer` | `timer` |
 
 ```yaml

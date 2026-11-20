@@ -130,6 +130,7 @@ class UsimSplitComponent extends UIComponent {
         this._applySplitSizeFromConfig();
         this._updateCollapseButtonIcon();
         this._syncDraggableState();
+        this._syncDividerVisibility();
     }
 
     _bindSplitBehavior() {
@@ -202,7 +203,15 @@ class UsimSplitComponent extends UIComponent {
                 continue;
             }
 
-            const targetPane = this.firstPaneEl.children.length === 0 ? this.firstPaneEl : this.secondPaneEl;
+            const explicitPane = child.getAttribute?.('data-split-pane');
+            let targetPane;
+            if (explicitPane === 'first') {
+                targetPane = this.firstPaneEl;
+            } else if (explicitPane === 'second') {
+                targetPane = this.secondPaneEl;
+            } else {
+                targetPane = this.firstPaneEl.children.length === 0 ? this.firstPaneEl : this.secondPaneEl;
+            }
             targetPane.appendChild(child);
         }
     }
@@ -259,6 +268,7 @@ class UsimSplitComponent extends UIComponent {
             this.config.collapsed_panel = null;
             this._applySplitSizeFromConfig();
             this._updateCollapseButtonIcon();
+            this._syncDividerVisibility();
             return;
         }
 
@@ -266,6 +276,7 @@ class UsimSplitComponent extends UIComponent {
         this.config.collapsed_panel = this._normalizeCollapseTarget(this.config.collapse_target);
         this._applySplitSizeFromConfig();
         this._updateCollapseButtonIcon();
+        this._syncDividerVisibility();
     }
 
     _applySplitSizeFromConfig() {
@@ -376,6 +387,15 @@ class UsimSplitComponent extends UIComponent {
         const draggable = this.config.draggable !== false;
         this.dividerEl.classList.toggle('is-draggable', draggable);
         this.dividerEl.classList.toggle('is-static', !draggable);
+    }
+
+    _syncDividerVisibility() {
+        if (!this.dividerEl) {
+            return;
+        }
+        const hideWhenCollapsed = this.config.hide_divider_when_collapsed === true;
+        const isCollapsed = this.config.collapsed_panel === 'first' || this.config.collapsed_panel === 'second';
+        this.dividerEl.classList.toggle('is-hidden', hideWhenCollapsed && isCollapsed);
     }
 
     _updateCollapseButtonIcon() {

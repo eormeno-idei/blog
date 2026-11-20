@@ -1,0 +1,160 @@
+/* ==================== NavTree (Vertical Sidebar + Inline Accordion + Activity Bar) ==================== */
+
+.usim-nav-tree {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    box-sizing: border-box;
+    padding: 6px;
+}
+
+.usim-nav-tree-list,
+.usim-nav-tree-sublist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+
+.usim-nav-tree-sublist {
+    margin-top: 2px;
+    padding-left: 12px;
+    border-left: 1px solid var(--ui-border);
+    margin-left: 14px;
+}
+
+.usim-nav-tree-sublist[hidden] {
+    display: none;
+}
+
+.usim-nav-tree-separator {
+    height: 1px;
+    background: var(--ui-border);
+    margin: 6px 8px;
+    opacity: 0.7;
+}
+
+.usim-nav-tree-node {
+    width: 100%;
+}
+
+.usim-nav-tree-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ui-text);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.3;
+    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+    overflow: hidden;
+}
+
+.usim-nav-tree-item:hover {
+    background: var(--ui-surface-hover);
+    color: var(--ui-text-strong);
+}
+
+.usim-nav-tree-item.is-active {
+    background: var(--usim-color-primary-soft, rgba(59, 130, 246, 0.14));
+    color: var(--usim-color-primary, #3b82f6);
+    border-color: var(--usim-color-primary-border, rgba(59, 130, 246, 0.28));
+    font-weight: 600;
+}
+
+.usim-nav-tree-item.is-nested {
+    font-size: 13px;
+    padding: 6px 10px;
+}
+
+.usim-nav-tree-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.usim-nav-tree-icon.is-fallback-initial {
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 4px;
+    background: var(--ui-surface-muted);
+    color: var(--ui-text-muted);
+}
+
+.usim-nav-tree-icon-img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    display: block;
+}
+
+.usim-nav-tree-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.usim-nav-tree-chevron {
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: var(--ui-text-muted);
+    transition: transform 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+}
+
+.usim-nav-tree-node.is-expanded > .usim-nav-tree-item > .usim-nav-tree-chevron {
+    transform: rotate(90deg);
+}
+
+/* ==================== Activity Bar Mode (Collapsed Split Pane or .is-compact) ==================== */
+
+.ui-split-pane.is-collapsed .usim-nav-tree,
+.usim-nav-tree.is-compact {
+    padding: 6px 4px;
+    align-items: center;
+}
+
+.ui-split-pane.is-collapsed .usim-nav-tree-item,
+.usim-nav-tree.is-compact .usim-nav-tree-item {
+    justify-content: center;
+    padding: 9px 0;
+    gap: 0;
+}
+
+.ui-split-pane.is-collapsed .usim-nav-tree-label,
+.ui-split-pane.is-collapsed .usim-nav-tree-chevron,
+.ui-split-pane.is-collapsed .usim-nav-tree-sublist,
+.usim-nav-tree.is-compact .usim-nav-tree-label,
+.usim-nav-tree.is-compact .usim-nav-tree-chevron,
+.usim-nav-tree.is-compact .usim-nav-tree-sublist {
+    display: none !important;
+}
+
+.ui-split-pane.is-collapsed .usim-nav-tree-separator,
+.usim-nav-tree.is-compact .usim-nav-tree-separator {
+    width: 24px;
+    margin: 6px auto;
+}

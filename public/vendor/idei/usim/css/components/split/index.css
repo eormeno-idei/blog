@@ -29,6 +29,17 @@
     flex-direction: column;
 }
 
+.ui-split.ui-container-plain {
+    min-height: 0;
+    border: none;
+    border-radius: 0 !important;
+    --split-radius: 0px;
+}
+
+.ui-split-divider.is-hidden {
+    display: none !important;
+}
+
 .ui-split > .title {
     position: absolute;
     top: 10px;
@@ -80,18 +91,27 @@
     border-bottom-right-radius: calc(var(--split-radius) - 1px);
 }
 
-/* Intermediate containers inside split panes */
-.ui-split-pane .ui-container {
+/* Direct pane wrapper container inside split panes (do NOT clobber nested Screen cards/containers) */
+.ui-split-pane > .ui-container {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    gap: 0 !important;
     border: none !important;
     border-radius: inherit !important;
     box-shadow: none !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.ui-split-pane > .ui-container.ui-container-plain {
     background: transparent !important;
+}
+
+/* Nested Split directly inside a split pane must not scroll its own shell */
+.ui-split-pane > .ui-split {
     overflow: hidden !important;
 }
 
