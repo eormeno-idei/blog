@@ -1,10 +1,12 @@
 .ui-split {
     --splitter-size: 8px;
-    --splitter-bg: var(--ui-border);
-    --splitter-bg-hover: var(--ui-border-strong);
-    --splitter-handle: var(--ui-text-muted);
-    --split-collapse-bg: var(--ui-surface);
-    --split-collapse-border: var(--ui-border);
+    --splitter-bg: transparent;
+    --splitter-bg-hover: color-mix(in srgb, var(--ui-border-strong) 22%, transparent);
+    --splitter-hairline: color-mix(in srgb, var(--ui-border) 55%, transparent);
+    --splitter-hairline-hover: color-mix(in srgb, var(--ui-border-strong) 92%, transparent);
+    --splitter-dot: color-mix(in srgb, var(--ui-text-muted) 72%, transparent);
+    --splitter-dot-hover: var(--ui-text-strong);
+    --split-collapse-hover-bg: color-mix(in srgb, var(--ui-surface-hover) 65%, transparent);
     --split-radius: 12px;
 
     display: flex;
@@ -220,70 +222,121 @@
     position: relative;
     flex: 0 0 var(--splitter-size);
     background: var(--splitter-bg);
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 3;
 }
 
-.ui-split--horizontal .ui-split-divider {
+.ui-split--horizontal > .ui-split-divider {
     cursor: col-resize;
+    box-shadow:
+        inset 1px 0 0 var(--splitter-hairline),
+        inset -1px 0 0 var(--splitter-hairline);
 }
 
-.ui-split--vertical .ui-split-divider {
+.ui-split--vertical > .ui-split-divider {
     cursor: row-resize;
+    box-shadow:
+        inset 0 1px 0 var(--splitter-hairline),
+        inset 0 -1px 0 var(--splitter-hairline);
 }
 
 .ui-split-divider.is-static {
     cursor: default;
 }
 
-.ui-split-divider:hover,
-.ui-split-divider.is-dragging {
+.ui-split--horizontal > .ui-split-divider:hover,
+.ui-split--horizontal > .ui-split-divider.is-dragging {
     background: var(--splitter-bg-hover);
+    box-shadow:
+        inset 1px 0 0 var(--splitter-hairline-hover),
+        inset -1px 0 0 var(--splitter-hairline-hover);
 }
 
-.ui-split-divider-handle {
-    display: inline-block;
-    width: 4px;
-    height: 40px;
-    border-radius: 999px;
-    background: var(--splitter-handle);
-    opacity: 0.65;
+.ui-split--vertical > .ui-split-divider:hover,
+.ui-split--vertical > .ui-split-divider.is-dragging {
+    background: var(--splitter-bg-hover);
+    box-shadow:
+        inset 0 1px 0 var(--splitter-hairline-hover),
+        inset 0 -1px 0 var(--splitter-hairline-hover);
 }
 
-.ui-split--vertical .ui-split-divider-handle {
-    width: 40px;
-    height: 4px;
-}
-
+.ui-split-divider-handle,
 .ui-split-collapse-button {
     position: absolute;
-    border: 1px solid var(--split-collapse-border);
-    background: var(--split-collapse-bg);
-    color: var(--ui-text);
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    font-size: 12px;
-    line-height: 1;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 3px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease, background-color 0.2s ease;
+}
+
+.ui-split--horizontal > .ui-split-divider > .ui-split-divider-handle,
+.ui-split--horizontal > .ui-split-divider > .ui-split-collapse-button {
+    flex-direction: column;
+    width: 14px;
+    height: 28px;
+}
+
+.ui-split--vertical > .ui-split-divider > .ui-split-divider-handle,
+.ui-split--vertical > .ui-split-divider > .ui-split-collapse-button {
+    flex-direction: row;
+    width: 28px;
+    height: 14px;
+}
+
+.ui-split-collapse-button {
     cursor: pointer;
 }
 
-.ui-split--horizontal .ui-split-collapse-button {
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+.ui-split-dot {
+    display: block;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--splitter-dot);
+    flex: 0 0 auto;
+    transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
-.ui-split--vertical .ui-split-collapse-button {
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+.ui-split-divider.is-controls-visible > .ui-split-divider-handle,
+.ui-split-divider:hover > .ui-split-divider-handle,
+.ui-split-divider.is-dragging > .ui-split-divider-handle {
+    opacity: 1;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.ui-split-divider.is-controls-visible > .ui-split-collapse-button,
+.ui-split-divider:hover > .ui-split-collapse-button,
+.ui-split-divider.is-dragging > .ui-split-collapse-button,
+.ui-split-collapse-button:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.ui-split-collapse-button:hover,
+.ui-split-collapse-button:focus-visible {
+    background: var(--split-collapse-hover-bg);
+    outline: none;
+}
+
+.ui-split-collapse-button:hover .ui-split-dot,
+.ui-split-collapse-button:focus-visible .ui-split-dot,
+.ui-split-divider.is-dragging .ui-split-dot {
+    background: var(--splitter-dot-hover);
+    transform: scale(1.15);
 }
 
 .ui-split-pane.is-collapsed {

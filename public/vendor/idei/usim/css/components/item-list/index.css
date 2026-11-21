@@ -318,10 +318,26 @@
 }
 
 /* ── Scrollable Body & Loading Host ───────────────────────── */
+@property --usim-item-list-scrollbar-color {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: rgba(100, 116, 139, 0);
+}
+
 .usim-item-list-body-wrapper {
     position: relative;
     width: 100%;
     min-height: 60px;
+    --usim-item-list-scrollbar-visible: rgba(100, 116, 139, 0.38);
+    --usim-item-list-scrollbar-hover: rgba(100, 116, 139, 0.6);
+    --usim-item-list-scrollbar-hidden: rgba(100, 116, 139, 0);
+}
+
+html[data-theme="dark"] .usim-item-list-body-wrapper,
+body[data-theme="dark"] .usim-item-list-body-wrapper {
+    --usim-item-list-scrollbar-visible: rgba(143, 169, 205, 0.34);
+    --usim-item-list-scrollbar-hover: rgba(143, 169, 205, 0.58);
+    --usim-item-list-scrollbar-hidden: rgba(143, 169, 205, 0);
 }
 
 .usim-item-list-body {
@@ -330,8 +346,13 @@
     width: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: var(--usim-color-border-strong, #cbd5e1) transparent;
+    --usim-item-list-scrollbar-color: var(--usim-item-list-scrollbar-hidden);
+    transition: --usim-item-list-scrollbar-color 0.35s ease;
+}
+
+.usim-item-list-body-wrapper:hover .usim-item-list-body {
+    --usim-item-list-scrollbar-color: var(--usim-item-list-scrollbar-visible);
+    transition: --usim-item-list-scrollbar-color 0.2s ease;
 }
 
 .usim-item-list-body::-webkit-scrollbar {
@@ -343,16 +364,24 @@
 }
 
 .usim-item-list-body::-webkit-scrollbar-thumb {
-    background: var(--usim-color-border-strong, #cbd5e1);
-    border-radius: 4px;
+    background-color: var(--usim-item-list-scrollbar-color);
+    border-radius: 999px;
 }
 
 .usim-item-list-body::-webkit-scrollbar-thumb:hover {
-    background: var(--usim-color-text-muted, #94a3b8);
+    background-color: var(--usim-item-list-scrollbar-hover);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .usim-item-list-body {
+        scrollbar-width: thin;
+        scrollbar-color: var(--usim-item-list-scrollbar-color) transparent;
+    }
 }
 
 .usim-item-list-body.scrollbar-always {
     overflow-y: scroll;
+    --usim-item-list-scrollbar-color: var(--usim-item-list-scrollbar-visible);
 }
 
 .usim-item-list-body.scrollbar-hidden {
@@ -372,7 +401,7 @@
     padding: 10px 14px;
     border-left: 3px solid transparent;
     background: transparent;
-    transition: background-color 0.12s ease, border-color 0.12s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     box-sizing: border-box;
     outline: none;
 }
@@ -388,6 +417,7 @@
 
 .usim-item-list-row.is-selectable {
     cursor: pointer;
+    user-select: none;
 }
 
 .usim-item-list-row:hover:not(.is-disabled),
@@ -430,8 +460,16 @@
 }
 
 .usim-item-list-row.is-selected {
-    background: var(--usim-table-row-selected-bg, rgba(52, 152, 219, 0.14));
+    background: color-mix(in srgb, var(--usim-color-primary, #3498db) 16%, transparent);
     border-left-color: var(--usim-color-primary, #3498db);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--usim-color-primary, #3498db) 14%, transparent),
+        inset 0 -1px 0 color-mix(in srgb, var(--usim-color-primary, #3498db) 14%, transparent);
+}
+
+.usim-item-list-row.is-selected:hover:not(.is-disabled),
+.usim-item-list-row.is-selected:focus-visible:not(.is-disabled) {
+    background: color-mix(in srgb, var(--usim-color-primary, #3498db) 22%, transparent);
 }
 
 .usim-item-list-row.is-pinned-selection {
@@ -444,38 +482,12 @@
     cursor: not-allowed;
 }
 
-/* Selector (Checkbox / Radio visual) */
+/* Selector (Checkbox for multiple mode) */
 .usim-item-list-row-selector {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-}
-
-.usim-item-list-row-radio {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid var(--usim-color-text-muted, #6c757d);
-    box-sizing: border-box;
-    position: relative;
-    transition: border-color 0.15s ease;
-}
-
-.usim-item-list-row.is-selected .usim-item-list-row-radio {
-    border-color: var(--usim-color-primary, #3498db);
-}
-
-.usim-item-list-row.is-selected .usim-item-list-row-radio::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--usim-color-primary, #3498db);
-    transform: translate(-50%, -50%);
 }
 
 /* Icon */

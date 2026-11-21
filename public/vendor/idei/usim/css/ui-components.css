@@ -1708,21 +1708,37 @@ body:has([data-layout-slot="status_bar"]) {
     margin: 0 !important;
 }
 
+@property --usim-sidebar-scrollbar-color {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: rgba(100, 116, 139, 0);
+}
+
 .ui-container.usim-sidebar-shell {
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
     min-height: 0 !important;
     background: var(--ui-surface) !important;
-    border-right: 1px solid var(--ui-border) !important;
+    border-right: none !important;
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box;
+    --usim-sidebar-scrollbar-visible: rgba(100, 116, 139, 0.38);
+    --usim-sidebar-scrollbar-hover: rgba(100, 116, 139, 0.6);
+    --usim-sidebar-scrollbar-hidden: rgba(100, 116, 139, 0);
+}
+
+html[data-theme="dark"] .ui-container.usim-sidebar-shell,
+body[data-theme="dark"] .ui-container.usim-sidebar-shell {
+    --usim-sidebar-scrollbar-visible: rgba(143, 169, 205, 0.34);
+    --usim-sidebar-scrollbar-hover: rgba(143, 169, 205, 0.58);
+    --usim-sidebar-scrollbar-hidden: rgba(143, 169, 205, 0);
 }
 
 .ui-container[data-layout-slot="right_panel"] {
     background: var(--ui-surface) !important;
-    border-left: 1px solid var(--ui-border) !important;
+    border-left: none !important;
 }
 
 .ui-container.usim-sidebar-brand {
@@ -1748,6 +1764,37 @@ body:has([data-layout-slot="status_bar"]) {
     padding: 0 !important;
     overflow-y: auto;
     overflow-x: hidden;
+    --usim-sidebar-scrollbar-color: var(--usim-sidebar-scrollbar-hidden);
+    transition: --usim-sidebar-scrollbar-color 0.35s ease;
+}
+
+.ui-container.usim-sidebar-shell:hover .ui-container.usim-sidebar-body {
+    --usim-sidebar-scrollbar-color: var(--usim-sidebar-scrollbar-visible);
+    transition: --usim-sidebar-scrollbar-color 0.2s ease;
+}
+
+.ui-container.usim-sidebar-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ui-container.usim-sidebar-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ui-container.usim-sidebar-body::-webkit-scrollbar-thumb {
+    background-color: var(--usim-sidebar-scrollbar-color);
+    border-radius: 999px;
+}
+
+.ui-container.usim-sidebar-body::-webkit-scrollbar-thumb:hover {
+    background-color: var(--usim-sidebar-scrollbar-hover);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .ui-container.usim-sidebar-body {
+        scrollbar-width: thin;
+        scrollbar-color: var(--usim-sidebar-scrollbar-color) transparent;
+    }
 }
 
 .ui-container.usim-sidebar-footer {

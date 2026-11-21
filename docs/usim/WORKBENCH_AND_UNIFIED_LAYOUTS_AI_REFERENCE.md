@@ -76,6 +76,7 @@ Supported properties on a `Split` node:
 - `collapsed_panel`: `'first'` | `'second'` | `null` (initial collapsed state)
 - `hide_divider_when_collapsed`: `bool` (hides divider completely when collapsed, e.g. for `0px` right panel)
 - `first` / `second`: pane definitions (each may be a `Container` slot, a nested `grid:`, or a nested `component: split`). Each child is automatically tagged with `data-split-pane="first"` or `"second"` for deterministic DOM routing in `split/index.js`.
+- **Divider UX (`split/index.js` & `split/index.css`):** Dividers render as subtle `1px` inset hairline channels with centered three-dot handles (`.ui-split-dot`) instead of solid bars and arrow buttons. Handles start hidden, fade in (`0.2s`) on global `window` mouse movement, and fade out (`0.35s`) after 2 seconds of inactivity (remaining visible on hover, drag, or `:focus-visible`). `UsimSplitComponent::destroy()` cleans up the shared listener, timer, and observers.
 
 ### 4.2 Declarative Layout Slots
 Any `Container` (top-level grid child or `Split` pane) can declare:
@@ -216,7 +217,7 @@ Menu providers (`MainMenu`, `DemosMenuProvider`, `AdminMenuProvider`) implement 
 - Declares `public static ?string $layout = null;` and uses `App\UI\Screens\Concerns\HandlesShellActions`.
 - Structure (`.usim-sidebar-shell`):
   1. Brand header (`.usim-sidebar-brand`) — hides `.usim-sidebar-brand-title` in Activity Bar mode.
-  2. Scrollable `NavTree` (`main_menu`) populated from `MainMenu` with `accordion(true)`.
+  2. Scrollable `NavTree` (`main_menu`) populated from `MainMenu` with `accordion(true)`. Its scroll container (`.usim-sidebar-body`) uses a slim hover-only fade scrollbar (`@property --usim-sidebar-scrollbar-color`) that appears only while the pointer is over `.usim-sidebar-shell`.
   3. VS Code-style footer (`.usim-sidebar-footer`):
      - `user_menu` (`MenuDropdown`, `position('right-top')->floating(true)`): avatar/name trigger, Profile + Logout (auth) or Login + Register (guest).
      - `settings_menu` (`MenuDropdown`, `position('right-top')->floating(true)`): `⚙️` trigger with theme toggle + `🌐` Language submenu (`changeLang`) + About.

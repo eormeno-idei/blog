@@ -791,7 +791,7 @@ class UsimItemListComponent extends UIComponent {
             row.classList.add('is-pinned-selection');
         }
 
-        // 1. Left Selection Indicator
+        // 1. Left Selection Indicator (checkbox only in multiple mode; single mode selects directly via row click)
         if (mode === 'multiple') {
             const selWrap = document.createElement('div');
             selWrap.className = 'usim-item-list-row-selector';
@@ -810,14 +810,6 @@ class UsimItemListComponent extends UIComponent {
             });
 
             selWrap.appendChild(cb);
-            row.appendChild(selWrap);
-        } else if (mode === 'single') {
-            const selWrap = document.createElement('div');
-            selWrap.className = 'usim-item-list-row-selector';
-
-            const radioIndicator = document.createElement('span');
-            radioIndicator.className = 'usim-item-list-row-radio';
-            selWrap.appendChild(radioIndicator);
             row.appendChild(selWrap);
         }
 

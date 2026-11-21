@@ -1,9 +1,70 @@
+const SPLIT_CONTROLS_HIDE_DELAY_MS = 2000;
+const activeSplitInstances = new Set();
+let splitActivityTimer = null;
+let splitPointerListenerBound = false;
+let lastSplitPointerX = null;
+let lastSplitPointerY = null;
+
+function setAllSplitControlsVisible(visible) {
+    for (const instance of activeSplitInstances) {
+        instance._setControlsVisible(visible);
+    }
+}
+
+function handleGlobalSplitMouseMove(event) {
+    if (event.clientX === lastSplitPointerX && event.clientY === lastSplitPointerY) {
+        return;
+    }
+
+    lastSplitPointerX = event.clientX;
+    lastSplitPointerY = event.clientY;
+
+    setAllSplitControlsVisible(true);
+
+    if (splitActivityTimer !== null) {
+        window.clearTimeout(splitActivityTimer);
+    }
+
+    splitActivityTimer = window.setTimeout(() => {
+        splitActivityTimer = null;
+        setAllSplitControlsVisible(false);
+    }, SPLIT_CONTROLS_HIDE_DELAY_MS);
+}
+
+function registerSplitInstance(instance) {
+    activeSplitInstances.add(instance);
+    instance._setControlsVisible(false);
+
+    if (!splitPointerListenerBound) {
+        window.addEventListener('mousemove', handleGlobalSplitMouseMove, { passive: true });
+        splitPointerListenerBound = true;
+    }
+}
+
+function unregisterSplitInstance(instance) {
+    activeSplitInstances.delete(instance);
+
+    if (activeSplitInstances.size === 0) {
+        if (splitPointerListenerBound) {
+            window.removeEventListener('mousemove', handleGlobalSplitMouseMove);
+            splitPointerListenerBound = false;
+        }
+        if (splitActivityTimer !== null) {
+            window.clearTimeout(splitActivityTimer);
+            splitActivityTimer = null;
+        }
+        lastSplitPointerX = null;
+        lastSplitPointerY = null;
+    }
+}
+
 class UsimSplitComponent extends UIComponent {
     constructor(id, config) {
         super(id, config);
         this.firstPaneEl = null;
         this.secondPaneEl = null;
         this.dividerEl = null;
+        this.handleEl = null;
         this.collapseButtonEl = null;
         this.titleEl = null;
         this.dragState = null;
@@ -28,14 +89,17 @@ class UsimSplitComponent extends UIComponent {
         this.dividerEl = document.createElement('div');
         this.dividerEl.className = 'ui-split-divider';
 
-        const handleEl = document.createElement('span');
-        handleEl.className = 'ui-split-divider-handle';
-        this.dividerEl.appendChild(handleEl);
+        this.handleEl = document.createElement('span');
+        this.handleEl.className = 'ui-split-divider-handle';
+        this.handleEl.setAttribute('aria-hidden', 'true');
+        this._appendDots(this.handleEl);
+        this.dividerEl.appendChild(this.handleEl);
 
         this.collapseButtonEl = document.createElement('button');
         this.collapseButtonEl.type = 'button';
         this.collapseButtonEl.className = 'ui-split-collapse-button';
         this.collapseButtonEl.setAttribute('aria-label', 'Toggle split collapse');
+        this._appendDots(this.collapseButtonEl);
         this.dividerEl.appendChild(this.collapseButtonEl);
 
         this.secondPaneEl = document.createElement('div');
@@ -46,6 +110,7 @@ class UsimSplitComponent extends UIComponent {
         root.appendChild(this.secondPaneEl);
 
         this._bindSplitBehavior();
+        registerSplitInstance(this);
         this._observeAndRouteChildContainers(root);
         this._observeResize(root);
 
@@ -53,6 +118,38 @@ class UsimSplitComponent extends UIComponent {
         this._applyConfig();
 
         return this.element;
+    }
+
+    destroy() {
+        unregisterSplitInstance(this);
+
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+        }
+
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+
+        super.destroy();
+    }
+
+    _appendDots(containerEl) {
+        for (let i = 0; i < 3; i += 1) {
+            const dot = document.createElement('span');
+            dot.className = 'ui-split-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            containerEl.appendChild(dot);
+        }
+    }
+
+    _setControlsVisible(visible) {
+        if (!this.dividerEl) {
+            return;
+        }
+        this.dividerEl.classList.toggle('is-controls-visible', visible);
     }
 
     update(newConfig) {
@@ -116,8 +213,12 @@ class UsimSplitComponent extends UIComponent {
         this.dividerEl.style.setProperty('--splitter-size', splitterSize);
 
         const isCollapsible = this.config.collapsible === true;
+        const isDraggable = this.config.draggable !== false;
         this.collapseButtonEl.style.display = isCollapsible ? '' : 'none';
         this.collapseButtonEl.disabled = !isCollapsible;
+        if (this.handleEl) {
+            this.handleEl.style.display = !isCollapsible && isDraggable ? '' : 'none';
+        }
 
         if (orientation === 'horizontal') {
             this.dividerEl.style.width = splitterSize;
@@ -139,7 +240,7 @@ class UsimSplitComponent extends UIComponent {
                 return;
             }
 
-            if (event.target === this.collapseButtonEl) {
+            if (this.collapseButtonEl.contains(event.target)) {
                 return;
             }
 
@@ -399,24 +500,14 @@ class UsimSplitComponent extends UIComponent {
     }
 
     _updateCollapseButtonIcon() {
-        const orientation = this._normalizeOrientation(this.config.split_orientation);
         const collapsedPanel = this.config.collapsed_panel;
-        const collapseTarget = this._normalizeCollapseTarget(this.config.collapse_target);
+        const isCollapsed = collapsedPanel === 'first' || collapsedPanel === 'second';
+        const label = isCollapsed ? 'Expand panel' : 'Collapse panel';
 
-        if (collapsedPanel === null) {
-            if (orientation === 'horizontal') {
-                this.collapseButtonEl.textContent = collapseTarget === 'first' ? '◀' : '▶';
-            } else {
-                this.collapseButtonEl.textContent = collapseTarget === 'first' ? '▲' : '▼';
-            }
-            return;
-        }
-
-        if (orientation === 'horizontal') {
-            this.collapseButtonEl.textContent = collapsedPanel === 'first' ? '▶' : '◀';
-        } else {
-            this.collapseButtonEl.textContent = collapsedPanel === 'first' ? '▼' : '▲';
-        }
+        this.collapseButtonEl.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        this.collapseButtonEl.setAttribute('aria-label', label);
+        this.collapseButtonEl.setAttribute('title', label);
+        this.collapseButtonEl.dataset.state = isCollapsed ? 'collapsed' : 'expanded';
     }
 
     _normalizeOrientation(value) {
