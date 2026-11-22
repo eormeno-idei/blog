@@ -39,7 +39,9 @@ class UsimNavTreeComponent extends UIComponent {
         if (
             changes.items !== undefined ||
             changes.active_screen !== undefined ||
-            changes.active_route !== undefined
+            changes.active_route !== undefined ||
+            changes.active_group !== undefined ||
+            changes.on_group_click !== undefined
         ) {
             this._renderItems(element, Array.isArray(this.config.items) ? this.config.items : []);
         }
@@ -71,18 +73,24 @@ class UsimNavTreeComponent extends UIComponent {
         }
 
         const hasSubmenu = Array.isArray(item.submenu) && item.submenu.length > 0;
+        const delegateGroupClick = hasSubmenu
+            && depth === 0
+            && typeof this.config.on_group_click === 'string'
+            && this.config.on_group_click.trim() !== '';
+
         const li = document.createElement('li');
         li.className = 'usim-nav-tree-node';
         li.dataset.depth = String(depth);
 
         const isActive = this._isItemActive(item);
         const hasActiveChild = hasSubmenu && this._hasActiveDescendant(item.submenu);
+        const isGroupActive = hasSubmenu && this._isGroupActive(item, pathKey);
 
-        if (hasSubmenu && hasActiveChild) {
+        if (hasSubmenu && !delegateGroupClick && hasActiveChild) {
             this.expandedGroups.add(pathKey);
         }
 
-        const isExpanded = hasSubmenu && this.expandedGroups.has(pathKey);
+        const isExpanded = hasSubmenu && !delegateGroupClick && this.expandedGroups.has(pathKey);
         if (isExpanded) {
             li.classList.add('is-expanded');
         }
@@ -105,7 +113,12 @@ class UsimNavTreeComponent extends UIComponent {
         }
         if (hasSubmenu) {
             row.classList.add('is-group-trigger');
-            row.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+            row.setAttribute('aria-expanded', (delegateGroupClick ? isGroupActive : isExpanded) ? 'true' : 'false');
+            if (isGroupActive) {
+                row.classList.add('is-group-active');
+            } else if (delegateGroupClick && hasActiveChild) {
+                row.classList.add('has-active-child');
+            }
         }
         row.title = item.label || '';
 
@@ -124,14 +137,32 @@ class UsimNavTreeComponent extends UIComponent {
         labelSpan.textContent = item.label || '';
         row.appendChild(labelSpan);
 
-        if (hasSubmenu) {
+        if (hasSubmenu && !delegateGroupClick) {
             const chevron = document.createElement('span');
             chevron.className = 'usim-nav-tree-chevron';
             chevron.textContent = '▸';
             row.appendChild(chevron);
         }
 
-        if (hasSubmenu) {
+        if (hasSubmenu && delegateGroupClick) {
+            row.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                const leftPanelSlot = document.querySelector('[data-layout-slot="left_panel"]');
+                const leftPane = leftPanelSlot?.closest('.ui-split-pane');
+                const isLeftPanelCollapsed = Boolean(leftPane?.classList.contains('is-collapsed'));
+
+                this.sendEventToBackend('click', this.config.on_group_click, {
+                    group_key: pathKey,
+                    group_label: item.label || '',
+                    group_icon: item.icon || '',
+                    left_panel_collapsed: isLeftPanelCollapsed,
+                    _caller_service_id: this.config._caller_service_id,
+                });
+            });
+
+            li.appendChild(row);
+        } else if (hasSubmenu) {
             const subList = document.createElement('ul');
             subList.className = 'usim-nav-tree-sublist';
             if (!isExpanded) {
@@ -239,6 +270,14 @@ class UsimNavTreeComponent extends UIComponent {
         if (item.params?.screen) {
             this.config.active_screen = item.params.screen;
         }
+    }
+
+    _isGroupActive(item, pathKey) {
+        const activeGroup = this.config.active_group;
+        if (typeof activeGroup !== 'string' || activeGroup.trim() === '') {
+            return false;
+        }
+        return activeGroup === item.label || activeGroup === pathKey;
     }
 
     _isItemActive(item) {

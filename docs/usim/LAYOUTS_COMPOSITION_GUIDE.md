@@ -16,6 +16,8 @@
 8. [Layouts Flex / Horizontal / Vertical](#8-layouts-flex--horizontal--vertical)
 9. [Slots y Composición de Sub-Screens (`embedToSlot`)](#9-slots-y-composición-de-sub-screens-embedtoslot)
 10. [Buenas Prácticas: ¿Cuándo usar *Inline*, `include:` o `embedToSlot`?](#10-buenas-prácticas-cuándo-usar-inline-include-o-embedtoslot)
+11. [Auto-instanciación por Prefijo, `component:` y Timers No Visuales (`timers:`)](#11-auto-instanciación-por-prefijo-component-y-timers-no-visuales-timers)
+12. [Proyección Declarativa de Slots hacia el `AbstractLayout` (`slots:`)](#12-proyección-declarativa-de-slots-hacia-el-abstractlayout-slots)
 
 ---
 
@@ -23,7 +25,7 @@
 
 En USIM ambos niveles comparten **el mismo motor declarativo (`.layout.yaml` + `ContainerLayoutLoader`)**:
 
-- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación (por ejemplo `WorkbenchLayout` con sidebar en `Split` + Activity Bar de `52px`, `right_panel` en `0px` y `status_bar`; o `MainLayout` con barra superior). Se declara en la `Screen` con `public static ?string $layout = 'default';` (resuelve `guest_layout` vs `default_layout`), una clase explícita o `null` para pantallas standalone/kiosk.
+- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación (por ejemplo `WorkbenchLayout` con Activity Bar fija de `52px` en `[1, 1]`, panel izquierdo `left_panel` en `Split` colapsable a `0px`, `right_panel` en `0px` y `status_bar` de ancho completo; o `MainLayout` con barra superior). Se declara en la `Screen` con `public static ?string $layout = 'default';` (resuelve `guest_layout` vs `default_layout`), una clase explícita o `null` para pantallas standalone/kiosk.
 - **Layout de Contenedor (`.layout.yaml`):** Define la estructura interna de una `Screen`, un `Container` o un `AbstractLayout` (CSS Grid, `component: split` con panes `first:` / `second:`, `layout_slot`, cajas, espaciados, alineación y propiedades de componentes). Se procesa en PHP mediante `Idei\Usim\Support\ContainerLayoutLoader`.
 
 > Para la referencia técnica completa de `WorkbenchLayout`, `Split` declarativo, `NavTree`, `right_panel`, `StatusBar` y transiciones de layout, consultá [WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md](./WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md).
@@ -329,8 +331,9 @@ protected function startingUI(): Container
 |---|---|---|
 | Agrupar 2-4 elementos locales (input + botón, label + badge) | **`grid:` inline** | Evita proliferación de micro-archivos y mantiene la estructura visible en un solo lugar. |
 | Barra, cabecera o bloque reutilizable en varias pantallas | **`include:` / `layout_file:`** | Un único archivo fuente reutilizable con overrides por instancia y sin lógica PHP duplicada. |
-| Panel complejo con estado propio, eventos y servicio independiente | **`embedToSlot()` (Sub-Screen)** | Aislamiento completo de ciclo de vida, estado (`store_*`/`state_*`) y traducciones. |
-| Posicionar una `Screen` dentro del marco general de la app | **`AbstractLayout`** (`$layout`) | Separa el shell global (menú/navbar) del contenido de cada pantalla. |
+| Filtros, inspector o ítems de `status_bar` acoplados al estado de la misma `Screen` | **`slots:` en `.layout.yaml`** | Proyecta subárboles hacia `left_panel`, `right_panel` o `status_bar*` compartiendo propiedades `protected`, `$state_*`, `i18n: auto` y handlers `on*()` sin `UsimEvent`. |
+| Panel complejo reutilizable con estado propio, eventos y servicio independiente | **`embedToSlot()` / `slots.<slot>.screen:` / `showInto()`** | Aislamiento completo de ciclo de vida, estado (`store_*`/`state_*`) y traducciones. |
+| Posicionar una `Screen` dentro del marco general de la app | **`AbstractLayout`** (`$layout`) | Separa el shell global (menú/navbar/workbench) del contenido de cada pantalla. |
 
 ---
 
@@ -393,4 +396,87 @@ $this->startTimer('tmr_poll_status');   // o $this->startTimer() si hay un únic
 $this->stopTimer('tmr_poll_status');    // o $this->stopTimer()
 $timer = $this->timer('tmr_poll_status'); // ?Timer
 ```
+
+---
+
+## 12. Proyección Declarativa de Slots hacia el `AbstractLayout` (`slots:`)
+
+Además de definir su propio contenido principal en `main` (`grid:` raíz o `slots.main` / `slots.center`), una `Screen` puede usar la sección raíz **`slots:`** en su `.layout.yaml` para proyectar contenedores, componentes o Sub-Screens directamente hacia los paneles y zonas del `AbstractLayout` activo (por ejemplo `left_panel`, `right_panel`, `status_bar`, `status_bar_left`, `status_bar_right` en `WorkbenchLayout`).
+
+Todos los componentes proyectados de forma *inline* o vía `include:` **permanecen dentro de la misma `Screen` PHP** (comparten propiedades `protected`, `$state_*`, `$store_*`, `i18n: auto` y handlers `on*()`), sin necesidad de crear pantallas satélites ni coordinar con `UsimEvent`.
+
+### 12.1 Ejemplo completo
+
+```yaml
+name: catalog_workspace
+i18n: auto
+
+grid:
+  cols: [1fr]
+  gap: m
+  children:
+    - lbl_title:    { size: xl, font_weight: bold }
+    - tbl_products: { width: full }
+
+slots:
+  left_panel:
+    open: true            # Expande el Split al entrar (default: true)
+    size: 280px           # Ajusta el ancho del panel temporalmente; se restaura al salir
+    fallback: inline_top  # Si el layout activo no tiene left_panel, se renderiza arriba de main
+    appearance: subtle
+    padding: m
+    grid:
+      cols: [1fr]
+      gap: s
+      children:
+        - lbl_filters:  { font_weight: bold }
+        - input_search: { width: full }
+        - btn_filter:   { style: primary, action: apply_filter, width: full }
+
+  right_panel:
+    open: false           # Arranca colapsado; se expande con $this->openSlot('right_panel')
+    size: 360px           # Soporta px o % incluso en el segundo panel del Split
+    fallback: ignore      # Default: si no existe en el layout, no se monta en DOM sin romper PHP
+    grid:
+      cols: [1fr]
+      gap: s
+      children:
+        - lbl_detail_title
+        - btn_close_detail: { label: "✕", size: xs, action: close_detail }
+
+  # O montar declarativamente una Sub-Screen autónoma en cualquier slot:
+  # right_panel:
+  #   open: true
+  #   size: 380px
+  #   screen: App\UI\Screens\Demo\RightPanelInspector
+  #   params: { title: "Inspector" }
+
+  status_bar:             # Se proyecta en status_bar_center y oculta lbl_status_message mientras está activo
+    children:
+      - lbl_items_count: { text: "0 items" }
+
+  status_bar_right:       # Se inserta antes de btn_reset, preservando los controles globales del shell
+    children:
+      - btn_sync: { size: xs, style: info, action: sync_now }
+```
+
+### 12.2 Reglas clave
+
+- **`grid:` raíz vs. `slots.main` / `slots.center`:** Puedes usar `grid:` en la raíz **o** declarar el contenido principal en `slots.main` / `slots.center` (declarar ambos simultáneamente lanza `InvalidArgumentException`).
+- **Sub-slots contextuales en `StatusBar`:** `status_bar` (alias de `status_bar_center`), `status_bar_left` y `status_bar_right` preservan siempre `unit_menu` y `btn_reset`. Cuando una `Screen` proyecta en `status_bar` / `status_bar_center`, `lbl_status_message` se oculta automáticamente y vuelve a mostrarse al limpiar o navegar fuera de la pantalla.
+- **Limpieza automática al navegar:** Al navegar `main` hacia otra `Screen`, los portales con `persist_on_navigate: false` (default) se limpian automáticamente, sus `Split` se colapsan y se restauran los tamaños por defecto del `AbstractLayout`.
+- **Modos de `fallback`:** `ignore` (default, seguro para `MainLayout` o `$layout = null`), `inline` / `inline_bottom` e `inline_top`.
+
+### 12.3 Control desde PHP (`Screen`)
+
+```php
+$this->openSlot('right_panel');          // Expande el Split (y re-monta el portal si otro ocupó el slot)
+$this->openSlot('right_panel', '420px'); // Expande aplicando un tamaño dinámico
+$this->closeSlot('right_panel');         // En portales propios: colapsa preservando el estado de sus componentes
+$this->closeSlot('right_panel', clear: true); // Fuerza limpieza del DOM además de colapsar
+$this->toggleSlot('left_panel');         // Alterna abierto/cerrado
+$this->isSlotOpen('right_panel');        // bool
+$this->slotContainer('left_panel');      // ?Container (acceso directo al contenedor portal)
+```
+
 

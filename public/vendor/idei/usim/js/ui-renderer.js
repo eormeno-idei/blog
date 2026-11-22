@@ -1198,6 +1198,7 @@ const SPECIAL_UI_KEYS = new Set([
     'update_modal',
     'clear_uploaders',
     'clear_container',
+    'clear_containers',
     'set_uploader_existing_file',
     'change_theme',
     'change_language',
@@ -1397,17 +1398,67 @@ class UIRenderer {
         // console.log(`✅ Created ${this.components.size} components`);
 
         // Step 2: Group components by parent and sort by _order
+        // Step 2: Build parent-child relationships (accounting for portal slots & unmounted portals)
+        const unmountedPortalIds = new Set();
+        for (const id of componentIds) {
+            if (isSpecialUIKey(id)) continue;
+            const component = this.components.get(id);
+            if (component?.config?.portal_unmounted === true) {
+                unmountedPortalIds.add(String(id));
+            }
+        }
+        let addedUnmounted = true;
+        while (addedUnmounted) {
+            addedUnmounted = false;
+            for (const id of componentIds) {
+                if (isSpecialUIKey(id) || unmountedPortalIds.has(String(id))) continue;
+                const component = this.components.get(id);
+                const parentId = component?.config?.parent;
+                if (parentId !== undefined && parentId !== null && unmountedPortalIds.has(String(parentId))) {
+                    unmountedPortalIds.add(String(id));
+                    addedUnmounted = true;
+                }
+            }
+        }
+        this.unmountedPortalIds = unmountedPortalIds;
+
+        // Index layout slot containers by data-layout-slot name for portal resolution
+        const slotContainerKeyByName = new Map();
+        for (const id of componentIds) {
+            if (isSpecialUIKey(id)) continue;
+            const component = this.components.get(id);
+            const layoutSlotName = component?.config?.data_attributes?.['layout-slot'];
+            if (typeof layoutSlotName === 'string' && layoutSlotName.trim() !== '') {
+                slotContainerKeyByName.set(layoutSlotName.trim(), String(id));
+            }
+        }
+
+        const resolveEffectiveParent = (component) => {
+            const cfg = component?.config;
+            if (!cfg) return null;
+            if (cfg.portal_target_id !== undefined && cfg.portal_target_id !== null && cfg.portal_target_id !== '') {
+                return Number.isFinite(Number(cfg.portal_target_id)) ? Number(cfg.portal_target_id) : cfg.portal_target_id;
+            }
+            if (typeof cfg.portal_slot === 'string' && cfg.portal_slot.trim() !== '') {
+                const slotKey = slotContainerKeyByName.get(cfg.portal_slot.trim());
+                if (slotKey !== undefined) {
+                    return Number.isFinite(Number(slotKey)) ? Number(slotKey) : slotKey;
+                }
+            }
+            return cfg.parent;
+        };
+
         const childrenByParent = new Map();
         for (const id of componentIds) {
             // Skip special keys that are not UI components
-            if (isSpecialUIKey(id)) {
+            if (isSpecialUIKey(id) || unmountedPortalIds.has(String(id))) {
                 continue;
             }
 
             const component = this.components.get(id);
             if (!component) continue;
 
-            const parentId = component.config.parent;
+            const parentId = resolveEffectiveParent(component);
             let parentKey;
 
             if (typeof parentId === 'string') {
@@ -1461,7 +1512,7 @@ class UIRenderer {
         }
 
         // Step 3: Mount components in hierarchical order
-        const mounted = new Set();
+        const mounted = new Set(unmountedPortalIds);
         const maxIterations = this.components.size * 2;
         let iterations = 0;
 
@@ -1478,7 +1529,7 @@ class UIRenderer {
 
                     if (!component || mounted.has(id)) continue;
 
-                    const parentId = component.config.parent;
+                    const parentId = resolveEffectiveParent(component);
 
                     // console.log(`  📍 Attempting to mount "${id}" (type: ${component.config.type}), parent: ${parentId}`);
 
@@ -1904,6 +1955,31 @@ class UIRenderer {
 
             // 2) Then apply updates, and collect creates to resolve parent/child ordering in retries.
             const creates = [];
+            const batchUnmounted = new Set(this.unmountedPortalIds || []);
+            for (const [jsonKey, changes] of entries) {
+                if (isSpecialUIKey(jsonKey) || !changes || typeof changes !== 'object') {
+                    continue;
+                }
+                if (changes.portal_unmounted === true) {
+                    batchUnmounted.add(String(jsonKey));
+                } else if (changes.portal_unmounted === false) {
+                    batchUnmounted.delete(String(jsonKey));
+                }
+            }
+            let expandedUnmounted = true;
+            while (expandedUnmounted) {
+                expandedUnmounted = false;
+                for (const [jsonKey, changes] of entries) {
+                    if (isSpecialUIKey(jsonKey) || !changes || typeof changes !== 'object') {
+                        continue;
+                    }
+                    if (!batchUnmounted.has(String(jsonKey)) && changes.parent !== undefined && changes.parent !== null && batchUnmounted.has(String(changes.parent))) {
+                        batchUnmounted.add(String(jsonKey));
+                        expandedUnmounted = true;
+                    }
+                }
+            }
+            this.unmountedPortalIds = batchUnmounted;
 
             for (const [jsonKey, changes] of entries) {
                 if (isSpecialUIKey(jsonKey) || !changes || typeof changes !== 'object') {
@@ -1911,6 +1987,10 @@ class UIRenderer {
                 }
 
                 if (shouldRemoveByParent(changes.parent)) {
+                    continue;
+                }
+
+                if (batchUnmounted.has(String(jsonKey))) {
                     continue;
                 }
 
@@ -1929,17 +2009,21 @@ class UIRenderer {
             // 3) Sort creates topologically by parent-child depth within this batch,
             //    then by _order. This guarantees that parent containers mount before their children.
             const createsMap = new Map(creates.map(([k, c]) => [String(k), c]));
+            const getEffectiveParentKey = (config) => {
+                if (config?.portal_target_id !== undefined && config?.portal_target_id !== null && config?.portal_target_id !== '') {
+                    return String(config.portal_target_id);
+                }
+                return config?.parent !== undefined && config?.parent !== null ? String(config.parent) : null;
+            };
             const getDepth = (config) => {
                 let depth = 0;
-                let curParent = config?.parent !== undefined && config?.parent !== null ? String(config.parent) : null;
+                let curParent = getEffectiveParentKey(config);
                 const visited = new Set();
                 while (curParent && createsMap.has(curParent) && !visited.has(curParent)) {
                     visited.add(curParent);
                     depth++;
                     const parentConfig = createsMap.get(curParent);
-                    curParent = parentConfig?.parent !== undefined && parentConfig?.parent !== null
-                        ? String(parentConfig.parent)
-                        : null;
+                    curParent = getEffectiveParentKey(parentConfig);
                 }
                 return depth;
             };
@@ -2013,8 +2097,15 @@ class UIRenderer {
             this.clearUploaders(uiUpdate.clear_uploaders);
         }
 
+        // Handle multiple clear_containers if present
+        if (Array.isArray(uiUpdate.clear_containers)) {
+            for (const cid of uiUpdate.clear_containers) {
+                this.clearContainer(cid);
+            }
+        }
+
         // Handle clear container if present
-        if (uiUpdate.clear_container) {
+        if (uiUpdate.clear_container && (!Array.isArray(uiUpdate.clear_containers) || !uiUpdate.clear_containers.includes(uiUpdate.clear_container))) {
             this.clearContainer(uiUpdate.clear_container);
         }
 
@@ -2121,7 +2212,8 @@ class UIRenderer {
         }
 
         let containerElement = document.querySelector(`[data-component-id="${containerId}"]`)
-            || document.getElementById(String(containerId));
+            || document.getElementById(String(containerId))
+            || document.querySelector(`[data-layout-slot="${containerId}"]`);
 
         if (!containerElement && (
             containerId === 'content_container' || containerId === 'main' ||
@@ -2208,6 +2300,9 @@ class UIRenderer {
                 const internalId = String(mapKey);
 
                 if (parentId !== undefined && parentId !== null && removedIds.has(String(parentId)) && !removedIds.has(internalId)) {
+                    if (component.config.portal_persist_on_navigate === true) {
+                        continue;
+                    }
                     removedIds.add(internalId);
                     foundNewDescendant = true;
                 }
@@ -2219,6 +2314,9 @@ class UIRenderer {
             const internalId = String(mapKey);
 
             if (removedIds.has(internalId) || removedIds.has(String(mapKey))) {
+                if (component?.element instanceof HTMLElement && component.element.isConnected) {
+                    component.element.remove();
+                }
                 if (component && typeof component.destroy === 'function') {
                     component.destroy();
                 }
@@ -2903,6 +3001,36 @@ class UIRenderer {
     }
 
     /**
+     * Resolve DOM mount target for a portal container targeting a layout slot.
+     */
+    resolvePortalTargetElement(config) {
+        if (!config || typeof config !== 'object') {
+            return null;
+        }
+
+        if (config.portal_target_id !== undefined && config.portal_target_id !== null && config.portal_target_id !== '') {
+            const byComp = this.components.get(String(config.portal_target_id));
+            if (byComp?.element instanceof HTMLElement && byComp.element.isConnected) {
+                return byComp.element;
+            }
+            const byId = document.querySelector(`[data-component-id="${config.portal_target_id}"]`)
+                || document.getElementById(String(config.portal_target_id));
+            if (byId instanceof HTMLElement) {
+                return byId;
+            }
+        }
+
+        if (typeof config.portal_slot === 'string' && config.portal_slot.trim() !== '') {
+            const slotEl = document.querySelector(`[data-layout-slot="${config.portal_slot.trim()}"]`);
+            if (slotEl instanceof HTMLElement) {
+                return slotEl;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Add new component to DOM
      *
      * @param {string} jsonKey - JSON key of the component
@@ -2911,6 +3039,14 @@ class UIRenderer {
      */
     addComponent(jsonKey, config, options = {}) {
         try {
+            if (config?.portal_unmounted === true || this.unmountedPortalIds?.has(String(config?.parent))) {
+                if (!this.unmountedPortalIds) {
+                    this.unmountedPortalIds = new Set();
+                }
+                this.unmountedPortalIds.add(String(jsonKey));
+                return true;
+            }
+
             const { suppressMissingParentLog = false } = options;
             const component = ComponentFactory.create(jsonKey, config);
 
@@ -2922,40 +3058,50 @@ class UIRenderer {
             const element = component.render();
             this.components.set(String(jsonKey), component);
 
-            // Find parent and append
-            const parentComponent = this.components.get(String(config.parent));
+            // Resolve portal slot target first when portal_slot / portal_target_id is declared
+            const isPortal = (typeof config.portal_slot === 'string' && config.portal_slot.trim() !== '')
+                || (config.portal_target_id !== undefined && config.portal_target_id !== null && config.portal_target_id !== '');
+
             let parentElement = null;
+            let parentComponent = null;
 
-            if (parentComponent?.tableElement) {
-                parentElement = parentComponent.tableElement;
-            } else if (parentComponent?.element instanceof HTMLElement) {
-                parentElement = parentComponent.element;
-            }
+            if (isPortal) {
+                parentElement = this.resolvePortalTargetElement(config);
+            } else {
+                // Find parent and append
+                parentComponent = this.components.get(String(config.parent));
 
-            if (parentComponent && typeof parentComponent.getChildMountTarget === 'function') {
-                const resolvedTarget = parentComponent.getChildMountTarget(config, component);
-                if (resolvedTarget instanceof HTMLElement) {
-                    parentElement = resolvedTarget;
+                if (parentComponent?.tableElement) {
+                    parentElement = parentComponent.tableElement;
+                } else if (parentComponent?.element instanceof HTMLElement) {
+                    parentElement = parentComponent.element;
                 }
-            }
 
-            // Special case: if child is a container inside a table, it's the transparent rows container
-            if (parentComponent?.tableElement && config.type === 'container') {
-                component.element = parentElement; // Point to table's tbodyElement
-                if (typeof component.contentElement !== 'undefined') {
-                    component.contentElement = parentElement;
+                if (parentComponent && typeof parentComponent.getChildMountTarget === 'function') {
+                    const resolvedTarget = parentComponent.getChildMountTarget(config, component);
+                    if (resolvedTarget instanceof HTMLElement) {
+                        parentElement = resolvedTarget;
+                    }
                 }
-                this.components.set(String(jsonKey), component);
-                return true;
-            }
 
-            if (!(parentElement instanceof HTMLElement) || !parentElement.isConnected) {
-                parentElement = document.querySelector(`[data-component-id="${config.parent}"]`)
-                    || document.getElementById(String(config.parent))
-                    || (config.parent === 'content_container' || (this.currentNavigateSlotId && String(config.parent) === String(this.currentNavigateSlotId))
-                        ? document.querySelector('[data-layout-slot="main"]') || document.querySelector('[data-name="content_container"]') || document.getElementById('content_container')
-                        : null)
-                    || (config.parent === 'main' ? document.getElementById('main') : null);
+                // Special case: if child is a container inside a table, it's the transparent rows container
+                if (parentComponent?.tableElement && config.type === 'container') {
+                    component.element = parentElement; // Point to table's tbodyElement
+                    if (typeof component.contentElement !== 'undefined') {
+                        component.contentElement = parentElement;
+                    }
+                    this.components.set(String(jsonKey), component);
+                    return true;
+                }
+
+                if (!(parentElement instanceof HTMLElement) || !parentElement.isConnected) {
+                    parentElement = document.querySelector(`[data-component-id="${config.parent}"]`)
+                        || document.getElementById(String(config.parent))
+                        || (config.parent === 'content_container' || (this.currentNavigateSlotId && String(config.parent) === String(this.currentNavigateSlotId))
+                            ? document.querySelector('[data-layout-slot="main"]') || document.querySelector('[data-name="content_container"]') || document.getElementById('content_container')
+                            : null)
+                        || (config.parent === 'main' ? document.getElementById('main') : null);
+                }
             }
 
             const insertByTableOrder = (parent, child, childConfig) => {

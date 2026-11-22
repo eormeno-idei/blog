@@ -41,8 +41,8 @@ Created with fluent builders, for example:
 - `UI::image(...)`
 - `UI::uploader(...)`
 - `UI::menuDropdown(...)` (supports `->floating(true)` and `right-top`/`top-left`/`top-right` viewport-portaled popovers)
-- `UI::navTree(...)` (vertical sidebar navigation with inline collapsible accordions and Activity Bar compact mode; populated via `MenuBuilder::renderNavTree()`)
-- `UI::split(...)` (resizable/collapsible two-pane container; supports declarative `first:`/`second:` panes, `collapse_size`, and `hide_divider_when_collapsed` in `.layout.yaml`)
+- `UI::navTree(...)` (vertical sidebar navigation with recursive inline collapsible accordions, `getItems()`/`setItems()`, and Activity Bar mode via `compact(true)` + `onGroupClick()` + `activeGroup()`; populated via `MenuBuilder::renderNavTree()`)
+- `UI::split(...)` (resizable/collapsible two-pane container; supports declarative `first:`/`second:` panes, `split_size_target` (`first`/`second`), `collapse_size`, and `hide_divider_when_collapsed` in `.layout.yaml`)
 - `UI::carousel(...)`
 
 ### Unified Layouts & Workbench Shell
@@ -52,9 +52,11 @@ Created with fluent builders, for example:
   2. `$layout = CustomLayout::class` -> explicit layout.
   3. `$layout = 'default'` -> `config('usim.guest_layout')` when unauthenticated (if set), otherwise `config('usim.default_layout')` (`WorkbenchLayout` or `MainLayout`).
 - `showInto()` automatically handles SPA layout transitions (`MainLayout <-> WorkbenchLayout <-> null`) via `clear_container: 'main'`.
-- Auxiliary slots like `right_panel` (collapsed to `0px` by default) auto-expand on `$this->showInto($screen, slot: 'right_panel')` and close/collapse via `$this->closeSlot('right_panel')`.
-- `SidebarMenu` renders `NavTree` (`accordion(true)`) + VS Code-style floating footer popovers (`user_menu` + `settings_menu` with theme toggle, `🌐` language submenu, and About).
-- `StatusBar` hosts organizational unit switching (left), dynamic status messages via `UsimEvent('status_bar_message', ['text' => ...])` (center), and the dev-only Reset button (right, automatically omitted in production).
+- Auxiliary slots `left_panel` and `right_panel` (both collapsed to `0px` by default) can be driven in two complementary ways:
+  1. **Declarative Screen slot projections (`slots:` root section in `.layout.yaml`):** project inline containers (`grid:`, `layout:`/`children:`), `include:` partials, or declarative `screen:` Sub-Screens into `left_panel`, `right_panel`, `status_bar` (`status_bar_center`), `status_bar_left`, `status_bar_right`, or custom layout slots, with `open` (default `true`), `size` (temporary Split override restored on navigate), `fallback` (`ignore` default or `inline`/`inline_top`/`inline_bottom`), and `persist_on_navigate` (default `false`). Inline/`include:` components stay inside the host Screen's PHP class (`protected` properties, `$state_*`, `i18n: auto`, `on*()` handlers). Control at runtime with `$this->openSlot()`, `$this->closeSlot()` (preserves own-portal state unless `clear: true`), `$this->toggleSlot()`, `$this->isSlotOpen()`, and `$this->slotContainer()`. Screens may use root `grid:` OR `slots.main` / `slots.center` (never both).
+  2. **Imperative Sub-Screens:** `$this->showInto($screen, slot: 'left_panel' | 'right_panel')` and `$this->closeSlot(...)`. Contextual screens auto-close when navigating `main`, while persistent navigation panels opt in via `public static bool $persistOnNavigate = true;`.
+- `SidebarMenu` renders the fixed `52px` VS Code-style Activity Bar (outside `split_shell`) with compact `NavTree` icons + floating footer popovers (`user_menu` + `settings_menu`), delegating submenu groups (such as `Demos`) to `SidebarSubmenuPanel` inside `left_panel`.
+- `StatusBar` hosts organizational unit switching (left) + `status_bar_left`, dynamic status messages via `UsimEvent('status_bar_message', ['text' => ...])` + `status_bar_center` (alias `status_bar`, automatically hiding `lbl_status_message` while active), and `status_bar_right` + the dev-only Reset button (right, automatically omitted in production).
 - Full AI technical reference: `WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md` in `packages/idei/usim/docs/` (published to `docs/usim/`).
 
 ### Agnostic Icons (`HasIcon`)
@@ -94,8 +96,10 @@ In addition to component diffs, backend may return meta keys such as:
 - `change_language`
 - `modal`
 - `update_modal`
+- `clear_container` / `clear_containers`
 - `clear_uploaders`
 - `set_uploader_existing_file`
+- `navigate`
 - `agent_context`
 
 When implementing features, preserve these contracts and avoid introducing breaking payload shape changes.

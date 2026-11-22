@@ -18,6 +18,7 @@
    - [4.6 Reglas de Posicionamiento y Spanning](#46-reglas-de-posicionamiento-y-spanning)
    - [4.7 Propiedades Personalizadas y Delegación Fluida](#47-propiedades-personalizadas-y-delegación-fluida)
    - [4.8 Contenedores Anidados *Inline* y Referencias Externas (`include` / `layout_file`)](#48-contenedores-anidados-inline-y-referencias-externas-include--layout_file)
+   - [4.9 Proyección Declarativa de Slots hacia el `AbstractLayout` (`slots:`)](#49-proyección-declarativa-de-slots-hacia-el-abstractlayout-slots)
 5. [Sistema de Slots y Composición de Sub-Screens](#5-sistema-de-slots-y-composición-de-sub-screens)
 6. [Sistema de Internacionalización (i18n)](#6-sistema-de-internacionalización-i18n)
    - [6.1 Convención de Claves por Namespace](#61-convención-de-claves-por-namespace)
@@ -312,6 +313,27 @@ Cualquier entrada en `children:` puede definir un sub-contenedor de dos maneras 
    - Las rutas relativas se resuelven primero respecto al directorio del `.layout.yaml` padre, luego respecto al directorio de la `Screen`, ruta directa y `base_path()`.
    - Se detectan referencias circulares lanzando `InvalidArgumentException`.
    - Para el catálogo completo de patrones y ejemplos, ver [LAYOUTS_COMPOSITION_GUIDE.md](LAYOUTS_COMPOSITION_GUIDE.md).
+
+### 4.9 Proyección Declarativa de Slots hacia el `AbstractLayout` (`slots:`)
+
+Una `Screen` puede declarar una sección raíz **`slots:`** (al mismo nivel que `grid:` y `timers:`) para proyectar contenedores, componentes o Sub-Screens hacia regiones del `AbstractLayout` activo (como `left_panel`, `right_panel`, `status_bar` / `status_bar_center`, `status_bar_left`, `status_bar_right` en `WorkbenchLayout`, o slots personalizados de un layout propio).
+
+- **Simetría con `main`:** puedes usar `grid:` raíz **o** declarar el contenido principal bajo `slots.main` / `slots.center` (declarar ambos simultáneamente lanza `InvalidArgumentException`).
+- **Tres modos por slot:**
+  1. **Inline (`grid:` o `layout:` / `children:` directo):** los componentes siguen perteneciendo a la misma `Screen` PHP (auto-wiring de propiedades `protected`, `$state_*`, `i18n: auto` y handlers `on*()`). En `status_bar*`, `children:` directo aplica por defecto `layout: horizontal, align_items: center, gap: s, appearance: plain, padding: none`.
+  2. **Parcial externo (`include:` / `layout_file:` / `file:`):** reutiliza un `.layout.yaml` manteniendo los componentes dentro de la `Screen` actual.
+  3. **Sub-Screen declarativa (`screen:` + `params:` opcional):** monta automáticamente una `Screen` autónoma en el slot destino.
+- **Claves de control por slot:**
+
+| Clave | Tipo | Default | Comportamiento |
+|---|---|---|---|
+| `open` | `bool` | `true` | Expande (`true`) o deja colapsado (`false`) el `Split` propietario al montar la `Screen`. |
+| `size` | `int\|string` | *(layout)* | Sobrescribe temporalmente el tamaño del `Split` (`280px`, `35%`, etc.) tanto para el panel `first` (`left_panel`) como para `second` (`right_panel`), restaurándolo al salir. |
+| `fallback` | `string` | `'ignore'` | Si el layout activo no define el slot (`MainLayout` o `$layout = null`): `'ignore'` omite el montaje DOM sin romper propiedades PHP; `'inline'` / `'inline_bottom'` / `'inline_top'` degrada renderizando dentro de `main`. |
+| `persist_on_navigate` | `bool` | `false` | Al navegar `main` a otra `Screen`, los portales con `false` se limpian, colapsan y restauran tamaños automáticamente. |
+
+- **Sub-slots de `StatusBar`:** proyectar en `status_bar` (alias de `status_bar_center`), `status_bar_left` o `status_bar_right` preserva `unit_menu` y `btn_reset`; mientras haya proyección en `status_bar` / `status_bar_center`, `lbl_status_message` se oculta automáticamente y se restaura al limpiar o salir.
+- **Helpers PHP en `Screen`:** `$this->openSlot($slot, $size)`, `$this->closeSlot($slot, $collapse, $clear)` (colapsa portales propios preservando estado salvo `clear: true`), `$this->toggleSlot($slot)`, `$this->isSlotOpen($slot)` y `$this->slotContainer($slot)`. Ver ejemplos completos en [LAYOUTS_COMPOSITION_GUIDE.md](LAYOUTS_COMPOSITION_GUIDE.md#12-proyección-declarativa-de-slots-hacia-el-abstractlayout-slots) y `App\UI\Screens\Demo\SlotProjectionDemo`.
 
 ---
 

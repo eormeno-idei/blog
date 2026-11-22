@@ -154,6 +154,7 @@ class UsimSplitComponent extends UIComponent {
 
     update(newConfig) {
         const oldSplitSize = this.config?.split_size;
+        const oldSplitSizeTarget = this.config?.split_size_target;
         this.config = {
             ...this.config,
             ...newConfig,
@@ -163,7 +164,10 @@ class UsimSplitComponent extends UIComponent {
             return;
         }
 
-        if (newConfig?.split_size !== undefined && newConfig.split_size !== oldSplitSize) {
+        if (
+            (newConfig?.split_size !== undefined && newConfig.split_size !== oldSplitSize) ||
+            (newConfig?.split_size_target !== undefined && newConfig.split_size_target !== oldSplitSizeTarget)
+        ) {
             this.lastExpandedSize = null;
         }
 
@@ -373,7 +377,17 @@ class UsimSplitComponent extends UIComponent {
             return;
         }
 
-        this.lastExpandedSize = `${this._getFirstPaneSizePx()}px`;
+        const currentFirstPx = this._getFirstPaneSizePx();
+        if (this.config.split_size_target === 'second') {
+            const orientation = this._normalizeOrientation(this.config.split_orientation);
+            const rect = this.element.getBoundingClientRect();
+            const rawTotal = orientation === 'horizontal' ? rect.width : rect.height;
+            const dividerPx = this._sizeToPx(this.config.splitter_size || '8px', rawTotal);
+            const totalPx = Math.max(rawTotal - dividerPx, 0);
+            this.lastExpandedSize = `${Math.max(0, totalPx - currentFirstPx)}px`;
+        } else {
+            this.lastExpandedSize = `${currentFirstPx}px`;
+        }
         this.config.collapsed_panel = this._normalizeCollapseTarget(this.config.collapse_target);
         this._applySplitSizeFromConfig();
         this._updateCollapseButtonIcon();
@@ -421,6 +435,7 @@ class UsimSplitComponent extends UIComponent {
 
     _applySize(rawSize) {
         const orientation = this._normalizeOrientation(this.config.split_orientation);
+        const sizeTarget = this.config.split_size_target === 'second' ? 'second' : 'first';
         const containerRect = this.element.getBoundingClientRect();
         const dividerSize = this._sizeToPx(this.config.splitter_size || '8px', orientation === 'horizontal' ? containerRect.width : containerRect.height);
         const totalPx = (orientation === 'horizontal' ? containerRect.width : containerRect.height) - dividerSize;
@@ -430,8 +445,13 @@ class UsimSplitComponent extends UIComponent {
             const minFirst = this._normalizeCssSize(this.config.min_first_size || '120px');
             const minSecond = this._normalizeCssSize(this.config.min_second_size || '120px');
 
-            this.firstPaneEl.style.flex = `0 0 ${raw}`;
-            this.secondPaneEl.style.flex = '1 1 0%';
+            if (sizeTarget === 'second') {
+                this.firstPaneEl.style.flex = '1 1 0%';
+                this.secondPaneEl.style.flex = `0 0 ${raw}`;
+            } else {
+                this.firstPaneEl.style.flex = `0 0 ${raw}`;
+                this.secondPaneEl.style.flex = '1 1 0%';
+            }
             if (orientation === 'horizontal') {
                 this.firstPaneEl.style.minWidth = minFirst;
                 this.secondPaneEl.style.minWidth = minSecond;
@@ -446,7 +466,8 @@ class UsimSplitComponent extends UIComponent {
             return;
         }
 
-        const firstPx = this._sizeToPx(rawSize, totalPx);
+        const parsedPx = this._sizeToPx(rawSize, totalPx);
+        const firstPx = sizeTarget === 'second' ? (totalPx - parsedPx) : parsedPx;
         this._setSplitFromFirstPx(firstPx);
     }
 

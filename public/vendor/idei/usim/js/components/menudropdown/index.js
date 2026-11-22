@@ -296,19 +296,39 @@ class UsimMenuDropdownComponent extends UIComponent {
                 submenu.style.right = 'auto';
                 submenu.style.marginLeft = '';
                 submenu.style.marginRight = '';
+                submenu.style.maxHeight = '';
+                submenu.style.overflowY = '';
 
                 submenu.style.setProperty('display', 'block', 'important');
                 submenu.style.setProperty('opacity', '1', 'important');
                 submenu.style.setProperty('visibility', 'visible', 'important');
                 submenu.classList.add('show');
 
-                // Keep submenu inside viewport bounds (critical for bottom-left Settings popovers)
-                const rect = submenu.getBoundingClientRect();
-                if (rect.bottom > window.innerHeight - 8) {
-                    submenu.style.top = 'auto';
-                    submenu.style.bottom = '0';
+                // Keep submenu strictly inside viewport bounds (never clip above top or below bottom)
+                const margin = 8;
+                const viewportH = window.innerHeight;
+                const viewportW = window.innerWidth;
+                const parentRect = menuItem.getBoundingClientRect();
+                const maxAllowedHeight = Math.max(120, viewportH - margin * 2);
+                let rect = submenu.getBoundingClientRect();
+
+                if (rect.height > maxAllowedHeight) {
+                    submenu.style.maxHeight = `${maxAllowedHeight}px`;
+                    submenu.style.overflowY = 'auto';
+                    rect = submenu.getBoundingClientRect();
                 }
-                if (rect.right > window.innerWidth - 8) {
+
+                const effectiveHeight = Math.min(rect.height, maxAllowedHeight);
+                let desiredTop = parentRect.top;
+                if (desiredTop + effectiveHeight > viewportH - margin) {
+                    desiredTop = viewportH - margin - effectiveHeight;
+                }
+                desiredTop = Math.max(margin, desiredTop);
+
+                submenu.style.top = `${Math.round(desiredTop - parentRect.top)}px`;
+                submenu.style.bottom = 'auto';
+
+                if (rect.right > viewportW - margin) {
                     submenu.style.left = 'auto';
                     submenu.style.right = '100%';
                     submenu.style.marginLeft = '0';

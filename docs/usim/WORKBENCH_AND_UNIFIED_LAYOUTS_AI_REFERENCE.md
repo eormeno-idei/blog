@@ -95,32 +95,43 @@ height: 100vh
 padding: none
 
 grid:
-  cols: [1fr]
+  cols: [52px, 1fr]
   rows: [1fr, auto]
   gap: none
   padding: none
 
   children:
-    - split_shell:
+    - sidebar_container:
         at: [1, 1]
+        layout_slot: sidebar
+        slot_aliases: [activity_bar, menu]
+        appearance: plain
+        width: 52px
+        height: 100%
+
+    - split_shell:
+        at: [1, 2]
         component: split
         orientation: horizontal
-        split_size: 260px
+        split_size: 250px
         splitter_size: 6px
         min_first_size: 180px
         min_second_size: 320px
         draggable: true
         collapsible: true
         collapse_target: first
-        collapse_size: 52px
+        collapse_size: 0px
+        collapsed_panel: first
+        hide_divider_when_collapsed: true
         appearance: plain
         width: 100%
         height: 100%
         first:
-          name: sidebar_container
-          layout_slot: sidebar
-          slot_aliases: [menu]
-          appearance: plain
+          name: left_panel_container
+          layout_slot: left_panel
+          slot_aliases: [left, explorer]
+          persist_on_navigate: false
+          appearance: subtle
         second:
           name: split_workspace
           component: split
@@ -152,6 +163,7 @@ grid:
 
     - status_bar_container:
         at: [2, 1]
+        span: full
         layout_slot: status_bar
         appearance: plain
         width: 100%
@@ -180,21 +192,35 @@ When `$this->showInto($targetScreen, slot: 'main', ...)` executes:
 - **Same layout (`A → A`):** clears only the target slot (`clear_container: <slot_id>`), embeds `$targetScreen`, emits `navigate`, and auto-clears/collapses any auxiliary slot with `persist_on_navigate: false`.
 - **Different layout (`A → B`, `A → null`, or `null → A`):** emits `clear_container: 'main'`, resets the layout singleton, renders `$targetScreen` directly into `parent: 'main'` (which mounts the new layout or standalone screen atomically), updates `setClientActiveLayout()`, and emits `navigate` (`slot: 'main'`, `slot_container_id: 'main'`).
 
-### 5.2 Opening & Closing the Right Panel (`right_panel`)
-Any Screen can mount a secondary Screen (inspector, details, preview, AI assistant) in the right panel without blocking the page with a modal:
+### 5.2 Opening & Closing Auxiliary Side Panels (`left_panel` & `right_panel`)
+Any Screen can mount a secondary Screen (explorer, navigation tree, inspector, details, preview, AI assistant) in either `left_panel` or `right_panel` without blocking the page with a modal:
 
 ```php
-// Open & auto-expand right_panel (expands owning Split from 0px automatically)
+// Open & auto-expand left_panel or right_panel (expands owning Split from 0px automatically)
+$this->showInto(ProjectExplorer::class, slot: 'left_panel');
 $this->showInto(UserInspector::class, slot: 'right_panel', params: ['user_id' => $id]);
 
-// Close & auto-collapse right_panel back to 0px (from host screen OR from inside UserInspector)
+// Close & auto-collapse back to 0px (from host screen OR from inside the panel screen)
+$this->closeSlot('left_panel');
 $this->closeSlot('right_panel');
 ```
 
+- **Navigation persistence override (`Screen::$persistOnNavigate`):** Both `left_panel` and `right_panel` declare `persist_on_navigate: false` so contextual panels mounted by a Screen automatically clear and collapse to `0px` when navigating away in `main`. Persistent shell navigation panels (such as `SidebarSubmenuPanel`) opt in via `public static bool $persistOnNavigate = true;` so browsing submenu items keeps `left_panel` open while still yielding cleanly whenever a Screen mounts its own contextual panel into `left_panel`.
+
 On `AbstractLayout` (`LayoutInterface`):
-- `expandSlot(string $slot): bool` — finds owning `Split`, expands it, and emits incremental diff `[splitId => ['collapsed_panel' => null]]`.
+- `expandSlot(string $slot): bool` — finds owning `Split`, expands it, and emits incremental diff `[splitId => ['collapsed_panel' => null]]` (also re-emits when `$split->getCollapseTarget() === $side` for client-desync resilience).
 - `collapseSlot(string $slot): bool` — collapses owning `Split` pane and emits incremental diff.
 - `clearSlot(string $slot, bool $collapse = true): bool` — clears slot container, emits `clear_container`, removes active screen, and optionally collapses owning `Split`.
+
+### 5.3 Declarative Screen Slot Projections (`slots:` in `.layout.yaml`)
+A `Screen` can declaratively project its own containers/components (inline, `include:`, or declarative `screen:` Sub-Screens) into slots of the active `AbstractLayout` (`left_panel`, `right_panel`, `status_bar`/`status_bar_center`, `status_bar_left`, `status_bar_right`, or custom layout slots) via a root `slots:` section:
+
+- **Main slot symmetry:** Screens may use root `grid:` OR `slots.main` / `slots.center` (declaring both throws `InvalidArgumentException`).
+- **Logical tree vs. DOM portal (`portal_slot` + `portal_target_id`):** Projected portal containers stay inside the host `Screen`'s logical container tree & snapshot cache (preserving `protected` property binding, `i18n: auto`, client hydration, diffs, and direct `UIEventController` routing to the host Screen), while `ui-renderer.js` mounts them into `[data-layout-slot="<slot>"]` / `portal_target_id`.
+- **Slot controls:** `open` (default `true`), `size` (temporary Split override supporting both `first` and `second` panes via `Split::splitSizeTarget('first'|'second')`, automatically restored on navigation), `fallback` (`ignore` default → `portal_unmounted: true`, or `inline` / `inline_top` / `inline_bottom`), and `persist_on_navigate` (default `false`).
+- **Runtime PHP helpers on `Screen`:** `openSlot(string $slot, ?string $size = null)`, `closeSlot(string $slot, bool $collapse = true, ?bool $clear = null)` (preserves own-portal state on collapse unless `clear: true`), `toggleSlot(string $slot)`, `isSlotOpen(string $slot)`, and `slotContainer(string $slot)`.
+- **Coexistence with `SidebarSubmenuPanel`:** When a Screen projects `left_panel` (`open: true`), it takes ownership; clicking the Activity Bar switches back to `SidebarSubmenuPanel`; calling `$this->openSlot('left_panel')` re-mounts the Screen's portal cleanly.
+- **Multi-slot clearing & atomic diffs:** `UIChangesCollector::add()` accumulates multiple `clear_container` targets in `clear_containers` (handled by `ui-renderer.js`) while preserving `clear_container`, and `UIChangesCollector::patchComponent()` merges incremental Split/StatusBar patches without clobbering initial full-render payloads.
 
 ---
 
@@ -207,31 +233,31 @@ Menu providers (`MainMenu`, `DemosMenuProvider`, `AdminMenuProvider`) implement 
 | Target Component | Builder Methods | Presentation |
 |---|---|---|
 | `MenuDropdown` (`type: 'menudropdown'`) | `populate(MenuDropdown)`, `render(?string $id): MenuDropdown` | Dropdown button / floating popover. Supports `->floating(true)` and positions `'bottom-left'`, `'bottom-right'`, `'top-left'`, `'top-right'`, `'right-top'`, `'right-bottom'`. Floating popovers portal to `document.body` with `position: fixed` so they never clip inside `Split` panes (`contain: paint`). |
-| `NavTree` (`type: 'navtree'`) | `populateNavTree(NavTree)`, `renderNavTree(?string $id): NavTree` | Vertical sidebar navigation without dropdowns. Submenus render as **inline collapsible accordions** in the client (`->accordion(true)` for single-open mode), with active route/screen highlight (`->activeScreen(...)`) and automatic **Activity Bar** icon-only adaptation when inside `.ui-split-pane.is-collapsed`. |
+| `NavTree` (`type: 'navtree'`) | `populateNavTree(NavTree)`, `renderNavTree(?string $id): NavTree` | Vertical sidebar navigation without dropdowns. Submenus render recursively to arbitrary depth as **inline collapsible accordions** (`->accordion(true)`), with active route/screen highlight (`->activeScreen(...)`), `getItems()` / `setItems()`, and **Activity Bar** mode (`->compact(true)`, `->onGroupClick('open_menu_group')`, `->activeGroup(...)`) that delegates top-level group clicks to the backend to open them inside `left_panel`. |
 
 ---
 
 ## 7. Workbench Shell Screens
 
-### 7.1 `SidebarMenu` (`app/UI/Screens/SidebarMenu.php`)
-- Declares `public static ?string $layout = null;` and uses `App\UI\Screens\Concerns\HandlesShellActions`.
-- Structure (`.usim-sidebar-shell`):
-  1. Brand header (`.usim-sidebar-brand`) — hides `.usim-sidebar-brand-title` in Activity Bar mode.
-  2. Scrollable `NavTree` (`main_menu`) populated from `MainMenu` with `accordion(true)`. Its scroll container (`.usim-sidebar-body`) uses a slim hover-only fade scrollbar (`@property --usim-sidebar-scrollbar-color`) that appears only while the pointer is over `.usim-sidebar-shell`.
+### 7.1 `SidebarMenu` (`app/UI/Screens/SidebarMenu.php`) & `SidebarSubmenuPanel` (`app/UI/Screens/SidebarSubmenuPanel.php`)
+- Both declare `public static ?string $layout = null;` and use `App\UI\Screens\Concerns\HandlesShellActions`.
+- **`SidebarMenu` (Fixed `52px` Activity Bar, `.usim-sidebar-shell.usim-activity-bar`):**
+  1. Brand header (`.usim-sidebar-brand`) — centered `⚡` icon with app-name tooltip.
+  2. Scrollable `NavTree` (`main_menu`) populated from `MainMenu` with `compact(true)` and `onGroupClick('open_menu_group')`. Its scroll container (`.usim-sidebar-body`) uses a slim hover-only fade scrollbar (`@property --usim-sidebar-scrollbar-color`).
   3. VS Code-style footer (`.usim-sidebar-footer`):
-     - `user_menu` (`MenuDropdown`, `position('right-top')->floating(true)`): avatar/name trigger, Profile + Logout (auth) or Login + Register (guest).
-     - `settings_menu` (`MenuDropdown`, `position('right-top')->floating(true)`): `⚙️` trigger with theme toggle + `🌐` Language submenu (`changeLang`) + About.
-- **Activity Bar behavior (`collapse_size: 52px`):** Collapsing `split_shell` applies `.ui-split-pane.is-collapsed`, which automatically switches `SidebarMenu` and `NavTree` into centered icon-only mode. Clicking a submenu group icon in Activity Bar mode automatically expands `split_shell` and opens that accordion group.
+     - `user_menu` (`MenuDropdown`, `position('right-top')->floating(true)`): centered avatar/icon trigger with tooltip, Profile + Logout (auth) or Login + Register (guest).
+     - `settings_menu` (`MenuDropdown`, `position('right-top')->floating(true)`): centered `⚙️` trigger with theme toggle + `🌐` Language submenu (`changeLang`) + About.
+  - Clicking a top-level submenu group (e.g. `🎮 Demos`) invokes `onOpenMenuGroup()`, opening or toggling `SidebarSubmenuPanel` inside `left_panel` (and recovering `left_panel` if another screen had temporarily claimed it).
+- **`SidebarSubmenuPanel` (Primary Side Bar inside `left_panel`, `.usim-left-panel-shell`):**
+  - Declares `public static bool $persistOnNavigate = true;` so clicking items inside a submenu keeps the panel open across demo/screen switches.
+  - Renders an Explorer-style header (uppercase group title + `✕` close button emitting `UsimEvent('left_panel_closed')`) and a full-width scrollable `NavTree` (`submenu_tree`) with `accordion(true)` and hover-fade scrollbar, supporting unlimited nested sub-sub-menu depth.
 
 ### 7.2 `StatusBar` (`app/UI/Screens/StatusBar.php`)
 - Declares `public static ?string $layout = null;` and uses `HandlesShellActions`.
 - Structure (`.usim-statusbar-shell`, height `28px`):
-  - **Left:** `unit_menu` (`position('top-left')->floating(true)`, styled as blue accent badge `.usim-statusbar-unit`). Hidden for guests and users without operational units. Switching units updates `UIStateManager::setActiveUnit()`, Spatie team ID, dispatches `UsimEvent('unit_changed')` (which refreshes `SidebarMenu`'s `NavTree`), and navigates to the role's `home_screen`.
-  - **Center:** `lbl_status_message` — updated from any Screen via:
-    ```php
-    event(new UsimEvent('status_bar_message', ['text' => 'Exporting report...']));
-    ```
-  - **Right:** **`btn_reset`** (`action: 'reset_app'`), which is **only created when `!app()->isProduction()`**.
+  - **Left:** `unit_menu` (`position('top-left')->floating(true)`, styled as blue accent badge `.usim-statusbar-unit`), followed by contextual projection slot **`status_bar_left`** (`status_bar_left_slot`, `persist_on_navigate: false`). Hidden for guests and users without operational units. Switching units updates `UIStateManager::setActiveUnit()`, Spatie team ID, dispatches `UsimEvent('unit_changed')` (which refreshes `SidebarMenu`'s `NavTree`), and navigates to the role's `home_screen`.
+  - **Center:** `lbl_status_message` (updated from any Screen via `UsimEvent('status_bar_message', ['text' => ...])`) and contextual projection slot **`status_bar_center`** (`status_bar_center_slot`, aliases `status_bar` / `status_bar_items`, `persist_on_navigate: false`). While a Screen projects components into `status_bar` / `status_bar_center`, `lbl_status_message` is automatically hidden (`visible: false`) and restored when cleared or upon navigation.
+  - **Right:** contextual projection slot **`status_bar_right`** (`status_bar_right_slot`, `persist_on_navigate: false`), followed by **`btn_reset`** (`action: 'reset_app'`), which is **only created when `!app()->isProduction()`** and always remains anchored on the far right.
 
 ---
 
@@ -242,11 +268,14 @@ Menu providers (`MainMenu`, `DemosMenuProvider`, `AdminMenuProvider`) implement 
 3. **NEVER target descendant `.ui-split-pane .ui-container` with `!important` resets in CSS:** only target direct children `.ui-split-pane > .ui-container`, otherwise embedded Screens lose their card borders, padding, gap, and `max-width`.
 4. **ALWAYS use `->floating(true)`** (or `right-*` / `top-*` positions) on `MenuDropdown` instances placed inside a `Split` pane or `StatusBar` so the popup portals to `document.body` and escapes `contain: paint`.
 5. **NEVER instantiate a layout for `$layout = null` screens** and never force shell screen event notifications in `UsimEventDispatcher` when a standalone screen (`$layout = null`) is active.
-6. **ALWAYS sync published assets** after modifying files under `packages/idei/usim/resources/assets/`:
+6. **NEVER clear `status_bar_container` directly from a Screen:** always project into `status_bar` (`status_bar_center`), `status_bar_left`, or `status_bar_right` so `StatusBar`'s permanent `unit_menu` and dev `btn_reset` remain intact and `lbl_status_message` hides/restores automatically.
+7. **ALWAYS use `UIChangesCollector::patchComponent()`** when emitting incremental property deltas on components that may already have a full payload in the same request (e.g. `Split` collapse/size diffs or `lbl_status_message` visibility during initial render).
+8. **ALWAYS gate Workbench-panel-dependent menu items** (e.g. `RightPanelDemo`, `SlotProjectionDemo`) with `when: Auth::check()` in `DemosMenuProvider` when `guest_layout` uses `MainLayout`.
+9. **ALWAYS sync published assets** after modifying files under `packages/idei/usim/resources/assets/`:
    ```bash
    php artisan vendor:publish --tag=usim-assets --force
    ```
-7. **ALWAYS verify** changes with both:
+10. **ALWAYS verify** changes with both:
    ```bash
    composer phpstan
    php artisan test
