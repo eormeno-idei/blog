@@ -452,8 +452,8 @@ sequenceDiagram
 | Tipo de Evento (`event`) | Descripción | Componentes Típicos | Parámetros Habituales |
 |---|---|---|---|
 | `"click"` | Pulsación o clic sobre un elemento accionable. | `Button`, `Card`, `Label` clicable, `TableHeaderCell` | `parameters` declarados en el componente. |
-| `"input"` | Entrada de texto incremental (mientras se escribe). | `Input`, `Textarea` | `{ value: string, name: string }` |
-| `"change"` | Modificación definitiva de valor o estado. | `Select`, `Checkbox`, `Input`, `Textarea` | `{ value: mixed, checked: bool }` |
+| `"input"` | Entrada de texto incremental (mientras se escribe). | `Input`, `Textarea`, `RichText` | `{ value: string, name: string }` |
+| `"change"` | Modificación definitiva de valor o estado. | `Select`, `Checkbox`, `Input`, `Textarea`, `RichText` | `{ value: mixed, checked: bool }` |
 | `"action"` | Disparo programático o directo de una acción. | Links, filas de tabla (`TableRow`), tabs de `Container` | `{ tab_id: string, row_id: mixed }` |
 | `"timeout"` | Disparo al expirar un temporizador. | `Timer`, Modales de diálogo con cuenta regresiva | `{ timeout: int, source: string }` |
 
@@ -645,7 +645,8 @@ A continuación se detalla la API fluida para enlazar eventos a componentes al c
 | **`Input`** | `onInput(string $action, array $params = [])` | `input` | Al tipear cada carácter | `UI::input('search')->onInput('filter_results')` |
 | **`Input`** | `onChange(string $action, array $params = [])` | `change` | Al perder foco tras cambiar | `UI::input('email')->onChange('validate_email')` |
 | **`Input`** | `onEnter(string $action, array $params = [])` | `action` | Al pulsar la tecla Enter | `UI::input('query')->onEnter('submit_search')` |
-| **`Textarea`** | `onInput(...)` / `onChange(...)` | `input` / `change` | Entrada de texto | `UI::textarea('notes')->onChange('save_draft')` |
+| **`Textarea`** | `onInput(...)` / `onChange(...)` | `input` / `change` | Entrada de texto plano | `UI::textarea('notes')->onChange('save_draft')` |
+| **`RichText`** | `onInput(...)` / `onChange(...)` | `input` / `change` | Edición WYSIWYG HTML | `UI::richText('body')->onChange('save_article')` |
 | **`Select`** | `onChange(string $action)` | `change` | Selección de opción | `UI::select('country')->onChange('country_selected')` |
 | **`Select`** | `onSearch(string $action)` | `input` | Búsqueda dinámica de opciones | `UI::select('user')->searchable()->onSearch('search_users')` |
 | **`Checkbox`** | `onChange(string $action)` | `change` | Toggle de check | `UI::checkbox('terms')->onChange('toggle_terms')` |

@@ -1,0 +1,208 @@
+/* ============================================================
+   RichText component styles (SunEditor v3 wrapper)
+   Uses ui-theme-tokens.css variables for light/dark consistency
+   ============================================================ */
+
+.usim-richtext-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-family: var(--usim-font-family, sans-serif);
+    width: 100%;
+    height: auto;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+/* ── Label & help icon ────────────────────────────────────── */
+.usim-richtext-label-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.usim-richtext-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ui-text-strong);
+}
+
+.usim-richtext-label.required::after {
+    content: ' *';
+    color: var(--usim-form-required-color, var(--usim-color-danger));
+}
+
+.usim-richtext-help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--usim-form-control-border, var(--ui-border));
+    color: var(--ui-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: help;
+    user-select: none;
+    position: relative;
+    background: var(--ui-surface-muted);
+}
+
+.usim-richtext-help-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+    min-width: 180px;
+    max-width: 320px;
+    width: max-content;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 36, 0.95);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 1000;
+}
+
+.usim-richtext-help-icon::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 3px);
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(15, 23, 36, 0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 1001;
+}
+
+.usim-richtext-help-icon:hover::after,
+.usim-richtext-help-icon:hover::before {
+    opacity: 1;
+}
+
+/* ── Body & error state ───────────────────────────────────── */
+.usim-richtext-body-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.usim-richtext-body {
+    width: 100%;
+    border: 1px solid var(--usim-form-control-border, var(--ui-border));
+    border-radius: 6px;
+    overflow: visible;
+    background: var(--usim-form-control-bg, var(--ui-surface));
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.usim-richtext-body:focus-within {
+    border-color: var(--usim-form-control-focus-border, var(--usim-color-primary));
+    box-shadow: 0 0 0 3px var(--usim-form-control-focus-ring, rgba(52, 152, 219, 0.12));
+}
+
+.usim-richtext-wrapper.has-error .usim-richtext-body {
+    border-color: var(--usim-form-control-error-border, var(--usim-color-danger)) !important;
+}
+
+.usim-richtext-wrapper.has-error .usim-richtext-body:focus-within {
+    border-color: var(--usim-form-control-error-border, var(--usim-color-danger)) !important;
+    box-shadow: 0 0 0 3px var(--usim-form-control-error-ring, rgba(231, 76, 60, 0.18)) !important;
+}
+
+.usim-richtext-wrapper.is-disabled .usim-richtext-body {
+    opacity: 0.6;
+}
+
+.usim-richtext-error-icon {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 18px;
+    cursor: help;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+/* ── Hidden source textarea (with fallback style if JS fails) ─ */
+.usim-richtext-source {
+    display: none;
+}
+
+.usim-richtext-source.is-fallback {
+    display: block;
+    width: 100%;
+    min-height: 180px;
+    padding: 12px 14px;
+    border: none;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--usim-text-primary);
+    background: transparent;
+}
+
+.usim-richtext-host {
+    width: 100%;
+}
+
+.usim-richtext-loading {
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: var(--ui-text-muted);
+}
+
+/* ── SunEditor v3 visual alignment with USIM container ────── */
+.usim-richtext-host .sun-editor {
+    border: none;
+    border-radius: 5px;
+    font-family: var(--usim-font-family, inherit);
+}
+
+.usim-richtext-host .sun-editor .se-toolbar {
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+.usim-richtext-host .sun-editor .se-resizing-bar {
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+/* Blend SunEditor light surface with USIM tokens */
+.usim-richtext-host .sun-editor:not(.se-theme-dark) {
+    --se-edit-background-color: var(--usim-form-control-bg, var(--ui-surface, #ffffff));
+    --se-main-background-color: var(--ui-surface-muted, #f8fafc);
+    --se-main-border-color: var(--usim-form-control-border, var(--ui-border, #e2e8f0));
+    --se-edit-font-color: var(--usim-text-primary, #1e293b);
+}
+
+/* Blend SunEditor dark surface with USIM dark tokens */
+.usim-richtext-host .sun-editor.se-theme-dark {
+    --se-edit-background-color: var(--usim-form-control-bg, var(--ui-surface, #1e2430));
+    --se-main-background-color: var(--ui-surface-muted, #161b24);
+    --se-main-border-color: var(--usim-form-control-border, var(--ui-border, #2e3748));
+    --se-edit-font-color: var(--usim-text-primary, #e2e8f0);
+}

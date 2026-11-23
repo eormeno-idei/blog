@@ -25,7 +25,7 @@
 
 En USIM ambos niveles comparten **el mismo motor declarativo (`.layout.yaml` + `ContainerLayoutLoader`)**:
 
-- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación (por ejemplo `WorkbenchLayout` con Activity Bar fija de `52px` en `[1, 1]`, panel izquierdo `left_panel` en `Split` colapsable a `0px`, `right_panel` en `0px` y `status_bar` de ancho completo; o `MainLayout` con barra superior). Se declara en la `Screen` con `public static ?string $layout = 'default';` (resuelve `guest_layout` vs `default_layout`), una clase explícita o `null` para pantallas standalone/kiosk.
+- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación (por ejemplo `WorkbenchLayout` con Activity Bar fija de `52px` en `[1, 1]`, panel izquierdo `left_panel` en `Split` colapsable a `0px`, cabecera sticky `top_bar` oculta por defecto sobre `main`, panel inferior `bottom_panel` en `Split` vertical colapsable a `0px`, `right_panel` en `0px` y `status_bar` de ancho completo; o `MainLayout` con barra superior). Se declara en la `Screen` con `public static ?string $layout = 'default';` (resuelve `guest_layout` vs `default_layout`), una clase explícita o `null` para pantallas standalone/kiosk.
 - **Layout de Contenedor (`.layout.yaml`):** Define la estructura interna de una `Screen`, un `Container` o un `AbstractLayout` (CSS Grid, `component: split` con panes `first:` / `second:`, `layout_slot`, cajas, espaciados, alineación y propiedades de componentes). Se procesa en PHP mediante `Idei\Usim\Support\ContainerLayoutLoader`.
 
 > Para la referencia técnica completa de `WorkbenchLayout`, `Split` declarativo, `NavTree`, `right_panel`, `StatusBar` y transiciones de layout, consultá [WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md](./WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md).
@@ -351,6 +351,7 @@ Si un componente declarado en `.layout.yaml` no necesita ser manipulado desde PH
 | `sel_` | `Select` | `select` |
 | `chk_` | `Checkbox` | `checkbox` |
 | `txt_` | `Textarea` | `textarea` |
+| `rte_` | `RichText` | `rich_text` / `richtext` |
 | `tbl_` | `Table` | `table` |
 | `lst_` | `ItemList` | `item_list` / `list` |
 | `img_` | `Image` | `image` |
@@ -401,7 +402,7 @@ $timer = $this->timer('tmr_poll_status'); // ?Timer
 
 ## 12. Proyección Declarativa de Slots hacia el `AbstractLayout` (`slots:`)
 
-Además de definir su propio contenido principal en `main` (`grid:` raíz o `slots.main` / `slots.center`), una `Screen` puede usar la sección raíz **`slots:`** en su `.layout.yaml` para proyectar contenedores, componentes o Sub-Screens directamente hacia los paneles y zonas del `AbstractLayout` activo (por ejemplo `left_panel`, `right_panel`, `status_bar`, `status_bar_left`, `status_bar_right` en `WorkbenchLayout`).
+Además de definir su propio contenido principal en `main` (`grid:` raíz o `slots.main` / `slots.center`), una `Screen` puede usar la sección raíz **`slots:`** en su `.layout.yaml` para proyectar contenedores, componentes o Sub-Screens directamente hacia los paneles y zonas del `AbstractLayout` activo (por ejemplo `top_bar`, `left_panel`, `right_panel`, `bottom_panel`, `status_bar`, `status_bar_left`, `status_bar_right` en `WorkbenchLayout`).
 
 Todos los componentes proyectados de forma *inline* o vía `include:` **permanecen dentro de la misma `Screen` PHP** (comparten propiedades `protected`, `$state_*`, `$store_*`, `i18n: auto` y handlers `on*()`), sin necesidad de crear pantallas satélites ni coordinar con `UsimEvent`.
 
@@ -419,6 +420,18 @@ grid:
     - tbl_products: { width: full }
 
 slots:
+  top_bar:                # Cabecera sticky sobre main (aliases: header, toolbar); oculta (0px) por defecto si no se proyecta
+    open: true
+    fallback: ignore
+    appearance: plain
+    padding: s
+    grid:
+      cols: [1fr, auto]
+      align: center
+      children:
+        - lbl_breadcrumb: { text: "Catálogo / Productos", font_weight: bold }
+        - btn_console:    { label: ">_ Consola", size: xs, style: secondary, action: toggle_console }
+
   left_panel:
     open: true            # Expande el Split al entrar (default: true)
     size: 280px           # Ajusta el ancho del panel temporalmente; se restaura al salir
@@ -450,6 +463,27 @@ slots:
   #   size: 380px
   #   screen: App\UI\Screens\Demo\RightPanelInspector
   #   params: { title: "Inspector" }
+
+  bottom_panel:           # Panel inferior colapsable en Split vertical (aliases: bottom, panel, console, terminal)
+    open: false           # Arranca en 0px; se abre con $this->openSlot('bottom_panel') o toggleSlot('bottom_panel')
+    size: 220px
+    fallback: ignore
+    appearance: subtle
+    padding: m
+    grid:
+      cols: [1fr]
+      rows: [1fr, auto]
+      gap: s
+      children:
+        - lbl_console_output: { at: [1, 1], width: full }
+        - cnt_prompt_row:
+            at: [2, 1]
+            grid:
+              cols: [1fr, auto]
+              gap: s
+              children:
+                - input_command:   { width: full, placeholder: "Comando o prompt..." }
+                - btn_run_command: { label: "Ejecutar", style: primary, size: small, action: run_command }
 
   status_bar:             # Se proyecta en status_bar_center y oculta lbl_status_message mientras está activo
     children:

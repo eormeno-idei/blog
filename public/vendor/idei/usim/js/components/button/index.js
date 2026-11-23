@@ -83,8 +83,13 @@ class UsimButtonComponent extends UIComponent {
             }
         }
 
+        const isInternalEditorControl = (el) => Boolean(el.closest?.('.sun-editor, .sun-editor-common'));
+
         const inputs = container.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]), textarea');
         inputs.forEach(input => {
+            if (isInternalEditorControl(input)) {
+                return;
+            }
             if (input.name) {
                 values[input.name] = input.value;
             }
@@ -92,6 +97,9 @@ class UsimButtonComponent extends UIComponent {
 
         const selects = container.querySelectorAll('select');
         selects.forEach(select => {
+            if (isInternalEditorControl(select)) {
+                return;
+            }
             if (select.name) {
                 values[select.name] = select.value;
             }
@@ -99,6 +107,9 @@ class UsimButtonComponent extends UIComponent {
 
         const checkboxes = container.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
+            if (isInternalEditorControl(checkbox)) {
+                return;
+            }
             if (checkbox.name) {
                 if (checkbox.name.endsWith('[]')) {
                     const cleanName = checkbox.name.slice(0, -2);
@@ -116,6 +127,9 @@ class UsimButtonComponent extends UIComponent {
 
         const radios = container.querySelectorAll('input[type="radio"]:checked');
         radios.forEach(radio => {
+            if (isInternalEditorControl(radio)) {
+                return;
+            }
             if (radio.name) {
                 values[radio.name] = radio.value;
             }

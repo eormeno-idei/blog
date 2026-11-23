@@ -1,9 +1,20 @@
 /* ==================== NavTree (Vertical Sidebar + Inline Accordion + Activity Bar) ==================== */
 
+nav.usim-nav-tree,
 .usim-nav-tree {
+    position: static;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    z-index: auto;
     width: 100%;
     display: flex;
     flex-direction: column;
+    background: transparent;
+    border: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     user-select: none;
     box-sizing: border-box;
     padding: 6px;

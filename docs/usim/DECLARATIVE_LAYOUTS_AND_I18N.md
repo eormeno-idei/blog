@@ -447,7 +447,7 @@ Luego busca el primer `string` no vacío en el diccionario de la Screen en este 
 ### 6.6 Tabla de Schemas y Prefijos por Componente
 
 **Prefijos reconocidos y eliminados automáticamente (`COMPONENT_PREFIXES`):**
-`input_`, `btn_`, `lbl_`, `sel_`, `chk_`, `txt_`, `tbl_`, `lst_`, `img_`, `cal_`, `car_`, `upl_`, `crd_`, `cnt_`.
+`input_`, `btn_`, `lbl_`, `sel_`, `chk_`, `txt_`, `rte_`, `tbl_`, `lst_`, `img_`, `cal_`, `car_`, `upl_`, `crd_`, `cnt_`.
 
 **Schema de atributos auto-hidratables por clase:**
 
@@ -455,7 +455,7 @@ Luego busca el primer `string` no vacío en el diccionario de la Screen en este 
 |---|---|---|---|
 | `NewLabel`, `Label` | `text` | `['labels']` | `text`, `tooltip` |
 | `Button` | `label` | `['actions', 'buttons']` | `label`, `tooltip`, `title` |
-| `Input`, `Textarea` | `label` | `['inputs', 'fields']` | `label`, `placeholder`, `help_text`, `tooltip` |
+| `Input`, `Textarea`, `RichText` | `label` | `['inputs', 'fields']` | `label`, `placeholder`, `help_text`, `tooltip` |
 | `Select` | `label` | `['selects', 'inputs', 'fields']` | `label`, `placeholder`, `help_text`, `empty_message`, `tooltip` |
 | `Checkbox` | `label` | `['checkboxes', 'inputs', 'fields']` | `label`, `description`, `help_text`, `tooltip` |
 | `ItemList` | `title` | `['lists']` | `title`, `label`, `help_text`, `empty_message`, `no_results_message`, `search_placeholder`, `create_placeholder`, `create_button_label`, `bulk_delete_label` |

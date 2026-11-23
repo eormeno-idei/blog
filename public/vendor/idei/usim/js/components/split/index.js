@@ -354,7 +354,17 @@ class UsimSplitComponent extends UIComponent {
 
             this.dividerEl.releasePointerCapture(endEvent.pointerId);
             this.dividerEl.classList.remove('is-dragging');
-            this.lastExpandedSize = `${this._getFirstPaneSizePx()}px`;
+            const endFirstPx = this._getFirstPaneSizePx();
+            if (this.config.split_size_target === 'second') {
+                const orientation = this._normalizeOrientation(this.config.split_orientation);
+                const rect = this.element.getBoundingClientRect();
+                const rawTotal = orientation === 'horizontal' ? rect.width : rect.height;
+                const dividerPx = this._sizeToPx(this.config.splitter_size || '8px', rawTotal);
+                const totalPx = Math.max(rawTotal - dividerPx, 0);
+                this.lastExpandedSize = `${Math.max(0, totalPx - endFirstPx)}px`;
+            } else {
+                this.lastExpandedSize = `${endFirstPx}px`;
+            }
             this.dragState = null;
 
             window.removeEventListener('pointermove', onMove);

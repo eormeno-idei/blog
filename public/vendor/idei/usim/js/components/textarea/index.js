@@ -1,10 +1,8 @@
 /**
  * Textarea component
  *
- * Modes:
- *  - 'plain'    : standard resizable textarea with optional character counter.
- *  - 'markdown' : split-view editor (raw left, rendered preview right) with
- *                 a formatting toolbar (bold, italic, headings, lists, etc.).
+ * Multi-line plain text input with optional character counter,
+ * custom borders/backgrounds, and backend input/change events.
  *
  * Backend contract (JSON):
  *  {
@@ -17,7 +15,6 @@
  *    height      : string|null,   // CSS value e.g. "200px"
  *    min_length  : int|null,
  *    max_length  : int|null,
- *    mode        : "plain"|"markdown",
  *    required    : bool,
  *    disabled    : bool,
  *    readonly    : bool,
@@ -34,9 +31,7 @@ class UsimTextareaComponent extends UIComponent {
         this._debounceTimer = null;
         this._textarea = null;
         this._fieldElement = null;
-        this._preview = null;
         this._counter = null;
-        this._activeTab = 'edit'; // 'edit' | 'preview' (mobile)
     }
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
@@ -49,7 +44,6 @@ class UsimTextareaComponent extends UIComponent {
         // Sync textarea value if it changed from backend
         if (this._textarea && newConfig.value !== undefined) {
             this._textarea.value = this.config.value ?? '';
-            this._updatePreview();
             this._updateCounter();
         }
 
@@ -70,6 +64,10 @@ class UsimTextareaComponent extends UIComponent {
             if (this._textarea) this._textarea.disabled = !!this.config.disabled;
         }
 
+        if (newConfig.readonly !== undefined) {
+            if (this._textarea) this._textarea.readOnly = !!this.config.readonly;
+        }
+
         if (newConfig.min_length !== undefined || newConfig.max_length !== undefined) {
             this._syncLengthConstraints();
             this._updateCounter();
@@ -82,6 +80,13 @@ class UsimTextareaComponent extends UIComponent {
 
         if (newConfig.background_color !== undefined) {
             this._applyBackgroundStyles();
+        }
+    }
+
+    destroy() {
+        if (this._debounceTimer) {
+            clearTimeout(this._debounceTimer);
+            this._debounceTimer = null;
         }
     }
 
@@ -124,7 +129,7 @@ class UsimTextareaComponent extends UIComponent {
 
         // Body
         const body = document.createElement('div');
-        body.className = `usim-textarea-body mode-${this.config.mode || 'plain'}`;
+        body.className = 'usim-textarea-body mode-plain';
         bodyContainer.appendChild(body);
 
         // Apply border styles
@@ -132,11 +137,7 @@ class UsimTextareaComponent extends UIComponent {
         this._bodyElement = body;
         this._bodyContainer = bodyContainer;
 
-        if (this.config.mode === 'markdown') {
-            this._buildMarkdownEditor(body);
-        } else {
-            this._buildPlainEditor(body);
-        }
+        body.appendChild(this._createFieldContainer());
 
         this._applyBackgroundStyles();
 
@@ -154,170 +155,13 @@ class UsimTextareaComponent extends UIComponent {
         return wrapper;
     }
 
-    // ─── Plain editor ─────────────────────────────────────────────────────────
-
-    _buildPlainEditor(container) {
-        const field = this._createFieldContainer(false);
-        container.appendChild(field);
-    }
-
-    // ─── Markdown editor ──────────────────────────────────────────────────────
-
-    _buildMarkdownEditor(container) {
-        // Toolbar
-        const toolbar = this._buildToolbar();
-        container.appendChild(toolbar);
-
-        // Mobile tab switcher
-        const tabs = document.createElement('div');
-        tabs.className = 'usim-textarea-tabs';
-        const editTab = this._makeTab('✏️ Editar', 'edit');
-        const previewTab = this._makeTab('👁 Preview', 'preview');
-        tabs.appendChild(editTab);
-        tabs.appendChild(previewTab);
-        container.appendChild(tabs);
-
-        // Editor pane
-        const editorPane = document.createElement('div');
-        editorPane.className = 'usim-textarea-editor-pane';
-
-        const editorTitle = document.createElement('div');
-        editorTitle.className = 'usim-textarea-pane-title';
-        editorTitle.textContent = 'Editor';
-        editorPane.appendChild(editorTitle);
-
-        const field = this._createFieldContainer(true);
-        editorPane.appendChild(field);
-
-        // Preview pane
-        const previewPane = document.createElement('div');
-        previewPane.className = 'usim-textarea-preview-pane';
-
-        const previewTitle = document.createElement('div');
-        previewTitle.className = 'usim-textarea-pane-title';
-        previewTitle.textContent = 'Vista previa';
-        previewPane.appendChild(previewTitle);
-
-        const preview = document.createElement('div');
-        preview.className = 'usim-textarea-preview-content usim-md-preview';
-        previewPane.appendChild(preview);
-        this._preview = preview;
-
-        // Split wrapper
-        const split = document.createElement('div');
-        split.className = 'usim-textarea-split';
-        if (this.config.height) {
-            split.style.height = this.config.height;
-        }
-        split.appendChild(editorPane);
-        split.appendChild(previewPane);
-        container.appendChild(split);
-
-        this._updatePreview();
-
-        // Tab switching (mobile)
-        editTab.addEventListener('click', () => this._switchTab('edit', editTab, previewTab, editorPane, previewPane));
-        previewTab.addEventListener('click', () => this._switchTab('preview', editTab, previewTab, editorPane, previewPane));
-
-        this._editTab = editTab;
-        this._previewTab = previewTab;
-        this._editorPane = editorPane;
-        this._previewPane = previewPane;
-
-        // Ensure mobile opens with editor tab only.
-        this._switchTab('edit', editTab, previewTab, editorPane, previewPane);
-    }
-
-    _makeTab(label, name) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'usim-textarea-tab' + (name === 'edit' ? ' active' : '');
-        btn.textContent = label;
-        btn.dataset.tab = name;
-        return btn;
-    }
-
-    _switchTab(tab, editTab, previewTab, editorPane, previewPane) {
-        this._activeTab = tab;
-        const isMobile = window.matchMedia('(max-width: 600px)').matches;
-
-        if (!isMobile) {
-            // Desktop always shows editor + preview simultaneously.
-            editTab.classList.remove('active');
-            previewTab.classList.remove('active');
-            editorPane.classList.remove('tab-hidden');
-            previewPane.classList.remove('tab-hidden');
-            this._updatePreview();
-            return;
-        }
-
-        editTab.classList.toggle('active', tab === 'edit');
-        previewTab.classList.toggle('active', tab === 'preview');
-        editorPane.classList.toggle('tab-hidden', tab !== 'edit');
-        previewPane.classList.toggle('tab-hidden', tab !== 'preview');
-        if (tab === 'preview') this._updatePreview();
-    }
-
-    // ─── Toolbar ──────────────────────────────────────────────────────────────
-
-    _buildToolbar() {
-        const bar = document.createElement('div');
-        bar.className = 'usim-textarea-toolbar';
-
-        const groups = [
-            [
-                { label: 'B',   title: 'Negrita',         fn: () => this._wrapSelection('**', '**') },
-                { label: 'I',   title: 'Cursiva',         fn: () => this._wrapSelection('*', '*') },
-                { label: 'S',   title: 'Tachado',         fn: () => this._wrapSelection('~~', '~~') },
-                { label: '`',   title: 'Código inline',   fn: () => this._wrapSelection('`', '`') },
-            ],
-            [
-                { label: 'H1', title: 'Título 1', fn: () => this._prefixLine('# ') },
-                { label: 'H2', title: 'Título 2', fn: () => this._prefixLine('## ') },
-                { label: 'H3', title: 'Título 3', fn: () => this._prefixLine('### ') },
-            ],
-            [
-                { label: '• Lista',    title: 'Lista de viñetas',  fn: () => this._prefixLine('- ') },
-                { label: '1. Lista',   title: 'Lista numerada',    fn: () => this._prefixLine('1. ') },
-                { label: '❝ Cita',     title: 'Cita/blockquote',   fn: () => this._prefixLine('> ') },
-            ],
-            [
-                { label: '```',       title: 'Bloque de código',  fn: () => this._wrapBlock('```\n', '\n```') },
-                { label: '🔗 Link',    title: 'Enlace',            fn: () => this._insertLink() },
-                { label: '— HR',      title: 'Separador',         fn: () => this._insertText('\n\n---\n\n') },
-            ],
-        ];
-
-        groups.forEach((group, gi) => {
-            if (gi > 0) {
-                const sep = document.createElement('span');
-                sep.className = 'usim-toolbar-sep';
-                bar.appendChild(sep);
-            }
-            group.forEach(({ label, title, fn }) => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'usim-toolbar-btn';
-                btn.textContent = label;
-                btn.title = title;
-                btn.addEventListener('mousedown', (e) => {
-                    e.preventDefault(); // keep textarea focus
-                    fn();
-                });
-                bar.appendChild(btn);
-            });
-        });
-
-        return bar;
-    }
-
     // ─── Textarea element ─────────────────────────────────────────────────────
 
-    _createFieldContainer(inMarkdownMode = false) {
+    _createFieldContainer() {
         const field = document.createElement('div');
         field.className = 'usim-textarea-field';
 
-        const ta = this._createTextareaEl(inMarkdownMode);
+        const ta = this._createTextareaEl();
         field.appendChild(ta);
         this._textarea = ta;
         this._fieldElement = field;
@@ -328,12 +172,9 @@ class UsimTextareaComponent extends UIComponent {
         return field;
     }
 
-    _createTextareaEl(inMarkdownMode = false) {
+    _createTextareaEl() {
         const ta = document.createElement('textarea');
         ta.className = 'usim-textarea-el';
-        if (inMarkdownMode) {
-            ta.classList.add('usim-textarea-el-markdown');
-        }
         if (this.config.name) {
             ta.name = this.config.name;
             ta.id = `usim-ta-${this.id}`;
@@ -343,10 +184,9 @@ class UsimTextareaComponent extends UIComponent {
         ta.disabled = !!this.config.disabled;
         ta.readOnly = !!this.config.readonly;
         ta.required = !!this.config.required;
-        if (!inMarkdownMode && this.config.height) ta.style.height = this.config.height;
+        if (this.config.height) ta.style.height = this.config.height;
 
         ta.addEventListener('input', () => {
-            this._updatePreview();
             this._updateCounter();
             this._triggerOnInput();
         });
@@ -399,10 +239,6 @@ class UsimTextareaComponent extends UIComponent {
         if (this._textarea) {
             this._textarea.style.backgroundColor = backgroundColor || '';
         }
-
-        if (this._previewPane) {
-            this._previewPane.style.backgroundColor = backgroundColor || '';
-        }
     }
 
     _hexToRgb(hex) {
@@ -412,19 +248,6 @@ class UsimTextareaComponent extends UIComponent {
             parseInt(result[2], 16),
             parseInt(result[3], 16)
         ] : null;
-    }
-
-    // ─── Preview ──────────────────────────────────────────────────────────────
-
-    _updatePreview() {
-        if (!this._preview || !this._textarea) return;
-        const raw = this._textarea.value;
-        if (typeof window.marked !== 'undefined') {
-            this._preview.innerHTML = window.marked.parse(raw, { breaks: true });
-        } else {
-            // Fallback: plain text (marked not loaded yet)
-            this._preview.textContent = raw;
-        }
     }
 
     // ─── Counter ──────────────────────────────────────────────────────────────
@@ -531,7 +354,7 @@ class UsimTextareaComponent extends UIComponent {
         this._fieldElement?.classList.remove('has-counter');
     }
 
-    // ─── Error sync ───────────────────────────────────────────────────────────
+    // ─── Error & Help sync ────────────────────────────────────────────────────
 
     _syncErrorState() {
         if (!this.element) return;
@@ -585,93 +408,6 @@ class UsimTextareaComponent extends UIComponent {
         } else if (helpIcon) {
             helpIcon.remove();
         }
-    }
-
-    // ─── Toolbar helpers ──────────────────────────────────────────────────────
-
-    _wrapSelection(before, after) {
-        if (!this._textarea) return;
-        const ta = this._textarea;
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        const selected = ta.value.substring(start, end) || 'texto';
-        const newVal = ta.value.substring(0, start) + before + selected + after + ta.value.substring(end);
-        ta.value = newVal;
-        ta.selectionStart = start + before.length;
-        ta.selectionEnd = start + before.length + selected.length;
-        ta.focus();
-        this._updatePreview();
-        this._updateCounter();
-        this._triggerOnInput();
-    }
-
-    _prefixLine(prefix) {
-        if (!this._textarea) return;
-        const ta = this._textarea;
-        const start = ta.selectionStart;
-        const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
-        const lineEnd = ta.value.indexOf('\n', start);
-        const end = lineEnd === -1 ? ta.value.length : lineEnd;
-        const line = ta.value.substring(lineStart, end);
-        // Toggle: remove prefix if already present
-        let newLine, cursorOffset;
-        if (line.startsWith(prefix)) {
-            newLine = line.substring(prefix.length);
-            cursorOffset = -prefix.length;
-        } else {
-            newLine = prefix + line;
-            cursorOffset = prefix.length;
-        }
-        ta.value = ta.value.substring(0, lineStart) + newLine + ta.value.substring(end);
-        ta.selectionStart = ta.selectionEnd = start + cursorOffset;
-        ta.focus();
-        this._updatePreview();
-        this._updateCounter();
-        this._triggerOnInput();
-    }
-
-    _wrapBlock(before, after) {
-        if (!this._textarea) return;
-        const ta = this._textarea;
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        const selected = ta.value.substring(start, end) || 'código';
-        const inserted = before + selected + after;
-        ta.value = ta.value.substring(0, start) + inserted + ta.value.substring(end);
-        ta.selectionStart = start + before.length;
-        ta.selectionEnd = start + before.length + selected.length;
-        ta.focus();
-        this._updatePreview();
-        this._updateCounter();
-        this._triggerOnInput();
-    }
-
-    _insertLink() {
-        if (!this._textarea) return;
-        const ta = this._textarea;
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        const selected = ta.value.substring(start, end) || 'texto del enlace';
-        const snippet = `[${selected}](https://ejemplo.com)`;
-        ta.value = ta.value.substring(0, start) + snippet + ta.value.substring(end);
-        ta.selectionStart = start + selected.length + 3; // point inside URL
-        ta.selectionEnd = start + snippet.length - 1;
-        ta.focus();
-        this._updatePreview();
-        this._updateCounter();
-        this._triggerOnInput();
-    }
-
-    _insertText(text) {
-        if (!this._textarea) return;
-        const ta = this._textarea;
-        const pos = ta.selectionStart;
-        ta.value = ta.value.substring(0, pos) + text + ta.value.substring(pos);
-        ta.selectionStart = ta.selectionEnd = pos + text.length;
-        ta.focus();
-        this._updatePreview();
-        this._updateCounter();
-        this._triggerOnInput();
     }
 
     // ─── Backend events ───────────────────────────────────────────────────────
@@ -737,5 +473,5 @@ class UsimTextareaComponent extends UIComponent {
 }
 
 window.USIM_COMPONENTS.register('textarea', (id, config) => new UsimTextareaComponent(id, config), {
-    description: 'Textarea — plain or markdown editor',
+    description: 'Textarea — multi-line plain text input',
 });

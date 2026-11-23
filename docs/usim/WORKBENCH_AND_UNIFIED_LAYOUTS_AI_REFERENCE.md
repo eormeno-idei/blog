@@ -150,10 +150,54 @@ grid:
           width: 100%
           height: 100%
           first:
-            name: content_container
-            layout_slot: main
-            slot_aliases: [content]
+            name: center_column_container
+            custom_class: usim-workbench-center
             appearance: plain
+            width: 100%
+            height: 100%
+            grid:
+              cols: [1fr]
+              rows: [auto, 1fr]
+              gap: none
+              padding: none
+              children:
+                - top_bar_container:
+                    at: [1, 1]
+                    layout_slot: top_bar
+                    slot_aliases: [header, toolbar]
+                    persist_on_navigate: false
+                    appearance: plain
+                    width: 100%
+                    visible: false
+                - split_center:
+                    at: [2, 1]
+                    component: split
+                    orientation: vertical
+                    split_size: 240px
+                    split_size_target: second
+                    splitter_size: 6px
+                    min_first_size: 200px
+                    min_second_size: 120px
+                    draggable: true
+                    collapsible: true
+                    collapse_target: second
+                    collapse_size: 0px
+                    collapsed_panel: second
+                    hide_divider_when_collapsed: true
+                    appearance: plain
+                    width: 100%
+                    height: 100%
+                    first:
+                      name: content_container
+                      layout_slot: main
+                      slot_aliases: [content]
+                      appearance: plain
+                    second:
+                      name: bottom_panel_container
+                      layout_slot: bottom_panel
+                      slot_aliases: [bottom, panel, console, terminal]
+                      persist_on_navigate: false
+                      appearance: subtle
           second:
             name: right_panel_container
             layout_slot: right_panel
@@ -192,28 +236,32 @@ When `$this->showInto($targetScreen, slot: 'main', ...)` executes:
 - **Same layout (`A → A`):** clears only the target slot (`clear_container: <slot_id>`), embeds `$targetScreen`, emits `navigate`, and auto-clears/collapses any auxiliary slot with `persist_on_navigate: false`.
 - **Different layout (`A → B`, `A → null`, or `null → A`):** emits `clear_container: 'main'`, resets the layout singleton, renders `$targetScreen` directly into `parent: 'main'` (which mounts the new layout or standalone screen atomically), updates `setClientActiveLayout()`, and emits `navigate` (`slot: 'main'`, `slot_container_id: 'main'`).
 
-### 5.2 Opening & Closing Auxiliary Side Panels (`left_panel` & `right_panel`)
-Any Screen can mount a secondary Screen (explorer, navigation tree, inspector, details, preview, AI assistant) in either `left_panel` or `right_panel` without blocking the page with a modal:
+### 5.2 Opening & Closing Auxiliary Panels (`top_bar`, `left_panel`, `right_panel`, `bottom_panel`)
+Any Screen can mount a secondary Screen (explorer, navigation tree, inspector, console/terminal, AI prompt bar, contextual header) in `top_bar`, `left_panel`, `right_panel`, or `bottom_panel` without blocking the page with a modal:
 
 ```php
-// Open & auto-expand left_panel or right_panel (expands owning Split from 0px automatically)
+// Open & auto-expand any auxiliary slot (expands Split from 0px or toggles visibility for non-Split top_bar)
 $this->showInto(ProjectExplorer::class, slot: 'left_panel');
 $this->showInto(UserInspector::class, slot: 'right_panel', params: ['user_id' => $id]);
+$this->showInto(TerminalConsole::class, slot: 'bottom_panel');
 
-// Close & auto-collapse back to 0px (from host screen OR from inside the panel screen)
+// Close & auto-collapse back to 0px / hidden (from host screen OR from inside the panel screen)
 $this->closeSlot('left_panel');
 $this->closeSlot('right_panel');
+$this->closeSlot('bottom_panel');
+$this->closeSlot('top_bar');
 ```
 
-- **Navigation persistence override (`Screen::$persistOnNavigate`):** Both `left_panel` and `right_panel` declare `persist_on_navigate: false` so contextual panels mounted by a Screen automatically clear and collapse to `0px` when navigating away in `main`. Persistent shell navigation panels (such as `SidebarSubmenuPanel`) opt in via `public static bool $persistOnNavigate = true;` so browsing submenu items keeps `left_panel` open while still yielding cleanly whenever a Screen mounts its own contextual panel into `left_panel`.
+- **Navigation persistence override (`Screen::$persistOnNavigate`):** `top_bar`, `left_panel`, `right_panel`, and `bottom_panel` all declare `persist_on_navigate: false` so contextual panels mounted by a Screen automatically clear and collapse to `0px` (or `visible: false` for `top_bar`) when navigating away in `main`. Persistent shell navigation panels (such as `SidebarSubmenuPanel`) opt in via `public static bool $persistOnNavigate = true;` so browsing submenu items keeps `left_panel` open while still yielding cleanly whenever a Screen mounts its own contextual panel into `left_panel`.
 
 On `AbstractLayout` (`LayoutInterface`):
-- `expandSlot(string $slot): bool` — finds owning `Split`, expands it, and emits incremental diff `[splitId => ['collapsed_panel' => null]]` (also re-emits when `$split->getCollapseTarget() === $side` for client-desync resilience).
-- `collapseSlot(string $slot): bool` — collapses owning `Split` pane and emits incremental diff.
-- `clearSlot(string $slot, bool $collapse = true): bool` — clears slot container, emits `clear_container`, removes active screen, and optionally collapses owning `Split`.
+- `expandSlot(string $slot): bool` — finds owning `Split` and expands it (`[splitId => ['collapsed_panel' => null]]`), OR for non-Split collapsible local slots like `top_bar` sets `visible: true` via `patchComponent()`.
+- `collapseSlot(string $slot): bool` — collapses owning `Split` pane, OR for non-Split collapsible local slots like `top_bar` sets `visible: false` via `patchComponent()` (never hides reserved shell slots `main`, `sidebar`, `menu`, `status_bar`).
+- `isSlotExpanded(string $slot): bool` — checks Split collapse state or local container visibility.
+- `clearSlot(string $slot, bool $collapse = true): bool` — clears slot container, emits `clear_container`, removes active screen, restores default Split size, and optionally collapses owning `Split` or hides `top_bar`.
 
 ### 5.3 Declarative Screen Slot Projections (`slots:` in `.layout.yaml`)
-A `Screen` can declaratively project its own containers/components (inline, `include:`, or declarative `screen:` Sub-Screens) into slots of the active `AbstractLayout` (`left_panel`, `right_panel`, `status_bar`/`status_bar_center`, `status_bar_left`, `status_bar_right`, or custom layout slots) via a root `slots:` section:
+A `Screen` can declaratively project its own containers/components (inline, `include:`, or declarative `screen:` Sub-Screens) into slots of the active `AbstractLayout` (`top_bar` [aliases `header`, `toolbar`], `left_panel`, `right_panel`, `bottom_panel` [aliases `bottom`, `panel`, `console`, `terminal`], `status_bar`/`status_bar_center`, `status_bar_left`, `status_bar_right`, or custom layout slots) via a root `slots:` section:
 
 - **Main slot symmetry:** Screens may use root `grid:` OR `slots.main` / `slots.center` (declaring both throws `InvalidArgumentException`).
 - **Logical tree vs. DOM portal (`portal_slot` + `portal_target_id`):** Projected portal containers stay inside the host `Screen`'s logical container tree & snapshot cache (preserving `protected` property binding, `i18n: auto`, client hydration, diffs, and direct `UIEventController` routing to the host Screen), while `ui-renderer.js` mounts them into `[data-layout-slot="<slot>"]` / `portal_target_id`.
