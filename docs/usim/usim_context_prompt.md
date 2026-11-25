@@ -39,6 +39,8 @@ Created with fluent builders, for example:
 - `UI::checkbox(...)`
 - `UI::table(...)`
 - `UI::itemList(...)`
+- `UI::itemCard(...)` (preferred over deprecated `UI::card(...)`; first-class standardized card usable standalone or managed inside `CardGrid`, closed typed slots with no raw HTML, theme-safe `Style` borders, `icrd_` YAML prefix; see `CARD_GRID_AI_REFERENCE.md`)
+- `UI::cardGrid(...)` (pure server-driven responsive 2D card grid managing child `ItemCard` components with deterministic IDs `<grid>__card_<itemId>`, wired to `CardListable` or adapted `Listable` over `POST /api/ui-event` so `ComponentDiffer` natively diffs single-card mutations via `$grid->card($id)`, `removeCard()`, `prependCard()`, and `load_more` appends; `grd_` YAML prefix; see `CARD_GRID_AI_REFERENCE.md`)
 - `UI::image(...)`
 - `UI::uploader(...)`
 - `UI::menuDropdown(...)` (supports `->floating(true)` and `right-top`/`top-left`/`top-right` viewport-portaled popovers)

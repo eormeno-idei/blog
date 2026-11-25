@@ -1,0 +1,637 @@
+/* ==========================================================================
+   USIM ItemCard Component (`type: 'item_card'`)
+   First-class standardized card component usable standalone or inside CardGrid.
+   Uses --usim-* theme tokens for seamless Light & Dark mode support.
+   ========================================================================== */
+
+.usim-ic-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    background: var(--usim-color-surface);
+    border: 1px solid var(--usim-color-border);
+    color: var(--usim-color-text);
+    overflow: visible;
+    box-sizing: border-box;
+    min-width: 0;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.usim-ic-card *,
+.usim-ic-card *::before,
+.usim-ic-card *::after {
+    box-sizing: border-box;
+}
+
+/* Variants */
+.usim-ic-card.variant-elevated {
+    box-shadow: var(--usim-card-shadow, 0 2px 8px rgba(15, 23, 36, 0.08));
+}
+
+.usim-ic-card.variant-outlined {
+    box-shadow: none;
+    border-width: 1.5px;
+}
+
+.usim-ic-card.variant-flat {
+    box-shadow: none;
+    background: var(--usim-color-surface-muted);
+    border-color: transparent;
+}
+
+/* Interactive & States */
+.usim-ic-card.is-clickable {
+    cursor: pointer;
+}
+
+.usim-ic-card.is-clickable:hover,
+.usim-ic-card.is-clickable:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--usim-card-shadow-hover, 0 8px 22px rgba(15, 23, 36, 0.14));
+    border-color: var(--usim-ic-accent, var(--usim-color-primary));
+    outline: none;
+}
+
+.usim-ic-card.is-featured {
+    border-color: var(--usim-color-primary);
+    box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.28), var(--usim-card-shadow, 0 4px 14px rgba(52, 152, 219, 0.18));
+}
+
+.usim-ic-card.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* Semantic Accent Border (native border curves cleanly with border-radius: 12px) */
+.usim-ic-card.style-primary   { --usim-ic-accent: var(--usim-color-primary); }
+.usim-ic-card.style-success   { --usim-ic-accent: var(--usim-color-success); }
+.usim-ic-card.style-warning   { --usim-ic-accent: var(--usim-color-warning); }
+.usim-ic-card.style-danger    { --usim-ic-accent: var(--usim-color-danger); }
+.usim-ic-card.style-info      { --usim-ic-accent: var(--usim-color-info); }
+.usim-ic-card.style-secondary { --usim-ic-accent: var(--usim-color-text-muted); }
+.usim-ic-card.style-muted     { opacity: 0.82; }
+
+.usim-ic-card.has-accent,
+.usim-ic-card.style-primary,
+.usim-ic-card.style-success,
+.usim-ic-card.style-warning,
+.usim-ic-card.style-danger,
+.usim-ic-card.style-info,
+.usim-ic-card.style-secondary {
+    border-top: 3px solid var(--usim-ic-accent, var(--usim-color-border));
+}
+
+.usim-ic-card.has-accent .usim-ic-media,
+.usim-ic-card.style-primary .usim-ic-media,
+.usim-ic-card.style-success .usim-ic-media,
+.usim-ic-card.style-warning .usim-ic-media,
+.usim-ic-card.style-danger .usim-ic-media,
+.usim-ic-card.style-info .usim-ic-media,
+.usim-ic-card.style-secondary .usim-ic-media {
+    border-top-left-radius: 11px 9px;
+    border-top-right-radius: 11px 9px;
+}
+
+/* Horizontal Card Layout */
+.usim-ic-card.layout-horizontal {
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.usim-ic-card.layout-horizontal.has-accent,
+.usim-ic-card.layout-horizontal.style-primary,
+.usim-ic-card.layout-horizontal.style-success,
+.usim-ic-card.layout-horizontal.style-warning,
+.usim-ic-card.layout-horizontal.style-danger,
+.usim-ic-card.layout-horizontal.style-info,
+.usim-ic-card.layout-horizontal.style-secondary {
+    border-top: 1px solid var(--usim-color-border);
+    border-left: 4px solid var(--usim-ic-accent, var(--usim-color-border));
+}
+
+.usim-ic-card.layout-horizontal.is-featured {
+    border-top-color: var(--usim-color-primary);
+}
+
+.usim-ic-card.layout-horizontal .usim-ic-media {
+    width: 36%;
+    min-width: 130px;
+    max-width: 220px;
+    aspect-ratio: auto !important;
+    border-radius: 8px 0 0 8px;
+}
+
+/* ─── Media Zone ──────────────────────────────────────────────────────────── */
+
+.usim-ic-media {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: var(--usim-color-surface-muted);
+    border-top-left-radius: 11px;
+    border-top-right-radius: 11px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.usim-ic-media img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.25s ease;
+}
+
+.usim-ic-card.is-clickable:hover .usim-ic-media img {
+    transform: scale(1.03);
+}
+
+.usim-ic-media-fallback {
+    width: 100%;
+    height: 100%;
+    min-height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    color: var(--usim-color-text-muted);
+    background: linear-gradient(135deg, var(--usim-color-surface-muted), var(--usim-color-surface-hover));
+}
+
+.usim-ic-media-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+}
+
+/* ─── Content & Density ───────────────────────────────────────────────────── */
+
+.usim-ic-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 10px;
+    padding: 14px 16px;
+    min-width: 0;
+}
+
+.usim-ic-card.density-compact .usim-ic-content {
+    padding: 10px 12px;
+    gap: 7px;
+}
+
+.usim-ic-card.density-spacious .usim-ic-content {
+    padding: 18px 20px;
+    gap: 13px;
+}
+
+/* Header */
+.usim-ic-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.usim-ic-visual-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--usim-color-surface-muted);
+    border: 1px solid var(--usim-color-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--usim-color-text-strong);
+    overflow: hidden;
+}
+
+.usim-ic-visual-badge.is-avatar {
+    border-radius: 50%;
+}
+
+.usim-ic-visual-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.usim-ic-header-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.usim-ic-eyebrow-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.usim-ic-eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--usim-color-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.usim-ic-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--usim-color-text-strong);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.usim-ic-card.density-compact .usim-ic-title {
+    font-size: 0.93rem;
+}
+
+.usim-ic-subtitle {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--usim-color-text-muted);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Badges */
+.usim-ic-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    flex-shrink: 0;
+    background: var(--usim-color-surface-muted);
+    color: var(--usim-color-text-strong);
+    border: 1px solid var(--usim-color-border);
+    backdrop-filter: blur(6px);
+}
+
+.usim-ic-badge.style-primary {
+    background: var(--usim-color-primary);
+    border-color: var(--usim-color-primary);
+    color: #ffffff;
+}
+
+.usim-ic-badge.style-success {
+    background: var(--usim-label-success-bg, rgba(46, 204, 113, 0.18));
+    border-color: var(--usim-label-success-border, rgba(46, 204, 113, 0.4));
+    color: var(--usim-label-success-text, #1d6f44);
+}
+
+.usim-ic-badge.style-warning {
+    background: var(--usim-label-warning-bg, rgba(243, 156, 18, 0.2));
+    border-color: var(--usim-label-warning-border, rgba(243, 156, 18, 0.4));
+    color: var(--usim-label-warning-text, #8a5b12);
+}
+
+.usim-ic-badge.style-danger {
+    background: var(--usim-label-error-bg, rgba(231, 76, 60, 0.18));
+    border-color: var(--usim-label-error-border, rgba(231, 76, 60, 0.4));
+    color: var(--usim-label-error-text, #8f2e22);
+}
+
+.usim-ic-badge.style-info {
+    background: var(--usim-label-info-bg, rgba(52, 152, 219, 0.18));
+    border-color: var(--usim-label-info-border, rgba(52, 152, 219, 0.4));
+    color: var(--usim-label-info-text, #1f4f82);
+}
+
+.usim-ic-badge.style-secondary,
+.usim-ic-badge.style-muted {
+    background: var(--usim-color-surface-muted);
+    border-color: var(--usim-color-border);
+    color: var(--usim-color-text-muted);
+}
+
+html[data-theme="dark"] .usim-ic-badge.style-success,
+body[data-theme="dark"] .usim-ic-badge.style-success { color: #7ef0ad; }
+html[data-theme="dark"] .usim-ic-badge.style-warning,
+body[data-theme="dark"] .usim-ic-badge.style-warning { color: #ffd07b; }
+html[data-theme="dark"] .usim-ic-badge.style-danger,
+body[data-theme="dark"] .usim-ic-badge.style-danger  { color: #ff9c92; }
+html[data-theme="dark"] .usim-ic-badge.style-info,
+body[data-theme="dark"] .usim-ic-badge.style-info    { color: #8fd0ff; }
+
+/* Metric Highlight */
+.usim-ic-metric-row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.usim-ic-metric-value {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--usim-color-text-strong);
+}
+
+.usim-ic-metric-value.style-primary { color: var(--usim-color-primary); }
+.usim-ic-metric-value.style-success { color: var(--usim-color-success); }
+.usim-ic-metric-value.style-warning { color: var(--usim-color-warning); }
+.usim-ic-metric-value.style-danger  { color: var(--usim-color-danger); }
+.usim-ic-metric-value.style-info    { color: var(--usim-color-info); }
+
+.usim-ic-metric-label {
+    font-size: 0.76rem;
+    color: var(--usim-color-text-muted);
+}
+
+/* Description */
+.usim-ic-description {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.48;
+    color: var(--usim-color-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.usim-ic-card.density-compact .usim-ic-description {
+    -webkit-line-clamp: 2;
+    font-size: 0.81rem;
+}
+
+/* Attributes */
+.usim-ic-attributes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.usim-ic-attribute {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    color: var(--usim-color-text-muted);
+    min-width: 0;
+}
+
+.usim-ic-attribute-label {
+    font-weight: 600;
+    color: var(--usim-color-text-muted);
+}
+
+.usim-ic-attribute-value {
+    color: var(--usim-color-text-strong);
+    font-weight: 500;
+}
+
+/* Tags */
+.usim-ic-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.usim-ic-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    background: var(--usim-color-surface-muted);
+    color: var(--usim-color-text-muted);
+    border: 1px solid var(--usim-color-border);
+}
+
+.usim-ic-tag.is-more {
+    font-weight: 700;
+}
+
+/* ─── Footer & Actions (always bottom-aligned) ────────────────────────────── */
+
+.usim-ic-footer {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--usim-color-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.usim-ic-footer-text {
+    font-size: 0.75rem;
+    color: var(--usim-color-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.usim-ic-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    position: relative;
+}
+
+.usim-ic-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 7px;
+    font-size: 0.79rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    border: 1px solid var(--usim-color-border);
+    background: var(--usim-color-surface);
+    color: var(--usim-color-text-strong);
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.usim-ic-action-btn:hover:not(:disabled) {
+    background: var(--usim-color-surface-hover);
+    border-color: var(--usim-color-border-strong);
+}
+
+.usim-ic-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.usim-ic-action-btn.variant-ghost {
+    border-color: transparent;
+    background: transparent;
+}
+
+.usim-ic-action-btn.variant-solid.style-primary,
+.usim-ic-action-btn.variant-solid.style-default {
+    background: var(--usim-color-primary);
+    border-color: var(--usim-color-primary);
+    color: #ffffff;
+}
+
+.usim-ic-action-btn.variant-solid.style-success {
+    background: var(--usim-color-success);
+    border-color: var(--usim-color-success);
+    color: #ffffff;
+}
+
+.usim-ic-action-btn.variant-solid.style-danger {
+    background: var(--usim-color-danger);
+    border-color: var(--usim-color-danger);
+    color: #ffffff;
+}
+
+.usim-ic-action-btn.variant-solid.style-warning {
+    background: var(--usim-color-warning);
+    border-color: var(--usim-color-warning);
+    color: #ffffff;
+}
+
+.usim-ic-action-btn.variant-solid.style-info {
+    background: var(--usim-color-info);
+    border-color: var(--usim-color-info);
+    color: #ffffff;
+}
+
+.usim-ic-action-btn.variant-outline.style-primary {
+    border-color: var(--usim-color-primary);
+    color: var(--usim-color-primary);
+}
+
+.usim-ic-action-btn.variant-outline.style-danger,
+.usim-ic-action-btn.variant-ghost.style-danger {
+    color: var(--usim-color-danger);
+}
+
+.usim-ic-action-btn.variant-outline.style-danger {
+    border-color: var(--usim-color-danger);
+}
+
+.usim-ic-action-btn.variant-outline.style-success,
+.usim-ic-action-btn.variant-ghost.style-success {
+    color: var(--usim-color-success);
+}
+
+.usim-ic-action-btn.variant-outline.style-warning,
+.usim-ic-action-btn.variant-ghost.style-warning {
+    color: var(--usim-color-warning);
+}
+
+.usim-ic-action-btn.variant-outline.style-warning {
+    border-color: var(--usim-color-warning);
+}
+
+/* Overflow Kebab Menu (⋮) */
+.usim-ic-overflow-wrap {
+    position: relative;
+}
+
+.usim-ic-overflow-trigger {
+    width: 30px;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.usim-ic-overflow-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    z-index: 45;
+    min-width: 165px;
+    padding: 5px;
+    border-radius: 9px;
+    background: var(--usim-color-surface);
+    border: 1px solid var(--usim-color-border-strong, var(--usim-color-border));
+    box-shadow: var(--usim-menu-dropdown-shadow, 0 10px 28px rgba(15, 23, 36, 0.22));
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.usim-ic-overflow-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--usim-color-text-strong);
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.usim-ic-overflow-item:hover:not(:disabled) {
+    background: var(--usim-color-surface-hover);
+}
+
+.usim-ic-overflow-item.style-danger {
+    color: var(--usim-color-danger);
+}
+
+.usim-ic-overflow-item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Responsive stacking for horizontal ItemCards on narrow viewports */
+@media (max-width: 720px) {
+    .usim-ic-card.layout-horizontal {
+        flex-direction: column;
+    }
+
+    .usim-ic-card.layout-horizontal.has-accent,
+    .usim-ic-card.layout-horizontal.style-primary,
+    .usim-ic-card.layout-horizontal.style-success,
+    .usim-ic-card.layout-horizontal.style-warning,
+    .usim-ic-card.layout-horizontal.style-danger,
+    .usim-ic-card.layout-horizontal.style-info,
+    .usim-ic-card.layout-horizontal.style-secondary {
+        border-left: 1px solid var(--usim-color-border);
+        border-top: 3px solid var(--usim-ic-accent, var(--usim-color-border));
+    }
+
+    .usim-ic-card.layout-horizontal .usim-ic-media {
+        width: 100%;
+        max-width: none;
+        aspect-ratio: 16 / 9 !important;
+        border-radius: 11px 11px 0 0;
+    }
+}

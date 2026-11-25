@@ -3056,6 +3056,9 @@ class UIRenderer {
             }
 
             const element = component.render();
+            if (element instanceof HTMLElement && !component.element) {
+                component.element = element;
+            }
             this.components.set(String(jsonKey), component);
 
             // Resolve portal slot target first when portal_slot / portal_target_id is declared
