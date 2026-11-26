@@ -10,23 +10,27 @@
 USIM uses **one unified layout mechanism** for both internal Screen containers and full-page application shells:
 
 - Every page layout extends `Idei\Usim\Layout\AbstractLayout` (which extends `Idei\Usim\Screen` and implements `Idei\Usim\Layout\LayoutInterface`).
+- **Built-in Package Layouts (Do NOT recreate from scratch):** USIM ships two ready-to-use layouts directly in the package:
+  - `Idei\Usim\Layout\WorkbenchLayout` (with sibling `workbench-layout.layout.yaml`) — VS Code-style Workbench shell (`sidebar`, `left_panel`, `top_bar`, `main`, `bottom_panel`, `right_panel`, `status_bar`).
+  - `Idei\Usim\Layout\MainLayout` — classic top-bar shell (`top_menu` / `menu`, `main` / `content`).
+  - `php artisan usim:install` scaffolds thin app overrides (`App\UI\Layouts\WorkbenchLayout`, `workbench-layout.layout.yaml`, `App\UI\Layouts\MainLayout`) plus the Workbench shell screens (`SidebarMenu`, `SidebarSubmenuPanel`, `StatusBar`, `Concerns\HandlesShellActions`) and shared `App\UI\Navigation\Menus\MainMenu`.
 - A page layout can be defined:
-  1. **Declaratively via a sibling `.layout.yaml` file** (recommended; auto-discovered by `<kebab-class-name>.layout.yaml` or `protected static ?string $layoutFile = '...'`, processed by `ContainerLayoutLoader`), OR
+  1. **Declaratively via a sibling `.layout.yaml` file** (recommended; auto-discovered by `<kebab-class-name>.layout.yaml` walking concrete parent classes so subclasses of `Idei\Usim\Layout\WorkbenchLayout` automatically inherit the package YAML unless overridden, or via `protected static ?string $layoutFile = '...'`, processed by `ContainerLayoutLoader`), OR
   2. **Imperatively via `buildBaseUI(Container $container)` / `startingUI(): Container`** (fully backward compatible, e.g., `MainLayout`).
 - `AbstractLayout::callBuildBaseUI()` automatically scans the built tree via `registerSlotsFromTree()` and registers every `Container` carrying `layoutSlot(...)` metadata (including aliases, default `screen`, and `persist_on_navigate`).
 - On subsequent requests restored from cache snapshots, `AbstractLayout::postLoadUI()` restores **all** registered slots generically from `$state_slot_map` (`slotName => containerName`).
 
 ---
 
-## 2. Layout Resolution Precedence (`Screen::getLayoutClass()`)
+## 2. Layout Resolution Precedence (`Screen::getLayoutClass()` / `Screen::resolveLayoutClass()`)
 
 Resolution follows a **strict 3-tier precedence**:
 
 | Priority | Declaration on `Screen` | Resolved Layout | Typical Usage |
 |---|---|---|---|
-| **1 (Highest)** | `public static ?string $layout = null;` | `null` (no layout, no chrome, no status bar, no reset button) | `KioskScreen`, `DevicePairingScreen`, embedded shell screens (`Menu`, `SidebarMenu`, `StatusBar`), standalone modals |
-| **2** | `public static ?string $layout = SomeLayout::class;` | `SomeLayout::class` | Screens forcing a specific layout regardless of auth state |
-| **3** | `public static ?string $layout = 'default';` *(inherited default)* | If `!Auth::guard('web')->check() && !Auth::guard('device')->check()` and `config('usim.guest_layout')` is non-null → **`guest_layout`**; otherwise → **`default_layout`** | Landing pages (`Home`), auth screens, operational screens (`UsersManager`, `TranslateManager`, `Registered`) |
+| **1 (Highest)** | `public static ?string $layout = null;` (or `'none'`) | `null` (no layout, no chrome, no status bar, no reset button) | `KioskScreen`, `DevicePairingScreen`, embedded shell screens (`Menu`, `SidebarMenu`, `StatusBar`), standalone modals |
+| **2** | `public static ?string $layout = 'workbench' \| 'main' \| SomeLayout::class;` | Concrete layout class (`'workbench'` / `'main'` resolve `<layoutsNamespace>\*` first, falling back automatically to `Idei\Usim\Layout\WorkbenchLayout` / `MainLayout`) | Screens forcing a specific layout regardless of auth state |
+| **3** | `public static ?string $layout = 'default';` *(inherited default)* | If `!Auth::guard('web')->check() && !Auth::guard('device')->check()` and `config('usim.guest_layout')` is non-null → **`guest_layout`**; otherwise → **`default_layout`** (both support aliases and package fallbacks) | Landing pages (`Home`), auth screens, operational screens (`UsersManager`, `TranslateManager`, `Registered`) |
 
 ### Interaction with Role-Based `home_screen`
 In `config/usim.php`, each role defines `home_screen` and `priority` (e.g., `root`/`admin` → `UsersManager`, `translator` → `TranslateManager`, `member` → `Home`, `registered` → `Registered`, `smart_tv` → `KioskScreen`).
@@ -311,19 +315,21 @@ Menu providers (`MainMenu`, `DemosMenuProvider`, `AdminMenuProvider`) implement 
 
 ## 8. Strict Guardrails for AI Agents
 
-1. **NEVER hardcode container IDs** (such as legacy `104921240`) in JS or tests. Always use `UIIdGenerator::generateFromName($layoutClass, $containerName)` in PHP tests and `data-layout-slot` / `slot_container_id` in JS.
-2. **NEVER add `#reset-btn` back to `app.blade.php`:** the dev reset control belongs exclusively in `StatusBar` (guarded by `!app()->isProduction()`), keeping standalone/kiosk screens and production builds clean.
-3. **NEVER target descendant `.ui-split-pane .ui-container` with `!important` resets in CSS:** only target direct children `.ui-split-pane > .ui-container`, otherwise embedded Screens lose their card borders, padding, gap, and `max-width`.
-4. **ALWAYS use `->floating(true)`** (or `right-*` / `top-*` positions) on `MenuDropdown` instances placed inside a `Split` pane or `StatusBar` so the popup portals to `document.body` and escapes `contain: paint`.
-5. **NEVER instantiate a layout for `$layout = null` screens** and never force shell screen event notifications in `UsimEventDispatcher` when a standalone screen (`$layout = null`) is active.
-6. **NEVER clear `status_bar_container` directly from a Screen:** always project into `status_bar` (`status_bar_center`), `status_bar_left`, or `status_bar_right` so `StatusBar`'s permanent `unit_menu` and dev `btn_reset` remain intact and `lbl_status_message` hides/restores automatically.
-7. **ALWAYS use `UIChangesCollector::patchComponent()`** when emitting incremental property deltas on components that may already have a full payload in the same request (e.g. `Split` collapse/size diffs or `lbl_status_message` visibility during initial render).
-8. **ALWAYS gate Workbench-panel-dependent menu items** (e.g. `RightPanelDemo`, `SlotProjectionDemo`) with `when: Auth::check()` in `DemosMenuProvider` when `guest_layout` uses `MainLayout`.
-9. **ALWAYS sync published assets** after modifying files under `packages/idei/usim/resources/assets/`:
+1. **NEVER recreate `WorkbenchLayout` or `MainLayout` from scratch in a consuming app:** both layouts ship built into `idei/usim` (`Idei\Usim\Layout\WorkbenchLayout` + `workbench-layout.layout.yaml` and `Idei\Usim\Layout\MainLayout`), and `Screen::resolveLayoutClass()` resolves `'workbench'` and `'main'` automatically (preferring `App\UI\Layouts\*` when published and falling back to the package classes).
+2. **PREFER `php artisan usim:screen` before hand-coding new Screens:** run `php artisan usim:screen <Name> --layout=workbench --slots=... --visibility=authenticated --i18n --test --no-interaction` (or `--type=workspace|modal|kiosk`) so the PHP class, sibling `.layout.yaml`, `i18n: auto` lang files, and Pest test follow USIM conventions from the start.
+3. **NEVER hardcode container IDs** (such as legacy `104921240`) in JS or tests. Always use `UIIdGenerator::generateFromName($layoutClass, $containerName)` in PHP tests and `data-layout-slot` / `slot_container_id` in JS.
+4. **NEVER add `#reset-btn` back to `app.blade.php`:** the dev reset control belongs exclusively in `StatusBar` (guarded by `!app()->isProduction()`), keeping standalone/kiosk screens and production builds clean.
+5. **NEVER target descendant `.ui-split-pane .ui-container` with `!important` resets in CSS:** only target direct children `.ui-split-pane > .ui-container`, otherwise embedded Screens lose their card borders, padding, gap, and `max-width`.
+6. **ALWAYS use `->floating(true)`** (or `right-*` / `top-*` positions) on `MenuDropdown` instances placed inside a `Split` pane or `StatusBar` so the popup portals to `document.body` and escapes `contain: paint`.
+7. **NEVER instantiate a layout for `$layout = null` screens** and never force shell screen event notifications in `UsimEventDispatcher` when a standalone screen (`$layout = null`) is active.
+8. **NEVER clear `status_bar_container` directly from a Screen:** always project into `status_bar` (`status_bar_center`), `status_bar_left`, or `status_bar_right` so `StatusBar`'s permanent `unit_menu` and dev `btn_reset` remain intact and `lbl_status_message` hides/restores automatically.
+9. **ALWAYS use `UIChangesCollector::patchComponent()`** when emitting incremental property deltas on components that may already have a full payload in the same request (e.g. `Split` collapse/size diffs or `lbl_status_message` visibility during initial render).
+10. **ALWAYS gate Workbench-panel-dependent menu items** (e.g. `RightPanelDemo`, `SlotProjectionDemo`) with `when: Auth::check()` in `DemosMenuProvider` when `guest_layout` uses `MainLayout`.
+11. **ALWAYS sync published assets** after modifying files under `packages/idei/usim/resources/assets/`:
    ```bash
    php artisan vendor:publish --tag=usim-assets --force
    ```
-10. **ALWAYS verify** changes with both:
+12. **ALWAYS verify** changes with both:
    ```bash
    composer phpstan
    php artisan test

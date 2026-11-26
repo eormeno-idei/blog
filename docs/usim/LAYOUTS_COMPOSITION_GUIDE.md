@@ -25,9 +25,18 @@
 
 En USIM ambos niveles comparten **el mismo motor declarativo (`.layout.yaml` + `ContainerLayoutLoader`)**:
 
-- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación (por ejemplo `WorkbenchLayout` con Activity Bar fija de `52px` en `[1, 1]`, panel izquierdo `left_panel` en `Split` colapsable a `0px`, cabecera sticky `top_bar` oculta por defecto sobre `main`, panel inferior `bottom_panel` en `Split` vertical colapsable a `0px`, `right_panel` en `0px` y `status_bar` de ancho completo; o `MainLayout` con barra superior). Se declara en la `Screen` con `public static ?string $layout = 'default';` (resuelve `guest_layout` vs `default_layout`), una clase explícita o `null` para pantallas standalone/kiosk.
+- **Layout de Página (`AbstractLayout`):** Define el marco global de la aplicación. USIM incluye dos layouts listos para usar directamente en el paquete:
+  - **`Idei\Usim\Layout\WorkbenchLayout`** *(alias `'workbench'`)*: Activity Bar fija de `52px` en `[1, 1]`, panel izquierdo `left_panel` en `Split` colapsable a `0px`, cabecera sticky `top_bar` oculta por defecto sobre `main`, panel inferior `bottom_panel` en `Split` vertical colapsable a `0px`, `right_panel` en `0px` y `status_bar` de ancho completo.
+  - **`Idei\Usim\Layout\MainLayout`** *(alias `'main'`)*: barra superior clásica (`top_menu` / `menu`) + contenido principal (`main`).
+  - Se declara en la `Screen` con `public static ?string $layout = 'default';` (resuelve `guest_layout` vs `default_layout`), un alias corto (`'workbench'`, `'main'`, `'none'`), una clase explícita o `null` para pantallas standalone/kiosk. Si tu app publica un override en `App\UI\Layouts\WorkbenchLayout` (lo hace automáticamente `php artisan usim:install`), los aliases priorizan tu clase de app y heredan el `.layout.yaml` del paquete salvo que definas un `.layout.yaml` hermano propio.
 - **Layout de Contenedor (`.layout.yaml`):** Define la estructura interna de una `Screen`, un `Container` o un `AbstractLayout` (CSS Grid, `component: split` con panes `first:` / `second:`, `layout_slot`, cajas, espaciados, alineación y propiedades de componentes). Se procesa en PHP mediante `Idei\Usim\Support\ContainerLayoutLoader`.
 
+> **Scaffolding rápido de Screens declarativas:** generá una Screen ya configurada para `WorkbenchLayout` con su `.layout.yaml` hermano, slots, `i18n: auto` y test de Pest en un solo comando:
+> ```bash
+> php artisan usim:screen Orders/OrderExplorer --layout=workbench --slots=top_bar,left_panel,right_panel,status_bar --visibility=authenticated --i18n --test --discover
+> ```
+> También podés correr `php artisan usim:screen` sin argumentos para usar el asistente interactivo, o usar presets como `--type=workspace`, `--type=modal` o `--type=kiosk`.
+>
 > Para la referencia técnica completa de `WorkbenchLayout`, `Split` declarativo, `NavTree`, `right_panel`, `StatusBar` y transiciones de layout, consultá [WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md](./WORKBENCH_AND_UNIFIED_LAYOUTS_AI_REFERENCE.md).
 
 ---
