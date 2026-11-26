@@ -7,6 +7,7 @@ use App\UI\Screens\Auth\Profile;
 use App\UI\Screens\Home;
 use App\UI\Screens\RegisteredHome;
 use Idei\Usim\Components\ItemCard;
+use Idei\Usim\Layout\WorkbenchLayout;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
 use Idei\Usim\Testing\ScreenTestHarness;
 
@@ -14,10 +15,12 @@ beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
 });
 
-it('renders RegisteredHome with declarative centered layout and hero ItemCard', function () {
+it('renders RegisteredHome using built-in WorkbenchLayout with hero ItemCard in main panel', function () {
     $defaultRegisteringRole = (string) config('usim.default_registering_role', 'registered');
     $registeredUser = app(UsimUserService::class)->provisionFromConfig($defaultRegisteringRole);
     $this->actingAs($registeredUser);
+
+    expect(RegisteredHome::getLayoutClass())->toBe(WorkbenchLayout::class);
 
     $harness = ScreenTestHarness::for(RegisteredHome::class)
         ->render(shouldReset: true);

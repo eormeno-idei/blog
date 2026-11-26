@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 
 class RegisteredHome extends Screen
 {
+    public static ?string $layout = 'workbench';
+
     protected ItemCard $icrd_welcome;
 
     protected function startingUI(): Container
