@@ -317,21 +317,22 @@ class UsimNavTreeComponent extends UIComponent {
             return;
         }
 
-        // Direct image/svg path or URL
+        const helpers = window.USIM_COMPONENT_HELPERS;
+        if (helpers && typeof helpers.createIconElement === 'function') {
+            const el = helpers.createIconElement(iconStr, {
+                baseClass: 'usim-nav-tree-icon-el',
+                size: 18,
+            });
+            if (el) {
+                container.appendChild(el);
+                return;
+            }
+        }
+
+        // Fallback when shared icon helpers are unavailable
         if (iconStr.startsWith('/') || iconStr.startsWith('http://') || iconStr.startsWith('https://') || iconStr.startsWith('data:')) {
             const img = document.createElement('img');
             img.src = iconStr;
-            img.alt = '';
-            img.className = 'usim-nav-tree-icon-img';
-            container.appendChild(img);
-            return;
-        }
-
-        // Check USIM icon registry manifest if available
-        const manifest = window.USIM_ICONS;
-        if (manifest && typeof manifest === 'object' && manifest[iconStr]) {
-            const img = document.createElement('img');
-            img.src = manifest[iconStr];
             img.alt = '';
             img.className = 'usim-nav-tree-icon-img';
             container.appendChild(img);

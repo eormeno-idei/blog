@@ -110,21 +110,56 @@ class UsimMenuDropdownComponent extends UIComponent {
 
         trigger.className = `menu-dropdown-trigger menu-trigger-${triggerStyle}`;
         trigger.title = triggerLabel || triggerAlt;
+        trigger.innerHTML = '';
 
-        let triggerContent = '';
         if (triggerImage) {
-            triggerContent += `<img src="${triggerImage}" alt="${triggerAlt}" class="trigger-image">`;
+            const img = document.createElement('img');
+            img.src = triggerImage;
+            img.alt = triggerAlt;
+            img.className = 'trigger-image';
+            trigger.appendChild(img);
+
             if (triggerLabel) {
-                triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
+                const labelEl = document.createElement('span');
+                labelEl.className = 'trigger-label';
+                labelEl.textContent = triggerLabel;
+                trigger.appendChild(labelEl);
             }
-        } else {
-            if (triggerIcon) {
-                triggerContent += `<span class="trigger-icon">${triggerIcon}</span>`;
-            }
-            triggerContent += `<span class="trigger-label">${triggerLabel}</span>`;
+            return;
         }
 
-        trigger.innerHTML = triggerContent;
+        if (triggerIcon) {
+            const iconWrap = document.createElement('span');
+            iconWrap.className = 'trigger-icon';
+            this._appendIconNode(iconWrap, triggerIcon, 18);
+            trigger.appendChild(iconWrap);
+        }
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'trigger-label';
+        labelEl.textContent = triggerLabel;
+        trigger.appendChild(labelEl);
+    }
+
+    _appendIconNode(container, rawIcon, size = 16) {
+        const iconStr = String(rawIcon || '').trim();
+        if (!iconStr) {
+            return;
+        }
+
+        const helpers = window.USIM_COMPONENT_HELPERS;
+        if (helpers && typeof helpers.createIconElement === 'function') {
+            const el = helpers.createIconElement(iconStr, {
+                baseClass: 'menu-icon-el',
+                size,
+            });
+            if (el) {
+                container.appendChild(el);
+                return;
+            }
+        }
+
+        container.textContent = iconStr;
     }
 
     _shouldUseFloatingPortal() {
@@ -234,7 +269,7 @@ class UsimMenuDropdownComponent extends UIComponent {
         if (item.icon) {
             const icon = document.createElement('span');
             icon.className = 'icon';
-            icon.textContent = item.icon;
+            this._appendIconNode(icon, item.icon, 16);
             menuItem.appendChild(icon);
         }
 

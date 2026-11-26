@@ -10,9 +10,10 @@
 USIM uses **one unified layout mechanism** for both internal Screen containers and full-page application shells:
 
 - Every page layout extends `Idei\Usim\Layout\AbstractLayout` (which extends `Idei\Usim\Screen` and implements `Idei\Usim\Layout\LayoutInterface`).
-- **Built-in Package Layouts (Do NOT recreate from scratch):** USIM ships two ready-to-use layouts directly in the package:
+- **Built-in Package Layouts & Shell Fallbacks (Do NOT recreate from scratch):** USIM ships ready-to-use layouts and Workbench shell fallbacks directly in the package:
   - `Idei\Usim\Layout\WorkbenchLayout` (with sibling `workbench-layout.layout.yaml`) — VS Code-style Workbench shell (`sidebar`, `left_panel`, `top_bar`, `main`, `bottom_panel`, `right_panel`, `status_bar`).
   - `Idei\Usim\Layout\MainLayout` — classic top-bar shell (`top_menu` / `menu`, `main` / `content`).
+  - `Idei\Usim\Screens\SidebarMenu`, `Idei\Usim\Screens\SidebarSubmenuPanel`, and `Idei\Usim\Screens\StatusBar` — automatically resolved via `Screen::resolveShellScreenClass()` whenever `App\UI\Screens\SidebarMenu` or `StatusBar` are not present in a consuming app. They render crisp SVG icons (`bolt`, `home`, `user`, `settings`, `sun`, `moon`, `info`, `logout`) and populate navigation from `App\UI\Navigation\Menus\MainMenu` when present or `Idei\Usim\Navigation\AutoDiscoveredMenuProvider` (permission-aware screen auto-discovery; screens may opt out with `public static bool $showInMenu = false;`).
   - `php artisan usim:install` scaffolds thin app overrides (`App\UI\Layouts\WorkbenchLayout`, `workbench-layout.layout.yaml`, `App\UI\Layouts\MainLayout`) plus the Workbench shell screens (`SidebarMenu`, `SidebarSubmenuPanel`, `StatusBar`, `Concerns\HandlesShellActions`) and shared `App\UI\Navigation\Menus\MainMenu`.
 - A page layout can be defined:
   1. **Declaratively via a sibling `.layout.yaml` file** (recommended; auto-discovered by `<kebab-class-name>.layout.yaml` walking concrete parent classes so subclasses of `Idei\Usim\Layout\WorkbenchLayout` automatically inherit the package YAML unless overridden, or via `protected static ?string $layoutFile = '...'`, processed by `ContainerLayoutLoader`), OR
