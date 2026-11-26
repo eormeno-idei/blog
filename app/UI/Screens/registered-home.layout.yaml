@@ -20,31 +20,3 @@ grid:
         featured: true
         badge_style: warning
         max_visible_actions: 2
-
-    - cnt_next_steps:
-        at: [2, 1]
-        width: full
-        appearance: plain
-        padding: none
-        grid:
-          cols: "repeat(auto-fit, minmax(280px, 1fr))"
-          gap: m
-          padding: none
-          align: stretch
-          children:
-            - icrd_step_profile:
-                width: full
-                variant: outlined
-                density: comfortable
-                style: primary
-                icon: user
-                badge_style: success
-                click_action: go_to_profile
-
-            - icrd_step_approval:
-                width: full
-                variant: outlined
-                density: comfortable
-                style: warning
-                icon: mail
-                badge_style: warning

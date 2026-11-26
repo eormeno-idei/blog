@@ -14,7 +14,7 @@ beforeEach(function () {
     app(RoleAndPermissionSyncService::class)->sync();
 });
 
-it('renders RegisteredHome with declarative centered layout, hero ItemCard, and next-step cards', function () {
+it('renders RegisteredHome with declarative centered layout and hero ItemCard', function () {
     $defaultRegisteringRole = (string) config('usim.default_registering_role', 'registered');
     $registeredUser = app(UsimUserService::class)->provisionFromConfig($defaultRegisteringRole);
     $this->actingAs($registeredUser);
@@ -24,10 +24,7 @@ it('renders RegisteredHome with declarative centered layout, hero ItemCard, and 
 
     $harness
         ->assertHasComponent('registered_home_wrapper')
-        ->assertHasComponent('icrd_welcome')
-        ->assertHasComponent('cnt_next_steps')
-        ->assertHasComponent('icrd_step_profile')
-        ->assertHasComponent('icrd_step_approval');
+        ->assertHasComponent('icrd_welcome');
 
     /** @var ItemCard $welcomeCard */
     $welcomeCard = $harness->getComponent('icrd_welcome');
@@ -42,15 +39,6 @@ it('renders RegisteredHome with declarative centered layout, hero ItemCard, and 
         ->and($welcomeCard->get('badge_style'))->toBe('warning')
         ->and($welcomeCard->get('style'))->toBe('info')
         ->and($actionNames)->toContain('go_to_profile', 'go_to_home');
-
-    /** @var ItemCard $stepProfile */
-    $stepProfile = $harness->getComponent('icrd_step_profile');
-    /** @var ItemCard $stepApproval */
-    $stepApproval = $harness->getComponent('icrd_step_approval');
-
-    expect($stepProfile->get('title'))->toBe('Completa tu perfil')
-        ->and($stepProfile->get('click_action'))->toBe('go_to_profile')
-        ->and($stepApproval->get('title'))->toBe('Confirmación de rol');
 });
 
 it('updates welcome ItemCard greeting and avatar when profile is updated', function () {
