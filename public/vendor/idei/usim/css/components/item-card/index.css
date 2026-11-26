@@ -24,6 +24,23 @@
     box-sizing: border-box;
 }
 
+.usim-ic-icon {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.usim-ic-icon.ui-icon-text {
+    width: auto;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
 /* Variants */
 .usim-ic-card.variant-elevated {
     box-shadow: var(--usim-card-shadow, 0 2px 8px rgba(15, 23, 36, 0.08));

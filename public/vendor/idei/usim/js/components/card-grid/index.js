@@ -319,11 +319,9 @@ class UsimCardGridComponent extends UIComponent {
         const hasTitle = Boolean(this.config.title);
         const hasSubtitle = Boolean(this.config.subtitle);
         const showCount = this.config.show_count !== false;
-        const headerAction = this.config.header_action && typeof this.config.header_action === 'object'
-            ? this.config.header_action
-            : null;
+        const headerActions = this._resolveHeaderActions();
 
-        if (!hasTitle && !hasSubtitle && !headerAction) {
+        if (!hasTitle && !hasSubtitle && headerActions.length === 0) {
             this.headerElement.style.display = 'none';
             return;
         }
@@ -339,7 +337,8 @@ class UsimCardGridComponent extends UIComponent {
 
             if (hasTitle) {
                 const h = document.createElement('h3');
-                h.className = 'usim-cg-title';
+                const titleStyle = this._normalizeStyleToken(this.config.title_style || 'default');
+                h.className = titleStyle !== 'default' ? `usim-cg-title style-${titleStyle}` : 'usim-cg-title';
                 h.textContent = String(this.config.title);
                 titleRow.appendChild(h);
             }
@@ -364,29 +363,86 @@ class UsimCardGridComponent extends UIComponent {
 
         this.headerElement.appendChild(left);
 
-        if (headerAction && headerAction.label) {
+        if (headerActions.length > 0) {
             const right = document.createElement('div');
             right.className = 'usim-cg-header-actions';
 
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = `usim-ic-action-btn variant-solid style-${this._normalizeStyleToken(headerAction.style || 'primary')}`;
-            if (headerAction.icon) {
-                btn.appendChild(this._createIconNode(headerAction.icon, 15));
-            }
-            const labelSpan = document.createElement('span');
-            labelSpan.textContent = String(headerAction.label);
-            btn.appendChild(labelSpan);
-
-            btn.addEventListener('click', () => {
-                if (headerAction.action) {
-                    this.sendEventToBackend('click', headerAction.action, headerAction.parameters || {});
-                }
+            headerActions.forEach((act) => {
+                right.appendChild(this._buildHeaderActionElement(act));
             });
 
-            right.appendChild(btn);
             this.headerElement.appendChild(right);
         }
+    }
+
+    _resolveHeaderActions() {
+        const list = Array.isArray(this.config.header_actions) ? this.config.header_actions : [];
+        const rawEntries = list.length > 0
+            ? list
+            : (this.config.header_action && typeof this.config.header_action === 'object' ? [this.config.header_action] : []);
+
+        const normalized = [];
+        rawEntries.forEach((raw) => {
+            if (!raw || typeof raw !== 'object') return;
+            const label = String(raw.label ?? '');
+            const icon = raw.icon ? String(raw.icon) : null;
+            if (!label.trim() && !icon) return;
+
+            const rawVariant = raw.variant ? String(raw.variant).toLowerCase().trim() : 'solid';
+            normalized.push({
+                label,
+                action: raw.action ? String(raw.action) : null,
+                parameters: raw.parameters && typeof raw.parameters === 'object' ? raw.parameters : {},
+                url: raw.url ? String(raw.url) : null,
+                target: raw.target ? String(raw.target) : '_self',
+                icon,
+                style: this._normalizeStyleToken(raw.style || 'primary'),
+                variant: ['solid', 'outline', 'ghost'].includes(rawVariant) ? rawVariant : 'solid',
+                disabled: Boolean(raw.disabled),
+                tooltip: raw.tooltip ? String(raw.tooltip) : null,
+            });
+        });
+
+        return normalized;
+    }
+
+    _buildHeaderActionElement(act) {
+        const isLink = Boolean(act.url && !act.disabled);
+        const hasLabel = act.label.trim() !== '';
+        const el = document.createElement(isLink ? 'a' : 'button');
+        el.className = `usim-ic-action-btn variant-${act.variant} style-${act.style}`;
+
+        if (act.tooltip) {
+            el.title = act.tooltip;
+            if (!hasLabel) {
+                el.setAttribute('aria-label', act.tooltip);
+            }
+        }
+
+        if (isLink) {
+            el.href = act.url;
+            el.target = act.target;
+            if (act.target === '_blank') el.rel = 'noopener noreferrer';
+        } else {
+            el.type = 'button';
+            el.disabled = act.disabled;
+            el.addEventListener('click', () => {
+                if (!act.disabled && act.action) {
+                    this.sendEventToBackend('click', act.action, act.parameters || {});
+                }
+            });
+        }
+
+        if (act.icon) {
+            el.appendChild(this._createIconNode(act.icon, 15));
+        }
+        if (hasLabel) {
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = act.label;
+            el.appendChild(labelSpan);
+        }
+
+        return el;
     }
 
     // ─── Integrated Toolbar Rendering ─────────────────────────────────────────

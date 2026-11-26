@@ -203,12 +203,20 @@
 
         const baseClass = options.baseClass || 'ui-icon';
         const alt = options.alt || '';
+        const rawSize = options.size;
+        const cssSize = typeof rawSize === 'number' && Number.isFinite(rawSize) && rawSize > 0
+            ? `${rawSize}px`
+            : (typeof rawSize === 'string' && rawSize.trim() !== '' ? rawSize.trim() : null);
 
         if (descriptor.kind === 'svg') {
             const iconElement = document.createElement('span');
             iconElement.className = `${baseClass} ui-icon-svg`;
             iconElement.style.webkitMaskImage = `url("${descriptor.src}")`;
             iconElement.style.maskImage = `url("${descriptor.src}")`;
+            if (cssSize) {
+                iconElement.style.width = cssSize;
+                iconElement.style.height = cssSize;
+            }
             iconElement.setAttribute('aria-hidden', 'true');
             if (descriptor.name) {
                 iconElement.setAttribute('data-usim-icon-name', descriptor.name);
@@ -221,6 +229,10 @@
             iconElement.className = `${baseClass} ui-icon-img`;
             iconElement.src = descriptor.src;
             iconElement.alt = alt;
+            if (cssSize) {
+                iconElement.style.width = cssSize;
+                iconElement.style.height = cssSize;
+            }
             if (descriptor.name) {
                 iconElement.setAttribute('data-usim-icon-name', descriptor.name);
             }
@@ -230,6 +242,9 @@
         const iconElement = document.createElement('span');
         iconElement.className = `${baseClass} ui-icon-text`;
         iconElement.textContent = descriptor.text;
+        if (cssSize) {
+            iconElement.style.fontSize = cssSize;
+        }
         iconElement.setAttribute('aria-hidden', 'true');
         return iconElement;
     }

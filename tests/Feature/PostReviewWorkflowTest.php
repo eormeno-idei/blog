@@ -16,7 +16,6 @@ use App\UI\Screens\Post\Parts\InitialData;
 use App\UI\Screens\Post\Parts\ReelStudio;
 use App\UI\Screens\Post\ReviewPost;
 use App\UI\Screens\PublishPost;
-use Idei\Usim\Components\NewLabel;
 use Idei\Usim\Components\Timer;
 use Idei\Usim\Screen;
 use Idei\Usim\Support\RoleAndPermissionSyncService;
@@ -183,7 +182,9 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     // 3. Reviewer ingresa a Home, ve el post y entra a ReviewPost
     $this->actingAs($reviewer);
     $homeHarness = ScreenTestHarness::for(Home::class)->render(shouldReset: true);
-    $homeHarness->assertHasComponent("btn_review_post_{$postId}");
+    $homeHarness
+        ->assertHasCard('posts_grid', $postId)
+        ->assertCardHasAction('posts_grid', $postId, 'review_post');
 
     /** @var ReviewPost $reviewScreen */
     $reviewScreen = Screen::make(ReviewPost::class);
@@ -243,10 +244,9 @@ it('completes the full institutional workflow: publisher submits, reviewer reque
     // Verificamos que Home lee correctamente el estado 'published' y muestra el badge '🟢 Publicado'
     Auth::logout();
     $homeGuestHarness = ScreenTestHarness::for(Home::class)->render(shouldReset: true);
-    /** @var NewLabel|null $statusBadge */
-    $statusBadge = $homeGuestHarness->findComponent("post_status_{$postId}");
-    expect($statusBadge)->not->toBeNull()
-        ->and($statusBadge?->get('text'))->toBe('🟢 Publicado');
+    $homeGuestHarness
+        ->assertHasCard('posts_grid', $postId)
+        ->assertCardBadge('posts_grid', $postId, '🟢 Publicado', 'success');
 
     // 6. Una vez vencida la fecha 'to', el post pasa automáticamente a 'archived'
     $this->travel(25)->days();

@@ -318,16 +318,12 @@ body {
     color: var(--usim-button-text, var(--ui-text-inverse));
 }
 
-.ui-button-icon,
-.ui-label-icon {
-    width: 1.2em;
-    height: 1.2em;
+.ui-icon-svg {
     display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
     vertical-align: middle;
     flex-shrink: 0;
-}
-
-.ui-icon-svg {
     background-color: currentColor;
     mask-repeat: no-repeat;
     -webkit-mask-repeat: no-repeat;
@@ -338,7 +334,21 @@ body {
 }
 
 .ui-icon-img {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: middle;
+    flex-shrink: 0;
     object-fit: contain;
+}
+
+.ui-button-icon,
+.ui-label-icon {
+    width: 1.2em;
+    height: 1.2em;
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .ui-icon-text {

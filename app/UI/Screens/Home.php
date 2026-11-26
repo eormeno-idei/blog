@@ -3,29 +3,20 @@
 namespace App\UI\Screens;
 
 use App\Contracts\PostServiceInterface;
-use App\DTOs\Posts\PostDTO;
+use App\Enums\PostStatus;
 use App\Http\Requests\PostIdRequest;
 use App\Models\User;
+use App\Services\Post\PostCardGridService;
 use App\Services\User\UserService;
 use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\Login;
 use App\UI\Screens\Auth\Register;
 use App\UI\Screens\Post\ReviewPost;
+use Idei\Usim\Components\CardGrid;
 use Idei\Usim\Components\Container;
-use Idei\Usim\Components\NewLabel;
-use Idei\Usim\Enums\AlignItems;
-use Idei\Usim\Enums\AspectRatio;
-use Idei\Usim\Enums\FontWeight;
-use Idei\Usim\Enums\JustifyContent;
-use Idei\Usim\Enums\LayoutType;
 use Idei\Usim\Enums\Style;
-use Idei\Usim\Enums\TextSize;
-use Idei\Usim\Enums\Variant;
 use Idei\Usim\Enums\Visibility;
 use Idei\Usim\Screen;
-use Idei\Usim\UI;
-use Idei\Usim\ValueObjects\Size;
-use Idei\Usim\ValueObjects\Spacing;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
@@ -34,345 +25,91 @@ class Home extends Screen
 {
     public static Visibility $visibility = Visibility::PUBLIC;
 
-    protected Container $posts_list_container;
-
-    protected NewLabel $lbl_home_title;
+    protected CardGrid $posts_grid;
 
     public function __construct(
         protected UserService $userService,
-        protected PostServiceInterface $postService
+        protected PostServiceInterface $postService,
+        protected PostCardGridService $postCardGridService,
     ) {}
 
-    protected function buildBaseUI(Container $container, ...$params): void
+    protected function startingUI(): Container
     {
         /** @var User|null $user */
         $user = Auth::user();
 
-        $wrapper = UI::container('home_wrapper')
-            ->centerHorizontal()
-            ->plain();
-
-        $wrapper->add($this->buildHeader($user));
-
-        $this->posts_list_container = UI::container('posts_list_container')
-            ->layout(LayoutType::HORIZONTAL)
-            ->gap(Spacing::px(16));
-
-        $this->renderPostsList();
-
-        $wrapper->add($this->posts_list_container);
-        $container->add($wrapper);
-    }
-
-    private function buildHeader(?User $user): Container
-    {
-        $header = UI::container('home_header')
-            ->card()
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->alignItems(AlignItems::CENTER)
-            ->padding(Spacing::px(20))
-            ->gap(Spacing::px(16));
-
-        $header->add($this->buildTitleBox($user));
-        $header->add($this->buildHeaderActionsBox($user));
-
-        return $header;
-    }
-
-    private function buildTitleBox(?User $user): Container
-    {
-        $titleBox = UI::container('home_title_box')
-            ->layout(LayoutType::VERTICAL)
-            ->gap(Spacing::px(4))
-            ->plain()
-            ->shadow(false)
-            ->padding(Spacing::zero());
-
-        $titleBox->add(
-            $this->lbl_home_title = UI::newLabel('lbl_home_title')
-                ->text('📰 Últimos Posts')
-                ->style(Style::DEFAULT)
-                ->size(TextSize::XL)
-                ->bold()
-        );
-
         if ($user instanceof User && $user->isRegisteredInLobby()) {
-            $this->lbl_home_title
-                ->text("⏳ {$user->name}, aún estás en sala de espera.")
-                ->style(Style::WARNING);
+            $this->posts_grid
+                ->title($this->t('.waiting_room_title', ['name' => $user->name]))
+                ->titleStyle(Style::WARNING)
+                ->subtitle($this->t('.waiting_room_subtitle'));
         }
 
-        return $titleBox;
+        $this->populateHeaderActions($user);
+
+        if ($this->canFilterByStatus($user)) {
+            $this->posts_grid->addSelectFilter(
+                name: 'status',
+                label: 'Estado',
+                options: [
+                    PostStatus::DRAFT->value => '📝 Borrador',
+                    PostStatus::PENDING_REVIEW->value => '⏳ En revisión',
+                    PostStatus::CHANGES_REQUESTED->value => '⚠️ Con observaciones',
+                    PostStatus::PUBLISHED->value => '🟢 Publicado',
+                    PostStatus::ARCHIVED->value => '📦 Archivado',
+                ],
+                placeholder: 'Estado: Todos',
+            );
+        }
+
+        return $this->layoutContainer();
     }
 
-    private function buildHeaderActionsBox(?User $user): Container
+    private function populateHeaderActions(?User $user): void
     {
-        $actionsBox = UI::container('home_actions_box')
-            ->layout(LayoutType::HORIZONTAL)
-            ->alignItems(AlignItems::CENTER)
-            ->gap(Spacing::px(10))
-            ->plain()
-            ->padding(Spacing::zero());
-
         if ($user === null) {
-            if (Login::canAccess()) {
-                $loginBtn = UI::button('btn_go_login')
-                    ->label(Login::getMenuLabel())
-                    ->action('open_login')
-                    ->style('primary');
-                $loginIcon = Login::getMenuIcon();
-                if ($loginIcon !== null) {
-                    $loginBtn->icon($loginIcon);
-                }
-                $actionsBox->add($loginBtn);
-            }
-
-            if (Register::canAccess()) {
-                $registerBtn = UI::button('btn_go_register')
-                    ->label(Register::getMenuLabel())
-                    ->action('open_register')
-                    ->style('secondary');
-                $registerIcon = Register::getMenuIcon();
-                if ($registerIcon !== null) {
-                    $registerBtn->icon($registerIcon);
-                }
-                $actionsBox->add($registerBtn);
-            }
+            $this->addScreenHeaderAction(Login::class, 'open_login', Style::PRIMARY, 'solid');
+            $this->addScreenHeaderAction(Register::class, 'open_register', Style::SECONDARY, 'outline');
         }
 
-        if (PublishPost::canAccess()) {
-            $publishBtn = UI::button('btn_go_publish')
-                ->label(PublishPost::getMenuLabel())
-                ->action('go_to_publish')
-                ->style('primary');
-            $publishIcon = PublishPost::getMenuIcon();
-            if ($publishIcon !== null) {
-                $publishBtn->icon($publishIcon);
-            }
-            $actionsBox->add($publishBtn);
-        }
-
-        if (UsersManager::canAccess()) {
-            $usersBtn = UI::button('btn_go_users')
-                ->label(UsersManager::getMenuLabel())
-                ->action('go_to_users')
-                ->style('secondary');
-            $usersIcon = UsersManager::getMenuIcon();
-            if ($usersIcon !== null) {
-                $usersBtn->icon($usersIcon);
-            }
-            $actionsBox->add($usersBtn);
-        }
-
-        return $actionsBox;
-    }
-
-    private function renderPostsList(): void
-    {
-        $this->posts_list_container->clear();
-
-        $posts = $this->postService->getLatestPosts(Auth::user());
-
-        if ($posts->isEmpty()) {
-            $this->posts_list_container->add($this->buildEmptyPostsCard());
-
-            return;
-        }
-
-        $isAdmin = $this->userService->currentUserHasRole('admin');
-        $isReviewer = $this->userService->currentUserHasRole(['reviewer', 'admin']);
-        $dim = AspectRatio::_16_9->dimensionsFor(width: 240);
-        $height = Size::px($dim[1] + 40);
-
-        /** @var PostDTO $post */
-        foreach ($posts as $post) {
-            $this->posts_list_container->add(
-                $this->buildPostCard($post, $height, $isAdmin, $isReviewer)
-            );
-        }
-    }
-
-    private function buildEmptyPostsCard(): Container
-    {
-        $emptyCard = UI::container('posts_empty_card')
-            ->card()
-            ->padding(Spacing::px(32))
-            ->alignItems(AlignItems::CENTER);
-
-        $emptyCard->add(
-            UI::newLabel('lbl_no_posts')
-                ->text('Aún no hay posts publicados.')
-                ->size(TextSize::XL)
-                ->style(Style::DEFAULT)
-                ->fontWeight(FontWeight::LIGHT)
-                ->center()
-        );
-
-        return $emptyCard;
-    }
-
-    private function buildPostCard(PostDTO $post, Size $imageHeight, bool $isAdmin, bool $isReviewer): Container
-    {
-        $isOwner = $this->postService->isCurrentUserOwner($post->id, Auth::user());
-        $backgroundColor = $post->background_color ?? '#7c3aed';
-        $textColor = $post->text_color ?? '#ffffff';
-
-        $postCard = UI::container("post_card_{$post->id}")
-            ->card()
-            ->layout(LayoutType::VERTICAL)
-            ->minWidth(Size::px(320))->maxWidth(Size::px(320))
-            ->minHeight(Size::px(360))->maxHeight(Size::px(360))
-            ->padding(Spacing::px(8))
-            ->gap(Spacing::px(6));
-
-        $postCard->add(
-            UI::image("post_img_{$post->id}")
-                ->src($post->image ?? '')
-                ->storage('uploads/images')
-                ->alt($post->title)
-                ->width(Size::full())
-                ->height($imageHeight)
-                ->objectFit('scale-down')
-                ->rounded(4)
-                ->placeholderColors($backgroundColor, $textColor)
-                ->placeholderAspect(AspectRatio::_16_9)
-                ->placeholderId($post->id)
-        );
-
-        $postCard->add($this->buildPostCardHeader($post));
-
-        $authorName = '';
-
-        if ($this->postService->isCurrentUserOwner($post->id, Auth::user())) {
-            $authorName = 'Tú';
-        } elseif ($post->author) {
-            $authorName = $post->author->name;
-        }
-
-        $createdAt = $post->updatedAt?->diffForHumans() ?? $post->createdAt?->diffForHumans() ?? '';
-
-        $postCard->add(
-            UI::newLabel("post_meta_{$post->id}")
-                ->text("**Autor:** {$authorName} • {$createdAt}")
-                ->size(TextSize::SMALL)
-                ->fontWeight(FontWeight::LIGHT)
-                ->style(Style::DEFAULT)
-                ->markdown()
-        );
-
-        if (! empty($post->reviewer_comment) && ($isOwner || $isReviewer)) {
-            $postCard->add(
-                UI::newLabel("post_review_note_{$post->id}")
-                    ->text('💬 Obs: ' . (string) $post->reviewerComment)
-                    ->style(Style::WARNING)
-                    ->size(TextSize::SMALL)
-            );
-        }
-
-        $postCard->add($this->buildPostCardActions($post, $isOwner, $isAdmin, $isReviewer));
-
-        return $postCard;
-    }
-
-    private function buildPostCardHeader(PostDTO $post): Container
-    {
-        $postHeader = UI::container("post_header_{$post->id}")
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::SPACE_BETWEEN)
-            ->alignItems(AlignItems::CENTER)
-            ->plain()
-            ->shadow(false)
-            ->padding(Spacing::zero())
-            ->gap(Spacing::px(6));
-
-        $postHeader->add(
-            UI::newLabel("post_title_{$post->id}")
-                ->text($post->title)
-                ->style(Style::DEFAULT)
-                ->size(TextSize::LARGE)
-                ->bold()
-        );
-
-        [$badgeText, $badgeStyle] = $this->resolveStatusBadge($post);
-
-        $statusBadge = UI::newLabel("post_status_{$post->id}")
-            ->text($badgeText)
-            ->variant(Variant::BADGE)
-            ->style($badgeStyle)
-            ->size(TextSize::SMALL);
-
-        $postHeader->add($statusBadge);
-
-        return $postHeader;
+        $this->addScreenHeaderAction(PublishPost::class, 'go_to_publish', Style::PRIMARY, 'solid');
+        $this->addScreenHeaderAction(UsersManager::class, 'go_to_users', Style::SECONDARY, 'outline');
     }
 
     /**
-     * @return array{0: string, 1: string}
+     * @param  class-string<Screen>  $screenClass
      */
-    private function resolveStatusBadge(PostDTO $post): array
-    {
-        $status = is_string($post->status) ? $post->status : $post->status->value;
-        $jobStatus = (string) ($post->ai_job_status ?? 'idle');
-
-        if ($status === 'draft' && in_array($jobStatus, ['generating_script', 'rendering_video'], true)) {
-            return ['⚙️ Procesando IA', 'info'];
+    private function addScreenHeaderAction(
+        string $screenClass,
+        string $action,
+        Style $style,
+        string $variant,
+    ): void {
+        if (! $screenClass::canAccess()) {
+            return;
         }
 
-        return match ($status) {
-            'pending_review' => ['⏳ En revisión', 'info'],
-            'changes_requested' => ['⚠️ Con observaciones', 'error'],
-            'published' => ['🟢 Publicado', 'success'],
-            'archived' => ['📦 Archivado', 'muted'],
-            default => ['📝 Borrador', 'warning'],
-        };
+        $this->posts_grid->addHeaderAction(
+            label: $screenClass::getMenuLabel(),
+            action: $action,
+            icon: $screenClass::getMenuIcon(),
+            style: $style,
+            variant: $variant,
+        );
     }
 
-    private function buildPostCardActions(PostDTO $post, bool $isOwner, bool $isAdmin, bool $isReviewer): Container
+    private function canFilterByStatus(?User $user): bool
     {
-        $postActionBox = UI::container("post_action_box_{$post->id}")
-            ->layout(LayoutType::HORIZONTAL)
-            ->justifyContent(JustifyContent::END)
-            ->plain()
-            ->gap(Spacing::px(6))
-            ->padding(Spacing::zero());
-
-        $status = is_string($post->status) ? $post->status : $post->status->value;
-
-        if ($isReviewer && $status === 'pending_review' && ! $isOwner) {
-            $postActionBox->add(
-                UI::button("btn_review_post_{$post->id}")
-                    ->label('🔍 Revisar')
-                    ->action('review_post', ['post_id' => (int) $post->id])
-                    ->style('info')
-                    ->size('small')
-            );
+        if (! ($user instanceof User)) {
+            return false;
         }
 
-        $user = Auth::user();
-
-        if (($user instanceof User) && $user->can('update', $post)) {
-            $editLabel = $status === 'changes_requested' ? '✏️ Corregir' : '✏️';
-            $postActionBox->add(
-                UI::button("btn_edit_post_{$post->id}")
-                    ->label($editLabel)
-                    ->action('edit_post', ['post_id' => (int) $post->id])
-                    ->style('secondary')
-                    ->size('small')
-            );
-        }
-
-        if (($user instanceOf User) && $user->can('delete', $post)) {
-            $postActionBox->add(
-                UI::button("btn_delete_post_{$post->id}")
-                    ->icon('🗑️')
-                    ->action('delete_post', ['post_id' => (int) $post->id])
-                    ->style('danger')
-                    ->size('small')
-            );
-        }
-
-        return $postActionBox;
+        return $user->isRoot()
+            || $user->can('post.view.any')
+            || $user->can('post.view.own')
+            || $user->can('post.review')
+            || $user->hasRole(['admin', 'reviewer', 'publisher'])
+            || $this->userService->currentUserHasRole(['admin', 'reviewer', 'publisher']);
     }
 
     /**
@@ -393,11 +130,10 @@ class Home extends Screen
 
     public function onGoToPublish(): void
     {
-        if ($this->postService->getLatestPosts(Auth::user())->isEmpty()) {
-            $this->posts_list_container->clear();
-        }
-
         $user = Auth::user();
+        if ($user === null) {
+            return;
+        }
 
         $draftId = $this->postService->createPost([
             'user_id' => is_numeric($user->getAuthIdentifier()) ? (int) $user->getAuthIdentifier() : 0,
@@ -408,13 +144,8 @@ class Home extends Screen
             return;
         }
 
-        $isAdmin = $this->userService->currentUserHasRole('admin');
-        $isReviewer = $this->userService->currentUserHasRole(['reviewer', 'admin']);
-        $dim = AspectRatio::_16_9->dimensionsFor(width: 240);
-        $height = Size::px($dim[1] + 40);
-
-        $this->posts_list_container->add(
-            $this->buildPostCard($post, $height, $isAdmin, $isReviewer)
+        $this->posts_grid->prependCard(
+            $this->postCardGridService->toCardItemDTO($post, $user)
         );
     }
 
@@ -427,7 +158,7 @@ class Home extends Screen
     }
 
     /**
-     * @param int $postId
+     * @param  int  $postId
      */
     public function onEditPost(int $postId): void
     {
@@ -456,11 +187,16 @@ class Home extends Screen
     public function onDeletePost(PostIdRequest $request): void
     {
         $user = Auth::user();
+        if ($user === null) {
+            $this->toast('Debes iniciar sesión para eliminar un post.', 'error');
+
+            return;
+        }
 
         try {
             $this->postService->deletePost($request->getPostId(), $user);
             $this->toast('Post eliminado correctamente.', 'success');
-            $this->removePostCardFromContainer($request->getPostId());
+            $this->posts_grid->removeCard($request->getPostId());
         } catch (ModelNotFoundException $e) {
             $this->toast('No se encontró el post a eliminar.', 'error');
         } catch (AuthorizationException $e) {
@@ -469,22 +205,6 @@ class Home extends Screen
             $this->toast($e->getMessage(), 'error');
         } catch (\Throwable $e) {
             $this->toast('Ocurrió un error al eliminar el post.', 'error');
-        }
-    }
-
-    private function removePostCardFromContainer(int $postId): void
-    {
-        if (! isset($this->posts_list_container)) {
-            return;
-        }
-
-        $postCard = $this->posts_list_container->findByName("post_card_{$postId}");
-        if ($postCard !== null) {
-            $this->posts_list_container->tryRemove($postCard->getId());
-        }
-
-        if ($this->posts_list_container->count() === 0) {
-            $this->posts_list_container->add($this->buildEmptyPostsCard());
         }
     }
 }

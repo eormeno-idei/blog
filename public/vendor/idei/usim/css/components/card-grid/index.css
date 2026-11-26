@@ -57,6 +57,31 @@
     line-height: 1.3;
 }
 
+.usim-cg-title.style-primary   { color: var(--usim-color-primary); }
+.usim-cg-title.style-secondary,
+.usim-cg-title.style-muted     { color: var(--usim-color-text-muted); }
+.usim-cg-title.style-success   { color: var(--usim-color-success); }
+.usim-cg-title.style-warning   { color: var(--usim-color-warning); }
+.usim-cg-title.style-danger    { color: var(--usim-color-danger); }
+.usim-cg-title.style-info      { color: var(--usim-color-info); }
+
+.usim-cg-icon {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.usim-cg-icon.ui-icon-text {
+    width: auto;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
 .usim-cg-subtitle {
     margin: 0;
     font-size: 0.875rem;
@@ -81,6 +106,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* ─── Toolbar (Search + Filters + Sort + Layout Toggle) ──────────────────── */

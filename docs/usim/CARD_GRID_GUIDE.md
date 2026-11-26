@@ -42,12 +42,17 @@ $card = UI::itemCard('welcome_card')
 ```
 
 ### Anatomía estandarizada (6 zonas tipadas, sin HTML crudo)
-1. **Media / Visual**: `image()` (con `loading="lazy"` y fallback automático), `aspectRatio()`, o `icon()` / `avatar()` cuando no hay imagen.
+1. **Media / Visual**: `image()` (con `loading="lazy"`, `imageFit('cover'|'contain'|'scale-down')` y fallback automático), `aspectRatio()`, `imageStorage('uploads/images')` (resolución automática vía `UploadService::fileUrl()`), `imagePlaceholder()` / `imagePlaceholderAspect()` / `imagePlaceholderColors()` / `imagePlaceholderId()` (mismo pipeline que `UI::image()`), o `icon()` / `avatar()` cuando no hay imagen.
 2. **Header**: `eyebrow()`, `title()`, `subtitle()` y `badge($text, $style)`.
 3. **Highlight**: `metric($value, $label, $style)` (ej. precio, rating, porcentaje).
 4. **Body**: `description()` (line-clamp automático), `attributes([...])` (pares `{ icon?, label, value }`) y `tags([...])` (capado a `max_visible_tags` + `+N`).
-5. **Footer y Acciones**: siempre alineado al borde inferior (`margin-top: auto`). Muestra `footerText()` y hasta `max_visible_actions` botones (default `2`); cualquier acción adicional (o marcada `overflow: true`) colapsa automáticamente en un menú **`⋮`**.
+5. **Footer y Acciones**: siempre alineado al borde inferior (`margin-top: auto`). Muestra `footerText()` y hasta `max_visible_actions` botones (default `2`); cualquier acción adicional (o marcada `overflow: true`) colapsa automáticamente en un menú **`⋮`**. Las acciones *icon-only* (`label: ''` + `tooltip`) asignan `aria-label` automáticamente y muestran el `tooltip` como texto legible si caen en el menú `⋮`.
 6. **Estilo y Estado**: `style(Style::...)` (borde superior `3px` en vertical / izquierdo `4px` en horizontal con soporte Light/Dark), `featured()`, `disabled()`, `accentColor()`, `variant('elevated'|'outlined'|'flat')`, `density('compact'|'comfortable'|'spacious')`, `vertical()` / `horizontal()`.
+
+### Encabezado contextual en `CardGrid`
+- `titleStyle(Style|string $style)` aplica un color semántico al título de la grilla (ej. `Style::WARNING`).
+- `headerActions(array $actions)` / `addHeaderAction(...)` permiten mostrar múltiples botones CTA contextuales en el encabezado (`CardActionDTO[]` o arrays compatibles), manteniendo `headerAction()` como azúcar sintáctico de retrocompatibilidad para 1 acción.
+- `imageStorage('uploads/images')` e `imagePlaceholder(...)` en `CardGrid` propagan automáticamente la resolución de rutas relativas y placeholders a todos los `ItemCard` hijos (con override opcional por ítem en `CardItemDTO`).
 
 ---
 
@@ -188,5 +193,5 @@ grid:
 
 - **Pantalla demo**: `App\UI\Screens\Demo\CardGridDemo` (**Demos → Grilla de Tarjetas**).
 - **Servicio demo**: `App\Services\Movie\MovieCardGridService`.
-- **Tests**: `tests/Unit/CardGridComponentTest.php` y `tests/Feature/CardGridServiceWiringTest.php`.
+- **Tests**: `tests/Unit/CardGridComponentTest.php`, `tests/Feature/CardGridServiceWiringTest.php` y helpers de `ScreenTestHarness` (`findCard()`, `getCard()`, `assertHasCard()`, `assertMissingCard()`, `assertCardCount()`, `assertCardBadge()`, `assertCardHasAction()`, `assertCardMissingAction()`, `clickCardAction()`, `clickCard()`).
 - **Referencia técnica para IA**: [CARD_GRID_AI_REFERENCE.md](CARD_GRID_AI_REFERENCE.md).

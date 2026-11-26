@@ -1,0 +1,37 @@
+name: home_wrapper
+appearance: plain
+width: 100%
+max_width: 1200
+center_horizontal: true
+i18n: auto
+
+grid:
+  cols: [1fr]
+  padding: l
+
+  children:
+    - posts_grid:
+        component: card_grid
+        width: full
+        service: App\Services\Post\PostCardGridService
+        image_storage: uploads/images
+        show_count: true
+        card_layout: horizontal
+        min_card_width: 460px
+        max_columns: 2
+        gap: 20px
+        variant: elevated
+        density: comfortable
+        image_aspect_ratio: 16/9
+        max_visible_actions: 3
+        show_layout_toggle: true
+        searchable: true
+        debounce: 250
+        sort_options:
+          updated_at: Más recientes
+          title: Título
+          status: Estado
+        sort_by: updated_at
+        sort_direction: desc
+        pagination_mode: load_more
+        per_page: 12

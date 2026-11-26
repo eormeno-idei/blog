@@ -155,7 +155,8 @@ class UsimItemCardComponent extends UIComponent {
             img.src = String(cfg.image);
             img.alt = String(cfg.image_alt || titleText);
             img.loading = 'lazy';
-            img.style.objectFit = cfg.image_fit === 'contain' ? 'contain' : 'cover';
+            const rawFit = String(cfg.image_fit || 'cover').toLowerCase().trim();
+            img.style.objectFit = ['cover', 'contain', 'scale-down'].includes(rawFit) ? rawFit : 'cover';
             img.addEventListener('error', () => {
                 img.remove();
                 const fallback = document.createElement('div');
@@ -440,11 +441,14 @@ class UsimItemCardComponent extends UIComponent {
                         });
                     }
 
+                    if (act.tooltip) {
+                        menuItem.title = act.tooltip;
+                    }
                     if (act.icon) {
                         menuItem.appendChild(this._createIconNode(act.icon, 14));
                     }
                     const lbl = document.createElement('span');
-                    lbl.textContent = act.label;
+                    lbl.textContent = act.label.trim() || act.tooltip || '';
                     menuItem.appendChild(lbl);
                     menu.appendChild(menuItem);
                 });
@@ -461,9 +465,15 @@ class UsimItemCardComponent extends UIComponent {
 
     _buildInlineActionButton(act) {
         const isLink = Boolean(act.url && !act.disabled);
+        const hasLabel = act.label.trim() !== '';
         const el = document.createElement(isLink ? 'a' : 'button');
         el.className = `usim-ic-action-btn variant-${act.variant} style-${act.style}`;
-        if (act.tooltip) el.title = act.tooltip;
+        if (act.tooltip) {
+            el.title = act.tooltip;
+            if (!hasLabel) {
+                el.setAttribute('aria-label', act.tooltip);
+            }
+        }
 
         if (isLink) {
             el.href = act.url;
@@ -482,7 +492,7 @@ class UsimItemCardComponent extends UIComponent {
         if (act.icon) {
             el.appendChild(this._createIconNode(act.icon, 14));
         }
-        if (act.label) {
+        if (hasLabel) {
             const lbl = document.createElement('span');
             lbl.textContent = act.label;
             el.appendChild(lbl);
