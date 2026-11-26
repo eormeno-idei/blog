@@ -6,6 +6,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
 use App\Services\Role\RoleService;
 use Idei\Usim\Components\Container;
+use Idei\Usim\Components\Input;
 use Idei\Usim\Components\Label;
 use Idei\Usim\Contracts\RegisterActionInterface;
 use Idei\Usim\DTOs\RegistrationResult;
@@ -48,6 +49,14 @@ class Register extends Screen
         ];
     }
 
+    protected Input $name;
+
+    protected Input $email;
+
+    protected Input $password;
+
+    protected Input $password_confirmation;
+
     protected Label $lbl_register_result;
 
     protected string $store_token = '';
@@ -64,7 +73,7 @@ class Register extends Screen
         return '📝';
     }
 
-    protected function buildBaseUI(Container $container, ...$params): void
+    protected function buildBaseUI(Container $container, mixed ...$params): void
     {
         $name = '';
         $email = '';
@@ -119,7 +128,7 @@ class Register extends Screen
 
         // Name input
         $card->add(
-            UI::input('name')
+            $this->name = UI::input('name')
                 ->label(t('modal.register_dialog.name.label'))
                 ->placeholder(t('modal.register_dialog.name.placeholder'))
                 ->required(true)
@@ -130,7 +139,7 @@ class Register extends Screen
 
         // Email input
         $card->add(
-            UI::input('email')
+            $this->email = UI::input('email')
                 ->label(t('modal.register_dialog.email.label'))
                 ->placeholder(t('modal.register_dialog.email.placeholder'))
                 ->type('email')
@@ -142,7 +151,7 @@ class Register extends Screen
 
         // Password input
         $card->add(
-            UI::input('password')
+            $this->password = UI::input('password')
                 ->label(t('modal.register_dialog.password.label'))
                 ->type('password')
                 ->placeholder(t('modal.register_dialog.password.placeholder'))
@@ -154,7 +163,7 @@ class Register extends Screen
 
         // Password confirmation input
         $card->add(
-            UI::input('password_confirmation')
+            $this->password_confirmation = UI::input('password_confirmation')
                 ->label(t('modal.register_dialog.confirm_password.label'))
                 ->type('password')
                 ->placeholder(t('modal.register_dialog.confirm_password.placeholder'))
@@ -249,6 +258,7 @@ class Register extends Screen
 
     protected function postLoadUI(): void
     {
+        $this->clearFieldErrors();
         if (isset($this->lbl_register_result)) {
             $this->lbl_register_result->text('')->style('');
         }
@@ -259,6 +269,11 @@ class Register extends Screen
      */
     public function onSubmitRegister(array $params): void
     {
+        $this->clearFieldErrors();
+        if (isset($this->lbl_register_result)) {
+            $this->lbl_register_result->text('')->style('');
+        }
+
         $isAdminFlow = (bool) ($params['ask_for_role'] ?? $params['askForRole'] ?? $this->state_ask_for_role)
             || self::requireAuth();
 
@@ -276,11 +291,43 @@ class Register extends Screen
 
     protected function handleRegistrationFailure(RegistrationResult $result, bool $showLabelError = true): void
     {
+        $this->bindFieldErrors($result->errors);
+
         $message = RegisterRequest::formatErrorMessage($result);
 
         $this->toast($message, type: 'error');
         if ($showLabelError && isset($this->lbl_register_result)) {
             $this->lbl_register_result->text($message)->style('error');
+        }
+    }
+
+    protected function clearFieldErrors(): void
+    {
+        foreach ([$this->name ?? null, $this->email ?? null, $this->password ?? null, $this->password_confirmation ?? null] as $input) {
+            if ($input instanceof Input) {
+                $input->error(null);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, list<string>>  $errors
+     */
+    protected function bindFieldErrors(array $errors): void
+    {
+        $inputs = [
+            'name' => $this->name ?? null,
+            'email' => $this->email ?? null,
+            'password' => $this->password ?? null,
+            'password_confirmation' => $this->password_confirmation ?? null,
+        ];
+
+        foreach ($errors as $field => $messages) {
+            $input = $inputs[$field] ?? null;
+            $firstMessage = $messages[0] ?? null;
+            if ($input instanceof Input && is_string($firstMessage) && $firstMessage !== '') {
+                $input->error($firstMessage);
+            }
         }
     }
 

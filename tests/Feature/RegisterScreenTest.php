@@ -9,6 +9,7 @@ use App\UI\Screens\Admin\UsersManager;
 use App\UI\Screens\Auth\LegalTerms;
 use App\UI\Screens\Auth\Register;
 use App\UI\Screens\Home;
+use Idei\Usim\Components\Input;
 use Idei\Usim\DTOs\RegistrationResult;
 use Idei\Usim\Events\UsimEvent;
 use Idei\Usim\Screen;
@@ -155,8 +156,43 @@ it('shows formatted validation error in toast and label when registration fields
 
     $labelComponent = $harness->getComponent('lbl_register_result');
     $labelText = method_exists($labelComponent, 'getText') ? (string) $labelComponent->getText() : '';
-    expect($labelText)->not->toBeEmpty()
+    $passwordInput = $harness->getComponent('password');
+    $passwordError = method_exists($passwordInput, 'get') ? $passwordInput->get('error') : null;
+
+    expect($labelText)
+        ->not->toBeEmpty()
+        ->not->toContain('validation.')
+        ->toContain('contraseña')
+        ->and($passwordError)->toBe('La confirmación de contraseña no coincide.')
         ->and(User::where('email', 'mismatch@example.com')->exists())->toBeFalse();
+});
+
+it('binds Spanish required validation errors to each empty input field on submit', function () {
+    app()->setLocale('es');
+
+    $harness = ScreenTestHarness::for(Register::class)
+        ->render(['fakeData' => false, 'askForRole' => false], shouldReset: true)
+        ->click('btn_submit_register', [
+            'name' => '',
+            'email' => '',
+            'password' => '',
+            'password_confirmation' => '',
+            'accept_terms' => true,
+        ]);
+
+    /** @var Input $nameInput */
+    $nameInput = $harness->getComponent('name');
+    /** @var Input $emailInput */
+    $emailInput = $harness->getComponent('email');
+    /** @var Input $passwordInput */
+    $passwordInput = $harness->getComponent('password');
+
+    expect($nameInput)->toBeInstanceOf(Input::class)
+        ->and($emailInput)->toBeInstanceOf(Input::class)
+        ->and($passwordInput)->toBeInstanceOf(Input::class)
+        ->and($nameInput->get('error'))->toBe('El campo nombre completo es obligatorio.')
+        ->and($emailInput->get('error'))->toBe('El campo correo es obligatorio.')
+        ->and($passwordInput->get('error'))->toBe('El campo contraseña es obligatorio.');
 });
 
 it('registers a guest user, starts session, stores token and navigates to home screen', function () {
